@@ -42,6 +42,7 @@ android {
 dependencies {
 
     implementation(libs.androidx.core.ktx)
+    implementation("nl.dionsegijn:konfetti-xml:2.0.2")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
