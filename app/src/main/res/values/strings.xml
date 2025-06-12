@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Payday</string>
+    <string name="countdown_title">BİR SONRAKİ MAAŞ GÜNÜNE</string>
+    <string name="days_left_suffix">GÜN KALDI</string>
+    <string name="set_payday_button">Maaş Gününü Ayarla</string>
+    <string name="select_payday_dialog_title">Maaş Aldığın Günü Seç</string>
+    <string name="day_not_set_placeholder">--</string>
+    <string name="payday_is_today">BUGÜN MAAŞ GÜNÜ!</string>
+</resources>
