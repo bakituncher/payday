@@ -1,4 +1,4 @@
-// Dosya: app/src/main/java/com/example/payday/SettingsActivity.kt
+// bakituncher/payday/payday-45bf19400631339220219f4fc951dd9f8da20be8/app/src/main/java/com/example/payday/SettingsActivity.kt
 package com.example.payday
 
 import android.content.Intent
@@ -38,6 +38,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.weekendAdjustmentSwitch.setOnCheckedChangeListener { _, isChecked ->
             repository.saveWeekendAdjustmentSetting(isChecked)
+            setResult(RESULT_OK) // Indicate that a setting was changed
+            // No need to finish here, let the user continue changing settings
         }
 
         // Butonlara tıklandığında, MainActivity'e hangi dialogu açacağını söylüyoruz.
@@ -50,7 +52,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun returnResult(dialogKey: String) {
         val intent = Intent().apply { putExtra("dialog_to_show", dialogKey) }
         setResult(RESULT_OK, intent)
-        finish()
+        finish() // Close SettingsActivity after sending the result
     }
 
     // Fiziksel geri tuşuna basıldığında da sonucu gönder

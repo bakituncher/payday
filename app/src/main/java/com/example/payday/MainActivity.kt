@@ -1,3 +1,4 @@
+// bakituncher/payday/payday-45bf19400631339220219f4fc951dd9f8da20be8/app/src/main/java/com/example/payday/MainActivity.kt
 package com.example.payday
 
 import android.Manifest
@@ -78,6 +79,16 @@ class MainActivity : AppCompatActivity() {
             loadGoals() // Hedefleri tekrar yükle
             updateCountdown(true) // Geri sayımı ve birikimi güncellemeye zorla
             updateAllWidgets() // Widget'ları güncelle
+
+            // Check for the extra to determine which dialog to show
+            result.data?.getStringExtra("dialog_to_show")?.let { dialogKey ->
+                when (dialogKey) {
+                    "show_pay_period_dialog" -> showPayPeriodSelectionDialog()
+                    "show_payday_dialog" -> showDynamicPaydaySelectionDialog()
+                    "show_salary_dialog" -> showSalaryInputDialog()
+                    "show_monthly_savings_dialog" -> showSetMonthlySavingsDialog()
+                }
+            }
         }
     }
 
@@ -93,7 +104,7 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
         createNotificationChannel()
-        setupListeners()
+        setupListeners() // This is now primarily for addGoalButton
         loadSettings() // İlk açılışta ayarları yükle
         loadGoals()
         updateCountdown()
@@ -128,34 +139,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadSettings() {
-        val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-        // weekendAdjustmentSwitch artık MainActivity'de yok, bu satır kaldırıldı.
-        // binding.weekendAdjustmentSwitch.isChecked = prefs.getBoolean(weekendAdjustmentKey, false)
+        // weekendAdjustmentSwitch is now in SettingsActivity, no need to load its state here directly
     }
 
     private fun setupListeners() {
-        // Bu butonlar artık MainActivity XML'inde olmadığı için listener'ları kaldırıldı.
-        // binding.setPaydayButton.setOnClickListener { showDynamicPaydaySelectionDialog() }
-        // binding.setPayPeriodButton.setOnClickListener { showPayPeriodSelectionDialog() }
-        // binding.setSalaryButton.setOnClickListener { showSalaryInputDialog() }
-        // binding.setMonthlySavingsButton.setOnClickListener { showSetMonthlySavingsDialog() }
-
+        // Only the addGoalButton listener remains here
         binding.addGoalButton.setOnClickListener { showGoalDialog() }
-
-        // weekendAdjustmentSwitch kaldırıldığı için bu listener da kaldırıldı.
-        // binding.weekendAdjustmentSwitch.setOnCheckedChangeListener { _, isChecked ->
-        //     saveWeekendAdjustmentSetting(isChecked)
-        //     updateCountdown(true)
-        //     updateAllWidgets()
-        // }
     }
 
-    // --- Kaydetme ve Yükleme Fonksiyonları --- (Bu fonksiyonlar artık SettingsActivity'de de kullanılabilir hale getirilmeli)
+    // --- Kaydetme ve Yükleme Fonksiyonları ---
 
     private fun savePayday(day: Int) { getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putInt(paydayKey, day); remove(biWeeklyRefDateKey) } }
     private fun savePayPeriod(payPeriod: PayPeriod) { getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putString(payPeriodKey, payPeriod.name) } }
     private fun saveBiWeeklyReferenceDate(date: LocalDate) { getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putString(biWeeklyRefDateKey, date.format(DateTimeFormatter.ISO_LOCAL_DATE)); remove(paydayKey) } }
-    private fun saveWeekendAdjustmentSetting(isEnabled: Boolean) { getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putBoolean(weekendAdjustmentKey, isEnabled) } }
+    // saveWeekendAdjustmentSetting is now primarily called from SettingsActivity directly via repository
     private fun saveSalary(salary: Long) { getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putLong(salaryKey, salary) } }
     private fun saveGoals() { val jsonGoals = gson.toJson(currentGoals); getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit { putString(savingsGoalsKey, jsonGoals) } }
 
@@ -251,9 +248,9 @@ class MainActivity : AppCompatActivity() {
         return format.format(amount)
     }
 
-    // --- Diyalog Fonksiyonları --- (Bu fonksiyonların çoğu artık SettingsActivity'den çağrılmalı)
+    // --- Diyalog Fonksiyonları --- (These functions are now called from SettingsActivity's result)
 
-    private fun showSetMonthlySavingsDialog() {
+    fun showSetMonthlySavingsDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_salary_input, null)
         val amountEditText = dialogView.findViewById<EditText>(R.id.salaryEditText)
         amountEditText.hint = getString(R.string.dialog_monthly_savings_hint)
@@ -271,6 +268,7 @@ class MainActivity : AppCompatActivity() {
                 val amount = amountEditText.text.toString().toLongOrNull() ?: 0L
                 saveMonthlySavings(amount)
                 updateCountdown(true)
+                updateAllWidgets() // Update widget after settings change
                 dialog.dismiss()
             }
             .setNegativeButton(getString(R.string.cancel), null)
@@ -315,7 +313,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showSalaryInputDialog() {
+    fun showSalaryInputDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_salary_input, null)
         val salaryEditText = dialogView.findViewById<EditText>(R.id.salaryEditText)
         val currentSalary = getSharedPreferences(prefsName, Context.MODE_PRIVATE).getLong(salaryKey, 0L)
@@ -337,7 +335,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDynamicPaydaySelectionDialog() {
+    fun showDynamicPaydaySelectionDialog() {
         val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
         val currentPeriod = PayPeriod.valueOf(prefs.getString(payPeriodKey, PayPeriod.MONTHLY.name)!!)
         when (currentPeriod) {
@@ -378,7 +376,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPayPeriodSelectionDialog() {
+    fun showPayPeriodSelectionDialog() {
         val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
         val currentPeriodName = prefs.getString(payPeriodKey, PayPeriod.MONTHLY.name)
         val currentPeriod = PayPeriod.valueOf(currentPeriodName!!)
