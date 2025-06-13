@@ -1,5 +1,3 @@
-// Dosya: app/src/main/java/com/example/payday/PaydayCalculator.kt
-
 package com.example.payday
 
 import android.content.Context
@@ -12,7 +10,8 @@ import java.time.temporal.TemporalAdjusters
 data class PaydayResult(
     val daysLeft: Long,
     val isPayday: Boolean,
-    val accumulatedAmount: Double // Field for the accumulated amount
+    val accumulatedAmount: Double,
+    val totalDaysInCycle: Long // Bu parametre MainActivity'de kullanılacak
 )
 
 // Central object for all calculation logic
@@ -25,9 +24,7 @@ object PaydayCalculator {
         val paydayOfMonth = prefs.getInt("PaydayOfMonth", -1)
         val weekendAdjustmentEnabled = prefs.getBoolean("WeekendAdjustmentEnabled", false)
         val salaryAmount = prefs.getLong("SalaryAmount", 0L)
-        // Yeni eklediğimiz periyot ayarını oku, varsayılan olarak Aylık (MONTHLY)
         val payPeriod = PayPeriod.valueOf(prefs.getString("PayPeriod", PayPeriod.MONTHLY.name)!!)
-        // 2 Haftada bir ödeme için referans tarihini oku (sonraki adımda kaydedeceğiz)
         val biWeeklyRefDateString = prefs.getString("BiWeeklyRefDate", null)
 
 
@@ -47,7 +44,6 @@ object PaydayCalculator {
             // 2. Seçilen ödeme periyoduna göre BİR SONRAKİ ve BİR ÖNCEKİ maaş gününü hesapla
             when (payPeriod) {
                 PayPeriod.MONTHLY -> {
-                    // Bu blok, sizin orijinal kodunuzun aynısıdır.
                     nextPayday = if (today.dayOfMonth >= paydayOfMonth) {
                         val nextMonth = today.plusMonths(1)
                         val lastDayOfNextMonth = nextMonth.lengthOfMonth()
@@ -64,13 +60,8 @@ object PaydayCalculator {
                 }
 
                 PayPeriod.WEEKLY -> {
-                    // paydayOfMonth burada haftanın gününü (1=Pzt, 7=Pzr) temsil ediyor.
                     val payDayOfWeek = DayOfWeek.of(paydayOfMonth)
-
-                    // Bir sonraki veya bugünkü maaş gününü bul
                     nextPayday = today.with(TemporalAdjusters.nextOrSame(payDayOfWeek))
-
-                    // Eğer bugün maaş günü ise, bir önceki gün bugündür. Değilse, geçen haftaki gündür.
                     previousPayday = if(nextPayday == today) {
                         today
                     } else {
@@ -81,7 +72,6 @@ object PaydayCalculator {
                 PayPeriod.BI_WEEKLY -> {
                     val referenceDate = LocalDate.parse(biWeeklyRefDateString)
                     var tempPayday = referenceDate
-                    // Referans tarihinden başlayarak bugünü geçene kadar 14 gün ekle
                     while (tempPayday.isBefore(today)) {
                         tempPayday = tempPayday.plusDays(14)
                     }
@@ -93,28 +83,25 @@ object PaydayCalculator {
             // --- Bundan sonraki mantık tüm periyotlar için ortaktır ---
 
             // 3. Hafta sonu ayarlamasını yap
-            val originalNextPayday = nextPayday // Orijinal tarihi birikim hesabı için sakla
+            val originalNextPayday = nextPayday
             if (weekendAdjustmentEnabled) {
                 if (nextPayday.dayOfWeek == DayOfWeek.SATURDAY) {
-                    nextPayday = nextPayday.minusDays(1) // Cumartesi ise Cuma yap
+                    nextPayday = nextPayday.minusDays(1)
                 } else if (nextPayday.dayOfWeek == DayOfWeek.SUNDAY) {
-                    nextPayday = nextPayday.minusDays(2) // Pazar ise Cuma yap
+                    nextPayday = nextPayday.minusDays(2)
                 }
             }
 
             // 4. Kalan gün sayısını hesapla
             val daysLeft = ChronoUnit.DAYS.between(today, nextPayday)
 
-            // 5. Birikmiş tutarı hesapla
+            // 5. Birikmiş tutarı ve döngüdeki toplam günü hesapla
             var accumulatedAmount = 0.0
-            if (salaryAmount > 0) {
-                // Ödeme döngüsündeki toplam gün sayısı
-                val totalDaysInCycle = ChronoUnit.DAYS.between(previousPayday, originalNextPayday)
-                // Son maaş gününden bu yana geçen gün sayısı
-                val daysPassed = ChronoUnit.DAYS.between(previousPayday, today)
+            val totalDaysInCycle = ChronoUnit.DAYS.between(previousPayday, originalNextPayday)
 
+            if (salaryAmount > 0) {
+                val daysPassed = ChronoUnit.DAYS.between(previousPayday, today)
                 if (totalDaysInCycle > 0) {
-                    // Maaşı periyoda göre ayarla (Haftalık ise 4'e böl, 2 haftada bir ise 2'ye böl)
                     val cycleSalary = when (payPeriod) {
                         PayPeriod.WEEKLY -> salaryAmount / 4.0
                         PayPeriod.BI_WEEKLY -> salaryAmount / 2.0
@@ -125,14 +112,14 @@ object PaydayCalculator {
                 }
             }
 
-            // 6. Sonucu döndür
+            // 6. Sonucu döndür (DÜZELTİLMİŞ KISIM)
             return PaydayResult(
                 daysLeft = daysLeft,
                 isPayday = daysLeft <= 0L,
-                accumulatedAmount = accumulatedAmount
+                accumulatedAmount = accumulatedAmount,
+                totalDaysInCycle = totalDaysInCycle // Hatanın olduğu eksik parametre eklendi.
             )
         } catch (e: Exception) {
-            // Hata durumunda (örn: geçersiz tarih) null dön
             e.printStackTrace()
             return null
         }

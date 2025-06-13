@@ -47,5 +47,8 @@
     <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
     <string name="dialog_goal_name_hint">Hedef Adı (Örn: Tatil)</string>
     <string name="dialog_goal_amount_hint">Hedef Tutar (Örn: 50000)</string>
+    <string name="set_monthly_savings_button">Aylık Tasarruf Ayarla</string>
+    <string name="dialog_set_monthly_savings_title">Hedefler İçin Aylık Ayrılan Tutar</string>
+    <string name="dialog_monthly_savings_hint">Örn: 2500</string>
 
 </resources>
