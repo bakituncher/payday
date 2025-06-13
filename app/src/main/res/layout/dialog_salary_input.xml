@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TextInputLayout, EditText'i sarmalayarak dokunma alanını genişletir
+    ve daha iyi bir kullanıcı deneyimi sunar.
+-->
+<com.google.android.material.textfield.TextInputLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="24dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="24dp">
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/salaryEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/dialog_salary_hint"
+        android:inputType="number"
+        android:autofillHints="none" />
+
+</com.google.android.material.textfield.TextInputLayout>

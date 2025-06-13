@@ -15,4 +15,12 @@
     <string name="payday_notification_title">Maaş Günü Geldi!</string>
     <string name="payday_notification_text">Tebrikler! Bugün maaş gününüz. 🎉</string>
     <string name="weekend_adjustment_label">Maaş günü hafta sonuna gelirse Cuma günü say</string>
+    <string name="accumulation_card_title">ŞU ANA KADAR BİRİKTİRDİN</string>
+    <string name="set_salary_button_text">Maaşı Ayarla</string>
+    <string name="dialog_set_salary_title">Aylık Maaşını Gir</string>
+    <string name="dialog_salary_hint">Örn: 35000</string>
+    <string name="save">Kaydet</string>
+    <string name="cancel">İptal</string>
+    <string name="currency_symbol">₺</string>
+    <string name="initial_amount">0.00</string>
 </resources>

@@ -8,12 +8,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.View
+import android.view.LayoutInflater
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
@@ -25,6 +25,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.text.NumberFormat
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -34,9 +36,10 @@ class MainActivity : AppCompatActivity() {
     private val prefsName = "PaydayPrefs"
     private val paydayKey = "PaydayOfMonth"
     private val weekendAdjustmentKey = "WeekendAdjustmentEnabled"
+    private val salaryKey = "SalaryAmount"
 
-    private val CHANNEL_ID = "payday_channel"
-    private val NOTIFICATION_ID = 1
+    private val channelId = "payday_channel"
+    private val notificationId = 1
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -53,29 +56,28 @@ class MainActivity : AppCompatActivity() {
         createNotificationChannel()
         setupListeners()
         loadSettings()
-
         updateCountdown()
     }
 
     private fun loadSettings() {
         val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-        val isWeekendAdjustmentEnabled = prefs.getBoolean(weekendAdjustmentKey, false)
-        binding.weekendAdjustmentSwitch.isChecked = isWeekendAdjustmentEnabled
+        binding.weekendAdjustmentSwitch.isChecked = prefs.getBoolean(weekendAdjustmentKey, false)
     }
 
     private fun setupListeners() {
         binding.setPaydayButton.setOnClickListener {
             showPaydaySelectionDialog()
         }
-
         binding.weekendAdjustmentSwitch.setOnCheckedChangeListener { _, isChecked ->
             saveWeekendAdjustmentSetting(isChecked)
-            updateCountdown(true) // Animasyon için zorla güncelleme
+            updateCountdown(true)
             updateAllWidgets()
+        }
+        binding.setSalaryButton.setOnClickListener {
+            showSalaryInputDialog()
         }
     }
 
-    // --- YENİ KONFETİ FONKSİYONU ---
     private fun startConfettiEffect() {
         val party = Party(
             speed = 0f,
@@ -90,23 +92,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createNotificationChannel() {
-        // ... (Bu fonksiyon değişmedi)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = getString(R.string.notification_channel_name)
             val descriptionText = getString(R.string.notification_channel_description)
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
-    }
-
-    private fun loadPayday(): Int {
-        val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-        return prefs.getInt(paydayKey, -1)
     }
 
     private fun savePayday(dayOfMonth: Int) {
@@ -121,80 +117,106 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun saveSalary(salary: Long) {
+        getSharedPreferences(prefsName, Context.MODE_PRIVATE).edit {
+            putLong(salaryKey, salary)
+        }
+    }
+
     private fun sendPaydayNotification() {
-        // ... (Bu fonksiyon değişmedi)
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             return
         }
-
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.payday_notification_title))
             .setContentText(getString(R.string.payday_notification_text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
-
         with(NotificationManagerCompat.from(this)) {
-            notify(NOTIFICATION_ID, builder.build())
+            notify(notificationId, builder.build())
         }
     }
 
-    // --- ANİMASYONLU GÜNCELLEME İÇİN DEĞİŞTİRİLDİ ---
     private fun updateCountdown(forceUpdate: Boolean = false) {
         val result = PaydayCalculator.calculate(this)
 
-        // Mevcut metni al, eğer değişmeyecekse animasyon yapma
-        val currentText = binding.daysLeftTextView.text.toString()
-
-        val newText = result?.daysLeft?.toString() ?: if (loadPayday() == -1) getString(R.string.day_not_set_placeholder) else "!!"
-        if (currentText == newText && !forceUpdate) return // Değişiklik yoksa çık
+        val currentDaysText = binding.daysLeftTextView.text.toString()
+        val newDaysText = result?.daysLeft?.toString() ?: "..." // Simplified comparison
+        if (currentDaysText == newDaysText && !forceUpdate) return
 
         val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
         fadeOut.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationStart(animation: Animation?) {}
             override fun onAnimationRepeat(animation: Animation?) {}
             override fun onAnimationEnd(animation: Animation?) {
-                // Kaybolma animasyonu bitince metinleri güncelle
                 if (result == null) {
-                    val paydayOfMonth = loadPayday()
-                    if (paydayOfMonth == -1) {
+                    val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+                    if (!prefs.contains(paydayKey)) {
                         binding.daysLeftTextView.text = getString(R.string.day_not_set_placeholder)
                         binding.daysLeftSuffixTextView.text = getString(R.string.welcome_message)
                     } else {
                         binding.daysLeftTextView.text = "!!"
                         binding.daysLeftSuffixTextView.text = getString(R.string.invalid_day_error)
                     }
-                    binding.daysLeftSuffixTextView.visibility = View.VISIBLE
+                    binding.accumulationAmountTextView.text = formatCurrency(0.0)
                 } else {
                     if (result.isPayday) {
-                        binding.daysLeftTextView.text = "" // Konfeti için boşalt
+                        binding.daysLeftTextView.text = ""
                         binding.daysLeftSuffixTextView.text = getString(R.string.payday_is_today)
-                        startConfettiEffect() // Konfetiyi başlat!
+                        startConfettiEffect()
                         sendPaydayNotification()
                     } else {
                         binding.daysLeftTextView.text = result.daysLeft.toString()
                         binding.daysLeftSuffixTextView.text = getString(R.string.days_left_suffix)
                     }
-                    binding.daysLeftSuffixTextView.visibility = View.VISIBLE
+                    binding.accumulationAmountTextView.text = formatCurrency(result.accumulatedAmount)
                 }
-                // Belirme animasyonunu başlat
                 val fadeIn = AnimationUtils.loadAnimation(this@MainActivity, R.anim.fade_in)
                 binding.cardView.startAnimation(fadeIn)
+                binding.accumulationCardView.startAnimation(fadeIn)
             }
         })
         binding.cardView.startAnimation(fadeOut)
+        binding.accumulationCardView.startAnimation(fadeOut)
+    }
+
+    private fun formatCurrency(amount: Double): String {
+        val format = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+        return format.format(amount)
+    }
+
+    private fun showSalaryInputDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_salary_input, null)
+        val salaryEditText = dialogView.findViewById<EditText>(R.id.salaryEditText)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.dialog_set_salary_title))
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.save)) { dialog, _ ->
+                val salaryString = salaryEditText.text.toString()
+                if (salaryString.isNotBlank()) {
+                    salaryString.toLongOrNull()?.let {
+                        saveSalary(it)
+                        updateCountdown(true)
+                        updateAllWidgets()
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun showPaydaySelectionDialog() {
+        val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        val currentPayday = prefs.getInt(paydayKey, -1)
         val days = (1..31).map { it.toString() }.toTypedArray()
-        val currentPayday = loadPayday()
         val checkedItem = if (currentPayday != -1) currentPayday - 1 else 0
 
         MaterialAlertDialogBuilder(this)
@@ -202,18 +224,17 @@ class MainActivity : AppCompatActivity() {
             .setSingleChoiceItems(days, checkedItem) { dialog, which ->
                 val selectedDay = which + 1
                 savePayday(selectedDay)
-                updateCountdown(true) // Animasyon için zorla güncelleme
+                updateCountdown(true)
                 updateAllWidgets()
                 dialog.dismiss()
             }
-            .setNegativeButton("İptal") { dialog, _ ->
+            .setNegativeButton(getString(R.string.cancel)) { dialog, _ ->
                 dialog.dismiss()
             }
             .show()
     }
 
     private fun updateAllWidgets() {
-        // ... (Bu fonksiyon değişmedi)
         val intent = Intent(this, PaydayWidgetProvider::class.java).apply {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
             val ids = AppWidgetManager.getInstance(application)
