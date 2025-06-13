@@ -43,6 +43,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation("nl.dionsegijn:konfetti-xml:2.0.2")
+    implementation("com.google.code.gson:gson:2.10.1")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)

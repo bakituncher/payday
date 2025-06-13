@@ -23,4 +23,29 @@
     <string name="cancel">İptal</string>
     <string name="currency_symbol">₺</string>
     <string name="initial_amount">0.00</string>
+
+    <string name="set_pay_period_button">Ödeme Periyodunu Ayarla</string>
+    <string name="select_pay_period_dialog_title">Ödeme Periyodunu Seç</string>
+    <string-array name="pay_periods">
+        <item>Aylık</item>
+        <item>2 Haftada Bir</item>
+        <item>Haftalık</item>
+    </string-array>
+
+    <string name="select_biweekly_ref_date_dialog_title">Bir Maaş Günü Tarihi Seç</string>
+    <string-array name="days_of_week">
+        <item>Pazartesi</item>
+        <item>Salı</item>
+        <item>Çarşamba</item>
+        <item>Perşembe</item>
+        <item>Cuma</item>
+        <item>Cumartesi</item>
+        <item>Pazar</item>
+    </string-array>
+
+    <string name="add_goal_button_text">Yeni Hedef Ekle</string>
+    <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
+    <string name="dialog_goal_name_hint">Hedef Adı (Örn: Tatil)</string>
+    <string name="dialog_goal_amount_hint">Hedef Tutar (Örn: 50000)</string>
+
 </resources>
