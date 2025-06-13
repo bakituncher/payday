@@ -7,6 +7,18 @@
     android:background="@color/background"
     tools:context=".MainActivity">
 
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <nl.dionsegijn.konfetti.xml.KonfettiView
         android:id="@+id/konfettiView"
         android:layout_width="match_parent"
@@ -15,7 +27,7 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
@@ -120,18 +132,6 @@
                             app:layout_constraintTop_toBottomOf="@id/accumulationTitleTextView"
                             tools:text="₺1.234,56" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/setSalaryButton"
-                            style="@style/Widget.Material3.Button.TextButton.Icon"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/set_salary_button_text"
-                            app:icon="@drawable/ic_launcher_foreground"
-                            app:iconTint="@color/primary"
-                            app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintTop_toTopOf="parent" />
-
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
@@ -174,39 +174,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="@string/add_goal_button_text" />
-
-                <!-- YENİ EKLENEN BUTON -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/setMonthlySavingsButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/set_monthly_savings_button" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/setPaydayButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/set_payday_button" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/setPayPeriodButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/set_pay_period_button" />
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/weekendAdjustmentSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/weekend_adjustment_label"
-                    android:textColor="@color/text_secondary" />
 
             </LinearLayout>
 
