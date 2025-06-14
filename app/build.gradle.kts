@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.example.payday"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35 // compileSdk ile aynı olması en iyi pratiktir.
         versionCode = 1
         versionName = "1.0"
 
@@ -27,12 +27,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // Projedeki tutarsızlığı gidermek için Java 17'ye güncellendi.
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17" // Java sürümü ile uyumlu hale getirildi.
     }
     buildFeatures {
         viewBinding = true
@@ -48,10 +49,10 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
 
-    // ViewModel ve LiveData kütüphanelerini ekliyoruz
+    // ViewModel, LiveData ve Activity KTX
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.androidx.activity.ktx) // by viewModels() için
+    implementation(libs.androidx.activity.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

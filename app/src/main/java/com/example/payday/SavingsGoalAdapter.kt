@@ -1,5 +1,3 @@
-// Dosya: app/src/main/java/com/example/payday/SavingsGoalAdapter.kt
-
 package com.example.payday
 
 import android.view.LayoutInflater
@@ -8,44 +6,37 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import java.text.NumberFormat
 import java.util.Locale
 
-// YENİ: Adapter'ın constructor'ına iki adet lambda fonksiyonu ekliyoruz
 class SavingsGoalAdapter(
+    private val onEditClicked: (SavingsGoal) -> Unit,
     private val onDeleteClicked: (SavingsGoal) -> Unit
-) : RecyclerView.Adapter<SavingsGoalAdapter.SavingsGoalViewHolder>() {
+) : ListAdapter<SavingsGoal, SavingsGoalAdapter.SavingsGoalViewHolder>(GoalDiffCallback()) {
 
-    private var goals: List<SavingsGoal> = emptyList()
-    private var accumulatedAmountForGoals: Double = 0.0
-
-    fun submitList(newGoals: List<SavingsGoal>, newAccumulatedAmountForGoals: Double) {
-        goals = newGoals
-        accumulatedAmountForGoals = newAccumulatedAmountForGoals
-        notifyDataSetChanged()
-    }
+    // Her hedef için birikmiş tutarı tutacak değişken
+    var accumulatedAmountForGoals: Double = 0.0
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SavingsGoalViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.list_item_savings_goal, parent, false)
-        // YENİ: ViewHolder oluşturulurken lambda'ları iletiyoruz
-        return SavingsGoalViewHolder(view, onDeleteClicked)
+        return SavingsGoalViewHolder(view, onEditClicked, onDeleteClicked)
     }
 
     override fun onBindViewHolder(holder: SavingsGoalViewHolder, position: Int) {
-        val goal = goals[position]
+        val goal = getItem(position)
         holder.bind(goal, accumulatedAmountForGoals)
     }
 
-    override fun getItemCount(): Int = goals.size
-
-    // YENİ: ViewHolder da constructor'da lambda alacak
     class SavingsGoalViewHolder(
         itemView: View,
+        private val onEditClicked: (SavingsGoal) -> Unit,
         private val onDeleteClicked: (SavingsGoal) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
-        // ... (diğer değişkenler aynı)
+
         private val nameTextView: TextView = itemView.findViewById(R.id.goalNameTextView)
         private val progressBar: ProgressBar = itemView.findViewById(R.id.goalProgressBar)
         private val progressTextView: TextView = itemView.findViewById(R.id.goalProgressTextView)
@@ -55,38 +46,53 @@ class SavingsGoalAdapter(
         init {
             itemView.setOnLongClickListener {
                 showPopupMenu(it)
-                true // Olayın tüketildiğini belirtir
+                true
             }
         }
 
         private fun showPopupMenu(view: View) {
-            val popup = PopupMenu(view.context, view)
-            popup.menuInflater.inflate(R.menu.goal_options_menu, popup.menu)
-            popup.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.action_delete_goal -> {
-                        onDeleteClicked(currentGoal)
-                        true
+            PopupMenu(view.context, view).apply {
+                menuInflater.inflate(R.menu.goal_options_menu, menu)
+                setOnMenuItemClickListener { menuItem ->
+                    when (menuItem.itemId) {
+                        R.id.action_edit_goal -> {
+                            onEditClicked(currentGoal)
+                            true
+                        }
+                        R.id.action_delete_goal -> {
+                            onDeleteClicked(currentGoal)
+                            true
+                        }
+                        else -> false
                     }
-                    // TODO: Düzenleme için de benzer bir yapı kurulabilir
-                    // R.id.action_edit_goal -> { ... }
-                    else -> false
                 }
+                show()
             }
-            popup.show()
         }
 
         fun bind(goal: SavingsGoal, accumulatedAmountForGoals: Double) {
-            currentGoal = goal // Menüde kullanmak için hedefi sakla
-            // ... (bind metodunun geri kalanı aynı)
+            currentGoal = goal
             nameTextView.text = goal.name
+
             val progressPercentage = if (goal.targetAmount > 0) {
                 (accumulatedAmountForGoals / goal.targetAmount * 100).toInt()
             } else { 0 }
             progressBar.progress = progressPercentage.coerceIn(0, 100)
+
             val accumulatedFormatted = currencyFormatter.format(accumulatedAmountForGoals.coerceAtMost(goal.targetAmount))
             val targetFormatted = currencyFormatter.format(goal.targetAmount)
             progressTextView.text = "$accumulatedFormatted / $targetFormatted"
         }
+    }
+}
+
+// ListAdapter'ın verimli çalışması için gerekli olan karşılaştırma sınıfı
+class GoalDiffCallback : DiffUtil.ItemCallback<SavingsGoal>() {
+    override fun areItemsTheSame(oldItem: SavingsGoal, newItem: SavingsGoal): Boolean {
+        return oldItem.id == newItem.id
+    }
+
+    override fun areContentsTheSame(oldItem: SavingsGoal, newItem: SavingsGoal): Boolean {
+        return oldItem == newItem
     }
 }

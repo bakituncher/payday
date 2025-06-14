@@ -1,5 +1,3 @@
-// Dosya: app/src/main/java/com/example/payday/PaydayRepository.kt
-
 package com.example.payday
 
 import android.content.Context
@@ -14,7 +12,6 @@ class PaydayRepository(context: Context) {
     private val gson = Gson()
     private val prefs = context.getSharedPreferences("PaydayPrefs", Context.MODE_PRIVATE)
 
-    // SharedPreferences Anahtarları
     private val paydayKey = "PaydayOfMonth"
     private val weekendAdjustmentKey = "WeekendAdjustmentEnabled"
     private val salaryKey = "SalaryAmount"
@@ -23,19 +20,10 @@ class PaydayRepository(context: Context) {
     private val savingsGoalsKey = "SavingsGoals"
     private val monthlySavingsAmountKey = "MonthlySavingsAmount"
 
-    fun getPaydayResult(): PaydayResult? {
-        // Hesaplama mantığı zaten merkezi olduğu için direkt calculator'ı çağırabiliriz.
-        // `calculate` metodu context'e ihtiyaç duyduğu için onu doğrudan ViewModel'den çağırmak daha mantıklı.
-        // Bu repo şimdilik sadece veri kaydetme/okuma yapsın.
-        // Bu yüzden bu metodu şimdilik boş bırakıp doğrudan ViewModel'de handle edelim.
-        // Ya da Calculator'a context yerine ayarları parametre olarak geçebiliriz. Şimdilik basit tutalım.
-        return null // ViewModel'de ele alınacak
-    }
-
     fun savePayday(day: Int) {
         prefs.edit {
             putInt(paydayKey, day)
-            remove(biWeeklyRefDateKey) // Çakışmayı önle
+            remove(biWeeklyRefDateKey)
         }
     }
 
@@ -46,7 +34,7 @@ class PaydayRepository(context: Context) {
     fun saveBiWeeklyReferenceDate(date: LocalDate) {
         prefs.edit {
             putString(biWeeklyRefDateKey, date.format(DateTimeFormatter.ISO_LOCAL_DATE))
-            remove(paydayKey) // Çakışmayı önle
+            remove(paydayKey)
         }
     }
 
@@ -67,6 +55,13 @@ class PaydayRepository(context: Context) {
         prefs.edit { putString(savingsGoalsKey, jsonGoals) }
     }
 
+    // Hesaplama için gerekli tüm ayarları tek tek getiren fonksiyonlar
+    fun getPaydayValue(): Int = prefs.getInt(paydayKey, -1)
+    fun getPayPeriod(): PayPeriod = PayPeriod.valueOf(prefs.getString(payPeriodKey, PayPeriod.MONTHLY.name)!!)
+    fun getBiWeeklyRefDateString(): String? = prefs.getString(biWeeklyRefDateKey, null)
+    fun getSalaryAmount(): Long = prefs.getLong(salaryKey, 0L)
+    fun isWeekendAdjustmentEnabled(): Boolean = prefs.getBoolean(weekendAdjustmentKey, false)
+    fun getMonthlySavingsAmount(): Long = prefs.getLong(monthlySavingsAmountKey, 0L)
     fun getGoals(): MutableList<SavingsGoal> {
         val jsonGoals = prefs.getString(savingsGoalsKey, null)
         return if (jsonGoals != null) {
@@ -76,9 +71,4 @@ class PaydayRepository(context: Context) {
             mutableListOf()
         }
     }
-
-    // Ayarları okumak için yardımcı fonksiyonlar
-    fun isWeekendAdjustmentEnabled(): Boolean = prefs.getBoolean(weekendAdjustmentKey, false)
-    fun getMonthlySavingsAmount(): Long = prefs.getLong(monthlySavingsAmountKey, 0L)
-    fun getCurrentSalary(): Long = prefs.getLong(salaryKey, 0L)
 }

@@ -9,46 +9,60 @@ import android.widget.RemoteViews
 
 class PaydayWidgetProvider : AppWidgetProvider() {
 
-    // Widget güncellendiğinde bu fonksiyon çağrılır.
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // Ekrandaki tüm Payday widget'ları için döngü başlat
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
     }
 
+    // onReceive'i override ederek belirli durumlarda widget'ı güncelleyebiliriz
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        // Eğer ViewModel'dan gelen bir güncelleme isteği varsa tüm widget'ları güncelle
+        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val thisAppWidget = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
+            if (thisAppWidget != null) {
+                for (appWidgetId in thisAppWidget) {
+                    updateAppWidget(context, appWidgetManager, appWidgetId)
+                }
+            }
+        }
+    }
+
     companion object {
-        // Bu fonksiyon, widget'ı güncelleme mantığını içerir.
-        // Artık çok daha temiz!
         internal fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            // Widget'a tıklandığında MainActivity'yi açacak bir Intent oluşturuyoruz.
             val intent = Intent(context, MainActivity::class.java)
             val pendingIntent = PendingIntent.getActivity(
                 context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Widget'ın arayüzünü yönetmek için RemoteViews kullanıyoruz.
             val views = RemoteViews(context.packageName, R.layout.payday_widget_layout)
             views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
-            // Tek ve merkezi hesaplayıcımızı çağırıyoruz.
-            val result = PaydayCalculator.calculate(context)
+            // Widget'in kendi kendine veri çekmesi gerekiyor.
+            val repository = PaydayRepository(context)
+            val result = PaydayCalculator.calculate(
+                payPeriod = repository.getPayPeriod(),
+                paydayValue = repository.getPaydayValue(),
+                biWeeklyRefDateString = repository.getBiWeeklyRefDateString(),
+                salaryAmount = repository.getSalaryAmount(),
+                weekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
+            )
 
             if (result == null) {
-                // Eğer sonuç null ise (gün ayarlanmamış veya geçersizse)
                 views.setTextViewText(R.id.widget_days_left_text_view, "-")
                 views.setTextViewText(R.id.widget_suffix_text_view, "Ayarla")
             } else {
-                // Sonuç geçerliyse, arayüzü güncelle
                 if (result.isPayday) {
                     views.setTextViewText(R.id.widget_days_left_text_view, "🎉")
                     views.setTextViewText(R.id.widget_suffix_text_view, "Maaş Günü!")
@@ -58,7 +72,6 @@ class PaydayWidgetProvider : AppWidgetProvider() {
                 }
             }
 
-            // Widget'ı son haliyle güncelle
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }

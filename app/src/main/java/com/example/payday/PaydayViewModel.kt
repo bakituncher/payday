@@ -8,7 +8,7 @@ import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
 
-// Arayüzün ihtiyaç duyacağı tüm verileri tutan bir state sınıfı
+// Arayüzün ihtiyaç duyacağı tüm verileri tutan state sınıfı
 data class PaydayUiState(
     val daysLeftText: String = "--",
     val daysLeftSuffix: String = "",
@@ -16,46 +16,69 @@ data class PaydayUiState(
     val accumulatedAmountText: String = "₺0,00",
     val savingsGoals: List<SavingsGoal> = emptyList(),
     val accumulatedSavingsForGoals: Double = 0.0,
-    val areGoalsVisible: Boolean = false,
-    val isWeekendAdjustmentEnabled: Boolean = false
+    val areGoalsVisible: Boolean = false
 )
+
+// Olayların (tek seferlik işlemler) yönetimi için yardımcı sınıf
+open class Event<out T>(private val content: T) {
+    var hasBeenHandled = false
+        private set
+    fun getContentIfNotHandled(): T? = if (hasBeenHandled) null else {
+        hasBeenHandled = true
+        content
+    }
+}
 
 class PaydayViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PaydayRepository(application)
+    private val context = application.applicationContext
 
     private val _uiState = MutableLiveData<PaydayUiState>()
     val uiState: LiveData<PaydayUiState> = _uiState
 
     // Tek seferlik olaylar için (örn: dialog göster)
-    private val _showPaydayDialog = MutableLiveData<Event<Unit>>()
-    val showPaydayDialog: LiveData<Event<Unit>> = _showPaydayDialog
+    private val _events = MutableLiveData<Event<String>>()
+    val events: LiveData<Event<String>> = _events
+
+    // YENİ: Widget güncellemesini tetiklemek için yeni bir event
+    private val _widgetUpdateEvent = MutableLiveData<Event<Unit>>()
+    val widgetUpdateEvent: LiveData<Event<Unit>> = _widgetUpdateEvent
 
     private var currentGoals: MutableList<SavingsGoal> = mutableListOf()
 
     init {
-        currentGoals = repository.getGoals()
-        updateCountdown()
+        loadData()
     }
 
-    fun updateCountdown(forceUpdate: Boolean = false) {
-        val context = getApplication<Application>().applicationContext
-        val result = PaydayCalculator.calculate(context)
+    private fun loadData() {
+        currentGoals = repository.getGoals()
+        updateUi()
+    }
+
+    private fun updateUi() {
+        val result = PaydayCalculator.calculate(
+            payPeriod = repository.getPayPeriod(),
+            paydayValue = repository.getPaydayValue(),
+            biWeeklyRefDateString = repository.getBiWeeklyRefDateString(),
+            salaryAmount = repository.getSalaryAmount(),
+            weekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
+        )
 
         val accumulatedSavingsForGoals = if (result != null && result.totalDaysInCycle > 0) {
             val monthlySavings = repository.getMonthlySavingsAmount().toDouble()
             val daysPassed = result.totalDaysInCycle - result.daysLeft
-            val dailySavingsRate = monthlySavings / result.totalDaysInCycle
-            dailySavingsRate * daysPassed
+            val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavings / result.totalDaysInCycle else 0.0
+            dailySavingsRate * daysPassed.coerceAtLeast(0)
         } else {
             0.0
         }
 
         val newState = if (result == null) {
+            val isInitialSetup = repository.getPaydayValue() == -1 && repository.getBiWeeklyRefDateString() == null
             PaydayUiState(
-                daysLeftText = context.getString(R.string.day_not_set_placeholder),
-                daysLeftSuffix = context.getString(R.string.welcome_message),
-                isWeekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
+                daysLeftText = if(isInitialSetup) context.getString(R.string.day_not_set_placeholder) else "!",
+                daysLeftSuffix = if(isInitialSetup) context.getString(R.string.welcome_message) else context.getString(R.string.invalid_day_error)
             )
         } else {
             PaydayUiState(
@@ -63,98 +86,73 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 daysLeftSuffix = if (result.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
                 isPayday = result.isPayday,
                 accumulatedAmountText = formatCurrency(result.accumulatedAmount),
-                // currentGoals listesinin bir kopyasını atıyoruz ki LiveData değişiklikleri algılasın
                 savingsGoals = currentGoals.toList(),
                 accumulatedSavingsForGoals = accumulatedSavingsForGoals,
-                areGoalsVisible = currentGoals.isNotEmpty(),
-                isWeekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
+                areGoalsVisible = currentGoals.isNotEmpty()
             )
         }
         _uiState.value = newState
     }
 
-    // --- Ayarları Kaydetme ---
+    // --- Ayarları Kaydetme Fonksiyonları ---
 
     fun savePayday(day: Int) {
         repository.savePayday(day)
-        updateCountdown(true)
+        updateUi()
+        _widgetUpdateEvent.value = Event(Unit) // Widget güncelleme sinyali gönder
     }
 
     fun saveBiWeeklyReferenceDate(date: LocalDate) {
         repository.saveBiWeeklyReferenceDate(date)
-        updateCountdown(true)
+        updateUi()
+        _widgetUpdateEvent.value = Event(Unit) // Widget güncelleme sinyali gönder
     }
 
     fun savePayPeriod(period: PayPeriod){
         repository.savePayPeriod(period)
-        // Genellikle periyot seçiminden sonra gün/tarih seçimi gelir,
-        // bu yüzden UI'da o akışı tetiklemek gerekir.
-        // MainActivity'deki showDynamicPaydaySelectionDialog'u çağıracağız.
-        _showPaydayDialog.value = Event(Unit)
-        updateCountdown(true)
-    }
-
-    fun saveWeekendAdjustment(isEnabled: Boolean) {
-        repository.saveWeekendAdjustmentSetting(isEnabled)
-        updateCountdown(true)
+        _events.value = Event("show_dynamic_payday_selection")
+        updateUi()
+        _widgetUpdateEvent.value = Event(Unit) // Widget güncelleme sinyali gönder
     }
 
     fun saveSalary(salary: Long) {
         repository.saveSalary(salary)
-        updateCountdown(true)
+        updateUi()
+        _widgetUpdateEvent.value = Event(Unit) // Widget güncelleme sinyali gönder
     }
 
     fun saveMonthlySavings(amount: Long) {
         repository.saveMonthlySavings(amount)
-        updateCountdown(true)
+        updateUi()
     }
 
-    fun addOrUpdateGoal(name: String, amount: Double, existingGoal: SavingsGoal? = null) {
+    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?) {
         if (name.isNotBlank() && amount > 0) {
-            if (existingGoal == null) {
+            if (existingGoalId == null) {
                 currentGoals.add(SavingsGoal(name = name, targetAmount = amount))
             } else {
-                val index = currentGoals.indexOfFirst { it.id == existingGoal.id }
+                val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
-                    currentGoals[index] = existingGoal.copy(name = name, targetAmount = amount)
+                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount)
                 }
             }
             repository.saveGoals(currentGoals)
-            updateCountdown(true)
+            updateUi()
         }
     }
 
-    // Yeni silme fonksiyonu
     fun deleteGoal(goal: SavingsGoal) {
         currentGoals.remove(goal)
         repository.saveGoals(currentGoals)
-        updateCountdown(true) // UI'ı güncellemek için geri sayımı tetikle
+        updateUi()
     }
 
-    fun loadPreferences() {
-        // Bu fonksiyon, SettingsActivity'den dönüşte tüm tercihleri yeniden yüklemek için kullanılabilir.
-        // updateCountdown zaten repository'den verileri çektiği için bu yeterli olacaktır.
-        currentGoals = repository.getGoals() // Hedefleri de yeniden yükle
-        updateCountdown(true)
+    // SettingsActivity'den dönüldüğünde çağrılır
+    fun onSettingsResult() {
+        loadData()
     }
 
     private fun formatCurrency(amount: Double): String {
-        val format = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
-        return format.format(amount)
-    }
-}
-
-
-// LiveData'nın olayları birden çok kez tetiklemesini önleyen yardımcı sınıf
-open class Event<out T>(private val content: T) {
-    var hasBeenHandled = false
-        private set
-    fun getContentIfNotHandled(): T? {
-        return if (hasBeenHandled) {
-            null
-        } else {
-            hasBeenHandled = true
-            content
-        }
+        return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
     }
 }
