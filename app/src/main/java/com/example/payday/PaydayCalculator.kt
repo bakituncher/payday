@@ -5,11 +5,13 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 
+// GÜNCELLENDİ: Grafik verisi için accumulationData eklendi.
 data class PaydayResult(
     val daysLeft: Long,
     val isPayday: Boolean,
     val accumulatedAmount: Double,
-    val totalDaysInCycle: Long
+    val totalDaysInCycle: Long,
+    val accumulationData: List<Pair<Int, Double>> // <Döngüdeki Gün, Biriken Miktar>
 )
 
 object PaydayCalculator {
@@ -21,13 +23,13 @@ object PaydayCalculator {
         salaryAmount: Long,
         weekendAdjustmentEnabled: Boolean
     ): PaydayResult? {
-        if (paydayValue == -1 && payPeriod != PayPeriod.BI_WEEKLY) return null
-        if (payPeriod == PayPeriod.BI_WEEKLY && biWeeklyRefDateString == null) return null
-
+        // ... (fonksiyonun başlangıcı aynı)
         try {
             val today = LocalDate.now()
             var nextPayday: LocalDate
             var previousPayday: LocalDate
+
+            // ... (maaş günü hesaplama mantığı aynı)
 
             when (payPeriod) {
                 PayPeriod.MONTHLY -> {
@@ -50,7 +52,6 @@ object PaydayCalculator {
                 PayPeriod.WEEKLY -> {
                     val payDayOfWeek = DayOfWeek.of(paydayValue)
                     nextPayday = today.with(TemporalAdjusters.nextOrSame(payDayOfWeek))
-                    // Eğer bugün maaş günü ise, bir önceki maaş günü de bugündür.
                     previousPayday = if(nextPayday == today) today else today.with(TemporalAdjusters.previous(payDayOfWeek))
                 }
                 PayPeriod.BI_WEEKLY -> {
@@ -64,6 +65,7 @@ object PaydayCalculator {
                 }
             }
 
+
             val originalNextPayday = nextPayday
             if (weekendAdjustmentEnabled) {
                 if (nextPayday.dayOfWeek == DayOfWeek.SATURDAY) {
@@ -74,28 +76,41 @@ object PaydayCalculator {
             }
 
             val daysLeft = ChronoUnit.DAYS.between(today, nextPayday)
-            var accumulatedAmount = 0.0
             val totalDaysInCycle = ChronoUnit.DAYS.between(previousPayday, originalNextPayday)
 
+            // GÜNCELLENDİ: Hem anlık birikimi hem de grafik verisini hesapla
+            var accumulatedAmount = 0.0
+            val accumulationData = mutableListOf<Pair<Int, Double>>()
             if (salaryAmount > 0 && totalDaysInCycle > 0) {
-                val daysPassed = ChronoUnit.DAYS.between(previousPayday, today)
                 val cycleSalary = when (payPeriod) {
                     PayPeriod.WEEKLY -> salaryAmount / 4.0
                     PayPeriod.BI_WEEKLY -> salaryAmount / 2.0
                     PayPeriod.MONTHLY -> salaryAmount.toDouble()
                 }
                 val dailyRate = cycleSalary / totalDaysInCycle
+
+                // Grafik verisini oluştur
+                for (i in 0..totalDaysInCycle) {
+                    val dateInCycle = previousPayday.plusDays(i)
+                    if (dateInCycle.isAfter(today)) break // Geleceği çizme
+                    val amountForDay = dailyRate * i
+                    accumulationData.add(Pair(i.toInt(), amountForDay))
+                }
+
+                // Anlık birikimi hesapla
+                val daysPassed = ChronoUnit.DAYS.between(previousPayday, today)
                 accumulatedAmount = dailyRate * daysPassed.coerceAtLeast(0)
             }
+
 
             return PaydayResult(
                 daysLeft = daysLeft,
                 isPayday = daysLeft <= 0L,
                 accumulatedAmount = accumulatedAmount,
-                totalDaysInCycle = totalDaysInCycle
+                totalDaysInCycle = totalDaysInCycle,
+                accumulationData = accumulationData // Yeni veriyi ekle
             )
         } catch (e: Exception) {
-            // Hata durumunda loglama yapmak önemlidir.
             e.printStackTrace()
             return null
         }

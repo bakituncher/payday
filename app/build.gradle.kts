@@ -59,4 +59,9 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0") // BU SATIRI EKLEYİN
+
+    implementation(libs.androidx.core.ktx)
+    implementation("nl.dionsegijn:konfetti-xml:2.0.2")
+    implementation("com.google.code.gson:gson:2.10.1")
 }

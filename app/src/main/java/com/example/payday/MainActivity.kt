@@ -12,11 +12,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +22,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.payday.databinding.ActivityMainBinding
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
@@ -62,34 +62,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupToolbar()
         setupRecyclerView()
         setupListeners()
         setupObservers()
         createNotificationChannel()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> {
-                settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    private fun setupToolbar() {
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.title = ""
-    }
-
     private fun setupListeners() {
+        binding.settingsButton.setOnClickListener {
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+        }
         binding.addGoalButton.setOnClickListener { showGoalDialog() }
     }
 
@@ -135,47 +117,90 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi(state: PaydayUiState) {
-        val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out)
-        fadeOut.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationStart(animation: Animation?) {}
-            override fun onAnimationEnd(animation: Animation?) {
-                binding.daysLeftTextView.text = state.daysLeftText
-                binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
-                binding.accumulationAmountTextView.text = state.accumulatedAmountText
+        binding.daysLeftTextView.text = state.daysLeftText
+        binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
+        binding.accumulationAmountTextView.text = state.accumulatedAmountText
 
-                binding.savingsGoalsTitle.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-                binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
+        savingsGoalAdapter.accumulatedAmountForGoals = state.accumulatedSavingsForGoals
+        savingsGoalAdapter.submitList(state.savingsGoals)
 
-                savingsGoalAdapter.accumulatedAmountForGoals = state.accumulatedSavingsForGoals
-                savingsGoalAdapter.submitList(state.savingsGoals)
-
-                if (state.isPayday) {
-                    startConfettiEffect()
-                    sendPaydayNotification()
-                }
-
-                val fadeIn = AnimationUtils.loadAnimation(this@MainActivity, R.anim.fade_in)
-                binding.cardView.startAnimation(fadeIn)
-                binding.accumulationCardView.startAnimation(fadeIn)
-            }
-
-            override fun onAnimationRepeat(animation: Animation?) {}
-        })
-
-        if (binding.daysLeftTextView.text.isNotEmpty() && binding.daysLeftTextView.text != "--") {
-            binding.cardView.startAnimation(fadeOut)
-            binding.accumulationCardView.startAnimation(fadeOut)
+        // YENİ: Grafik verisi varsa grafiği çiz
+        if (state.chartData != null && state.chartData.isNotEmpty()) {
+            binding.cashFlowChartView.visibility = View.VISIBLE
+            setupChart(state.chartData)
         } else {
-            // Animasyonsuz ilk yükleme veya placeholder durumu
-            binding.daysLeftTextView.text = state.daysLeftText
-            binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
-            binding.accumulationAmountTextView.text = state.accumulatedAmountText
-            binding.savingsGoalsTitle.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-            binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-            savingsGoalAdapter.accumulatedAmountForGoals = state.accumulatedSavingsForGoals
-            savingsGoalAdapter.submitList(state.savingsGoals)
+            binding.cashFlowChartView.visibility = View.GONE
+        }
+
+        if (state.isPayday) {
+            startConfettiEffect()
+            sendPaydayNotification()
         }
     }
+
+    // YENİ FONKSİYON: Grafiği yapılandırmak ve çizmek için
+    private fun setupChart(entries: List<Entry>) {
+        val lineDataSet = LineDataSet(entries, "Birikim Grafiği").apply {
+            // Çizgi Stili
+            color = ContextCompat.getColor(this@MainActivity, R.color.primary)
+            lineWidth = 3f
+
+            // Nokta Stili
+            setCircleColor(ContextCompat.getColor(this@MainActivity, R.color.primary))
+            circleRadius = 4f
+            setDrawCircleHole(false)
+
+            // Gradyan Alanı
+            setDrawFilled(true)
+            fillDrawable = ContextCompat.getDrawable(this@MainActivity, R.drawable.chart_gradient)
+
+            // Değerleri gösterme
+            setDrawValues(false)
+
+            // Vurgu çizgisi
+            highLightColor = ContextCompat.getColor(this@MainActivity, R.color.primary_dark)
+
+            // Mod
+            mode = LineDataSet.Mode.CUBIC_BEZIER // Daha yumuşak geçişler için
+        }
+
+        val dataSets = ArrayList<ILineDataSet>()
+        dataSets.add(lineDataSet)
+        val lineData = LineData(dataSets)
+
+        binding.cashFlowChartView.apply {
+            data = lineData
+
+            // Genel Grafik Ayarları
+            description.isEnabled = false
+            legend.isEnabled = false
+            setTouchEnabled(true)
+            isDragEnabled = true
+            setScaleEnabled(false) // Yakınlaştırmayı kapat
+            setPinchZoom(false)
+            setDrawGridBackground(false)
+
+            // X Ekseni Ayarları
+            xAxis.apply {
+                isEnabled = false // X ekseni etiketlerini ve çizgisini gizle
+            }
+
+            // Sol Y Ekseni Ayarları
+            axisLeft.apply {
+                setDrawLabels(false) // Y ekseni etiketlerini gizle
+                setDrawAxisLine(false) // Y ekseni çizgisini gizle
+                setDrawGridLines(false) // Arka plan grid çizgilerini gizle
+                axisMinimum = 0f // Grafiğin en alttan başlamasını sağla
+            }
+
+            // Sağ Y Ekseni Ayarları
+            axisRight.isEnabled = false
+
+            // Grafiği Yenile
+            invalidate()
+        }
+    }
+
 
     private fun showDialogFromKey(key: String) {
         when (key) {
