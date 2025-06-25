@@ -5,14 +5,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="?android:attr/windowBackground"
     tools:context=".SettingsActivity">
 
+    <!-- YENİ: Toolbar'a özel stil uygulandı. -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
+        style="?attr/toolbarStyle"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        app:title="Ayarlar"
-        app:navigationIcon="@drawable/ic_arrow_back" />
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Ayarlar" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -28,32 +31,35 @@
                 style="?attr/textAppearanceTitleMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="Genel Ayarlar"
-                android:textColor="?attr/colorPrimary"
-                android:layout_marginBottom="8dp"/>
+                android:textColor="?attr/colorPrimary" />
 
+            <!-- GÜNCELLEME: Metin rengi artık temadan doğru şekilde gelecek. -->
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/weekendAdjustmentSwitch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:padding="16dp"
                 android:text="@string/weekend_adjustment_label"
-                android:padding="16dp"/>
+                android:textColor="?android:attr/textColorPrimary" />
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="?android:attr/listDivider"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="16dp"
+                android:background="?android:attr/listDivider" />
 
             <TextView
                 style="?attr/textAppearanceTitleMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="Ödeme Ayarları"
-                android:textColor="?attr/colorPrimary"
-                android:layout_marginBottom="8dp"/>
+                android:textColor="?attr/colorPrimary" />
 
+            <!-- GÜNCELLEME: Tüm ayar metinlerinin rengi tema ile ilişkilendirildi. -->
             <TextView
                 android:id="@+id/setPayPeriodButton"
                 style="?attr/textAppearanceBodyLarge"
@@ -64,7 +70,8 @@
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:text="@string/set_pay_period_button" />
+                android:text="@string/set_pay_period_button"
+                android:textColor="?android:attr/textColorPrimary" />
 
             <TextView
                 android:id="@+id/setPaydayButton"
@@ -76,7 +83,8 @@
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:text="@string/set_payday_button" />
+                android:text="@string/set_payday_button"
+                android:textColor="?android:attr/textColorPrimary" />
 
             <TextView
                 android:id="@+id/setSalaryButton"
@@ -88,7 +96,8 @@
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:text="@string/set_salary_button_text" />
+                android:text="@string/set_salary_button_text"
+                android:textColor="?android:attr/textColorPrimary" />
 
             <TextView
                 android:id="@+id/setMonthlySavingsButton"
@@ -100,7 +109,8 @@
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:text="@string/set_monthly_savings_button" />
+                android:text="@string/set_monthly_savings_button"
+                android:textColor="?android:attr/textColorPrimary" />
 
         </LinearLayout>
     </ScrollView>

@@ -1,23 +1,52 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.Payday" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
+
+    <!-- Temel Uygulama Teması -->
+    <!-- Not: Parent tema, tutarlılık için Theme.MaterialComponents.Light olarak ayarlandı. -->
+    <style name="Theme.Payday" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Ana Marka Renkleri -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
+        <!-- İkincil Marka Renkleri -->
         <item name="colorSecondary">@color/primary</item>
-        <item name="colorSecondaryVariant">@color/primary_dark</item>
         <item name="colorOnSecondary">@color/black</item>
 
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/background_light</item>
-        <item name="android:windowLightStatusBar">true</item> <!-- Açık temada durum çubuğu ikonlarını koyu yapar -->
-
-        <!-- Window background -->
+        <!-- Arka Plan ve Metin Renkleri -->
         <item name="android:windowBackground">@color/background_light</item>
+        <item name="android:textColor">@color/text_primary</item>
 
-        <!-- Customize your theme here. -->
-        <item name="android:fontFamily">sans-serif</item>
+        <!-- Durum Çubuğu Ayarları -->
+        <item name="android:statusBarColor">@color/background_light</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+
+        <!-- DİYALOG PENCERELERİ İÇİN GENEL TEMA -->
+        <!-- Bu satır, tüm AlertDialog ve benzeri pencerelerin bu temayı kullanmasını sağlar -->
+        <item name="materialAlertDialogTheme">@style/App.AlertDialogTheme</item>
     </style>
+
+    <!-- TÜM DİYALOG PENCERELERİ (Takvim, Uyarı vb.) İÇİN TEK, TUTARLI STİL -->
+    <!-- Karmaşıklığı önlemek için tek bir ana diyalog teması oluşturuldu. -->
+    <style name="App.AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <!-- Diyalog arka plan rengi -->
+        <item name="colorSurface">@color/background_card</item>
+        <!-- Diyalogdaki ana vurgu rengi (butonlar, seçili tarih vb.) -->
+        <item name="colorPrimary">@color/primary</item>
+        <!-- Vurgu rengi üzerindeki metin rengi (örn: buton yazısı) -->
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Diyalogdaki normal metin renkleri -->
+        <item name="colorOnSurface">@color/text_primary</item>
+        <!-- Diyalog gövde metni -->
+        <item name="android:textColor">@color/text_secondary</item>
+
+        <!-- Buton stilleri -->
+        <item name="buttonBarPositiveButtonStyle">@style/App.AlertDialog.Button</item>
+        <item name="buttonBarNegativeButtonStyle">@style/App.AlertDialog.Button</item>
+        <item name="buttonBarNeutralButtonStyle">@style/App.AlertDialog.Button</item>
+    </style>
+
+    <!-- Diyalog Butonları İçin Stil -->
+    <style name="App.AlertDialog.Button" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">?attr/colorPrimary</item>
+    </style>
+
 </resources>
