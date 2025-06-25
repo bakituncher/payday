@@ -23,6 +23,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+
             )
         }
     }
@@ -42,26 +43,26 @@ android {
 
 dependencies {
 
+    // --- MEVCUT BAĞIMLILIKLARINIZ ---
     implementation(libs.androidx.core.ktx)
     implementation("nl.dionsegijn:konfetti-xml:2.0.2")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
-    // ViewModel, LiveData ve Activity KTX
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.androidx.activity.ktx)
+    // --- ViewModel, LiveData VE COROUTINE İÇİN GÜNCELLENMİŞ VE YENİ EKLENMİŞ BAĞIMLILIKLAR ---
+    implementation(libs.androidx.lifecycle.viewmodel.ktx) // Bu satır zaten vardı ve doğru
+    implementation(libs.androidx.lifecycle.livedata.ktx)  // Bu satır zaten vardı ve doğru
+    implementation(libs.androidx.activity.ktx)          // Bu satır zaten vardı ve doğru
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1") // Coroutine Scope için eklendi
 
+
+    // --- TEST BAĞIMLILIKLARI ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0") // BU SATIRI EKLEYİN
-
-    implementation(libs.androidx.core.ktx)
-    implementation("nl.dionsegijn:konfetti-xml:2.0.2")
-    implementation("com.google.code.gson:gson:2.10.1")
 }
