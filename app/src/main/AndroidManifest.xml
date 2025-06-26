@@ -30,6 +30,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".AchievementsActivity"
+            android:exported="false"
+            android:label="Başarımlar" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/settings_title"/>

@@ -12,7 +12,10 @@ import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -21,11 +24,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.payday.databinding.ActivityMainBinding
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
@@ -36,22 +36,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PaydayViewModel by viewModels()
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
+    private lateinit var transactionAdapter: TransactionAdapter
 
-    // EKSİK OLAN DEĞİŞKENLER BURAYA EKLENDİ
     private val notificationId = 1
     private val channelId = "payday_channel"
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
-                // İzin verildi. Gelecekte bir işlem gerekirse buraya eklenebilir.
+                // İzin verildi.
             }
         }
 
-    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            viewModel.onSettingsResult()
-        }
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        viewModel.onSettingsResult()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupRecyclerView()
+        setupRecyclerViews()
         setupListeners()
         setupObservers()
         createNotificationChannel()
@@ -70,9 +68,15 @@ class MainActivity : AppCompatActivity() {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
         binding.addGoalButton.setOnClickListener { showGoalDialog() }
+        binding.achievementsButton.setOnClickListener {
+            startActivity(Intent(this, AchievementsActivity::class.java))
+        }
+        binding.addTransactionFab.setOnClickListener {
+            showTransactionDialog()
+        }
     }
 
-    private fun setupRecyclerView() {
+    private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
             onEditClicked = { goal -> showGoalDialog(goal) },
             onDeleteClicked = { goal ->
@@ -85,6 +89,9 @@ class MainActivity : AppCompatActivity() {
             }
         )
         binding.savingsGoalsRecyclerView.adapter = savingsGoalAdapter
+
+        transactionAdapter = TransactionAdapter()
+        binding.transactionsRecyclerView.adapter = transactionAdapter
     }
 
     private fun setupObservers() {
@@ -95,6 +102,17 @@ class MainActivity : AppCompatActivity() {
             event.getContentIfNotHandled()?.let {
                 updateAllWidgets()
             }
+        }
+        viewModel.newAchievementEvent.observe(this) { event ->
+            event.getContentIfNotHandled()?.let { achievement ->
+                showAchievementSnackbar(achievement)
+            }
+        }
+        viewModel.allTransactions.observe(this) { transactions ->
+            transactionAdapter.submitList(transactions)
+            binding.emptyTransactionsTextView.visibility = if (transactions.isEmpty()) View.VISIBLE else View.GONE
+            binding.transactionsRecyclerView.visibility = if (transactions.isEmpty()) View.GONE else View.VISIBLE
+            binding.transactionsTitle.visibility = if (transactions.isEmpty()) View.GONE else View.VISIBLE
         }
     }
 
@@ -109,66 +127,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi(state: PaydayUiState) {
+        // Geri sayım kartını güncelle
         binding.daysLeftTextView.text = state.daysLeftText
         binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
-        binding.accumulationAmountTextView.text = state.accumulatedAmountText
+
+        // Yeni finansal özet kartını güncelle
+        binding.incomeTextView.text = state.incomeText
+        binding.expensesTextView.text = state.expensesText
+        binding.remainingTextView.text = state.remainingText
+
+        // Tasarruf hedeflerini güncelle
         savingsGoalAdapter.accumulatedAmountForGoals = state.accumulatedSavingsForGoals
         savingsGoalAdapter.submitList(state.savingsGoals)
-        binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-        binding.savingsGoalsTitle.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-        binding.addGoalButton.visibility = if(state.areGoalsVisible) View.VISIBLE else View.GONE
 
+        val hasGoals = state.savingsGoals.isNotEmpty()
+        binding.savingsGoalsTitleContainer.visibility = if (hasGoals) View.VISIBLE else View.GONE
+        binding.savingsGoalsRecyclerView.visibility = if (hasGoals) View.VISIBLE else View.GONE
 
-        if (state.chartData != null && state.chartData.isNotEmpty()) {
-            binding.cashFlowChartView.visibility = View.VISIBLE
-            setupChart(state.chartData)
-        } else {
-            binding.cashFlowChartView.visibility = View.GONE
-        }
-
+        // Maaş günü ise konfeti patlat
         if (state.isPayday) {
             startConfettiEffect()
             sendPaydayNotification()
         }
     }
 
-    private fun setupChart(entries: List<Entry>) {
-        val lineDataSet = LineDataSet(entries, getString(R.string.title_accumulation_cycle)).apply {
-            color = ContextCompat.getColor(this@MainActivity, R.color.primary)
-            lineWidth = 3f
-            setCircleColor(ContextCompat.getColor(this@MainActivity, R.color.primary))
-            circleRadius = 4f
-            setDrawCircleHole(false)
-            setDrawFilled(true)
-            fillDrawable = ContextCompat.getDrawable(this@MainActivity, R.drawable.chart_gradient)
-            setDrawValues(false)
-            highLightColor = ContextCompat.getColor(this@MainActivity, R.color.primary_dark)
-            mode = LineDataSet.Mode.CUBIC_BEZIER
-        }
+    private fun showTransactionDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_transaction_input, null)
+        val nameEditText = dialogView.findViewById<EditText>(R.id.transactionNameEditText)
+        val amountEditText = dialogView.findViewById<EditText>(R.id.transactionAmountEditText)
 
-        val dataSets = ArrayList<ILineDataSet>()
-        dataSets.add(lineDataSet)
-        val lineData = LineData(dataSets)
-
-        binding.cashFlowChartView.apply {
-            data = lineData
-            description.isEnabled = false
-            legend.isEnabled = false
-            setTouchEnabled(true)
-            isDragEnabled = true
-            setScaleEnabled(false)
-            setPinchZoom(false)
-            setDrawGridBackground(false)
-            xAxis.isEnabled = false
-            axisLeft.apply {
-                setDrawLabels(false)
-                setDrawAxisLine(false)
-                setDrawGridLines(false)
-                axisMinimum = 0f
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.add_transaction)
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.save)) { _, _ ->
+                val name = nameEditText.text.toString()
+                val amount = amountEditText.text.toString().toDoubleOrNull()
+                if (name.isNotBlank() && amount != null && amount > 0) {
+                    viewModel.insertTransaction(name, amount)
+                } else {
+                    Toast.makeText(this, "Lütfen geçerli bir ad ve tutar girin.", Toast.LENGTH_SHORT).show()
+                }
             }
-            axisRight.isEnabled = false
-            invalidate()
-        }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
     }
 
     private fun showGoalDialog(existingGoal: SavingsGoal? = null) {
@@ -222,18 +223,34 @@ class MainActivity : AppCompatActivity() {
 
     private fun sendPaydayNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
         val builder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // HATA BURADAYDI, DOĞRU İKON KULLANILDI
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.payday_notification_title))
             .setContentText(getString(R.string.payday_notification_text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
         with(NotificationManagerCompat.from(this)) {
-            notify(notificationId, builder.build()) // HATA BURADAYDI, DEĞİŞKENLER ARTIK TANIMLI
+            notify(notificationId, builder.build())
         }
+    }
+
+    private fun showAchievementSnackbar(achievement: Achievement) {
+        val snackbar = Snackbar.make(binding.coordinatorLayout, "", Snackbar.LENGTH_LONG)
+        val snackbarLayout = snackbar.view as ViewGroup
+
+        snackbarLayout.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
+        snackbarLayout.setPadding(0, 0, 0, 0)
+
+        val customView = layoutInflater.inflate(R.layout.toast_achievement_unlocked, null)
+
+        customView.findViewById<ImageView>(R.id.toast_icon).setImageResource(achievement.iconResId)
+        customView.findViewById<TextView>(R.id.toast_achievement_name).text = achievement.title
+
+        snackbarLayout.addView(customView, 0)
+        snackbar.show()
     }
 }

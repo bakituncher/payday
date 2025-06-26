@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.text.InputType
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.EditTextPreference
-import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import java.text.NumberFormat
@@ -17,7 +16,7 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.*
 
-class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
+class SettingsFragment : PreferenceFragmentCompat() {
 
     private lateinit var repository: PaydayRepository
     private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
@@ -26,31 +25,58 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
 
+        // Maaş günü seçimi için dinleyici
         findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE)?.setOnPreferenceClickListener {
             showPaydaySelectionDialog()
             true
         }
 
-        setupNumericEditText(PaydayRepository.KEY_SALARY)
-        setupNumericEditText(PaydayRepository.KEY_MONTHLY_SAVINGS)
+        // DÜZELTME: Maaş ve Tasarruf alanlarının doğru şekilde (sayı olarak) kaydedilmesini sağlıyoruz.
+        setupCurrencyPreference(PaydayRepository.KEY_SALARY)
+        setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS)
     }
+
+    private fun setupCurrencyPreference(key: String) {
+        val preference = findPreference<EditTextPreference>(key)
+        preference?.setOnBindEditTextListener { editText ->
+            editText.inputType = InputType.TYPE_CLASS_NUMBER
+        }
+
+        // Değer değiştiğinde, metin olarak değil, sayı (Long) olarak kaydedilmesini sağlıyoruz.
+        preference?.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { pref, newValue ->
+            val valueAsLong = (newValue as? String)?.toLongOrNull() ?: 0L
+
+            if (key == PaydayRepository.KEY_SALARY) {
+                repository.saveSalary(valueAsLong)
+            } else if (key == PaydayRepository.KEY_MONTHLY_SAVINGS) {
+                repository.saveMonthlySavings(valueAsLong)
+            }
+
+            // Özeti manuel olarak güncelliyoruz.
+            pref.summary = formatToCurrency(valueAsLong)
+
+            // false dönerek EditTextPreference'ın kendisinin metin olarak kaydetmesini engelliyoruz.
+            false
+        }
+    }
+
 
     override fun onResume() {
         super.onResume()
-        preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
-        updateAllSummaries()
+        preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(sharedPreferenceListener)
+        updateAllSummaries() // Ekrana dönüldüğünde özetleri yenile
     }
 
     override fun onPause() {
         super.onPause()
-        preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
+        preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(sharedPreferenceListener)
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        updateAllSummaries()
+    // Maaş periyodu gibi diğer ayar değişikliklerini dinlemek için
+    private val sharedPreferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == PaydayRepository.KEY_PAY_PERIOD) {
-            repository.savePayday(-1) // Clear old setting
-            updatePaydaySummary()
+            repository.savePayday(-1) // Eski maaş günü ayarını temizle
+            updateAllSummaries()
         }
     }
 
@@ -74,14 +100,11 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun updateCurrencySummary(key: String, value: Long) {
-        val summary = if (value > 0) currencyFormatter.format(value) else "Ayarlanmadı"
-        findPreference<EditTextPreference>(key)?.summary = summary
+        findPreference<EditTextPreference>(key)?.summary = formatToCurrency(value)
     }
 
-    private fun setupNumericEditText(key: String) {
-        findPreference<EditTextPreference>(key)?.setOnBindEditTextListener { editText ->
-            editText.inputType = InputType.TYPE_CLASS_NUMBER
-        }
+    private fun formatToCurrency(value: Long): String {
+        return if (value > 0) currencyFormatter.format(value) else getString(R.string.payday_not_set)
     }
 
     private fun showPaydaySelectionDialog() {
@@ -90,14 +113,20 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 val days = (1..31).map { it.toString() }.toTypedArray()
                 AlertDialog.Builder(requireContext())
                     .setTitle(R.string.select_payday_dialog_title)
-                    .setItems(days) { _, which -> repository.savePayday(which + 1) }
+                    .setItems(days) { _, which ->
+                        repository.savePayday(which + 1)
+                        updatePaydaySummary()
+                    }
                     .show()
             }
             PayPeriod.WEEKLY -> {
                 val daysOfWeek = resources.getStringArray(R.array.days_of_week)
                 AlertDialog.Builder(requireContext())
                     .setTitle(R.string.select_payday_dialog_title)
-                    .setItems(daysOfWeek) { _, which -> repository.savePayday(which + 1) }
+                    .setItems(daysOfWeek) { _, which ->
+                        repository.savePayday(which + 1)
+                        updatePaydaySummary()
+                    }
                     .show()
             }
             PayPeriod.BI_WEEKLY -> {
@@ -108,6 +137,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
                 DatePickerDialog(requireContext(), { _, year, month, day ->
                     repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, day))
+                    updatePaydaySummary()
                 }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
             }
         }

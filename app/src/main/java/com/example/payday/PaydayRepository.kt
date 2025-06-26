@@ -4,13 +4,20 @@ import android.content.Context
 import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+// DÜZELTME: Constructor artık 'Application' yerine 'Context' alıyor.
+// Bu, sınıfın çağrıldığı her yerden kolayca başlatılabilmesini sağlar.
 class PaydayRepository(context: Context) {
 
     private val gson = Gson()
     private val prefs = context.getSharedPreferences("PaydayPrefs", Context.MODE_PRIVATE)
+
+    // DÜZELTME: Veritabanını 'context.applicationContext' ile başlatıyoruz.
+    // Bu, memory leak (hafıza sızıntısı) riskini önler ve doğru Context'i kullanır.
+    private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
 
     companion object {
         const val KEY_PAYDAY_VALUE = "payday"
@@ -21,8 +28,16 @@ class PaydayRepository(context: Context) {
         const val KEY_SAVINGS_GOALS = "savings_goals"
         const val KEY_MONTHLY_SAVINGS = "monthly_savings"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+        const val KEY_UNLOCKED_ACHIEVEMENTS = "unlocked_achievements"
     }
 
+    // Harcama Fonksiyonları
+    fun getAllTransactions(): Flow<List<Transaction>> = transactionDao.getAllTransactions()
+    fun getTotalExpenses(): Flow<Double?> = transactionDao.getTotalExpenses()
+    suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
+
+
+    // Ayar Fonksiyonları
     fun savePayday(day: Int) {
         prefs.edit {
             putInt(KEY_PAYDAY_VALUE, day)
@@ -49,22 +64,19 @@ class PaydayRepository(context: Context) {
         prefs.edit { putLong(KEY_MONTHLY_SAVINGS, amount) }
     }
 
-    fun saveGoals(goals: List<SavingsGoal>) {
-        val jsonGoals = gson.toJson(goals)
-        prefs.edit { putString(KEY_SAVINGS_GOALS, jsonGoals) }
-    }
-
-    fun setOnboardingComplete(isComplete: Boolean) {
-        prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, isComplete) }
-    }
-
     fun getPaydayValue(): Int = prefs.getInt(KEY_PAYDAY_VALUE, -1)
     fun getPayPeriod(): PayPeriod = PayPeriod.valueOf(prefs.getString(KEY_PAY_PERIOD, PayPeriod.MONTHLY.name)!!)
     fun getBiWeeklyRefDateString(): String? = prefs.getString(KEY_BI_WEEKLY_REF_DATE, null)
     fun getSalaryAmount(): Long = prefs.getLong(KEY_SALARY, 0L)
     fun isWeekendAdjustmentEnabled(): Boolean = prefs.getBoolean(KEY_WEEKEND_ADJUSTMENT, false)
     fun getMonthlySavingsAmount(): Long = prefs.getLong(KEY_MONTHLY_SAVINGS, 0L)
-    fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
+
+
+    // Tasarruf Hedefi Fonksiyonları
+    fun saveGoals(goals: List<SavingsGoal>) {
+        val jsonGoals = gson.toJson(goals)
+        prefs.edit { putString(KEY_SAVINGS_GOALS, jsonGoals) }
+    }
 
     fun getGoals(): MutableList<SavingsGoal> {
         val jsonGoals = prefs.getString(KEY_SAVINGS_GOALS, null)
@@ -75,4 +87,24 @@ class PaydayRepository(context: Context) {
             mutableListOf()
         }
     }
+
+    // Başarım Fonksiyonları
+    fun getUnlockedAchievementIds(): Set<String> {
+        return prefs.getStringSet(KEY_UNLOCKED_ACHIEVEMENTS, emptySet()) ?: emptySet()
+    }
+
+    fun unlockAchievement(achievementId: String) {
+        val unlocked = getUnlockedAchievementIds().toMutableSet()
+        if (unlocked.add(achievementId)) {
+            prefs.edit { putStringSet(KEY_UNLOCKED_ACHIEVEMENTS, unlocked) }
+        }
+    }
+
+    // Kurulum Sihirbazı
+    fun setOnboardingComplete(isComplete: Boolean) {
+        prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, isComplete) }
+    }
+
+    fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
+
 }

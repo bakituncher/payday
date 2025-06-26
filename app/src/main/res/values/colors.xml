@@ -1,19 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary Palette -->
-    <color name="primary">#2563EB</color> <!-- Canlı ve Güven Veren Mavi -->
-    <color name="primary_dark">#1D4ED8</color> <!-- Daha Koyu Mavi -->
-
-    <!-- Text Palette -->
-    <color name="text_primary">#1A202C</color> <!-- Neredeyse Siyah, Ana Metinler için -->
-    <color name="text_secondary">#4A5568</color> <!-- Koyu Gri, İkincil Metinler için -->
-    <color name="text_tertiary">#718096</color> <!-- Açık Gri, Yardımcı Metinler için -->
-
-    <!-- Background Palette -->
-    <color name="background_light">#F7F9FC</color> <!-- Çok Açık Gri, Ana Arka Plan -->
-    <color name="background_card">#FFFFFF</color> <!-- Kartlar için Saf Beyaz -->
-
-    <!-- System & General -->
-    <color name="black">#FF000000</color>
+    <color name="primary">#6D55F7</color> <color name="primary_dark">#5B45E0</color> <color name="secondary">#A855F7</color> <color name="text_primary">#1A202C</color> <color name="text_secondary">#4A5568</color> <color name="text_tertiary">#718096</color> <color name="background_light">#F8F7FF</color> <color name="background_card">#FFFFFF</color> <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
