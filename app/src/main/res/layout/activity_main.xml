@@ -28,9 +28,22 @@
             android:textColor="@color/text_primary"
             android:textSize="28sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@+id/achievementsButton"
+            app:layout_constraintEnd_toStartOf="@+id/reportsButton"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/reportsButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/reports_title"
+            app:layout_constraintBottom_toBottomOf="@+id/titleTextView"
+            app:layout_constraintEnd_toStartOf="@+id/achievementsButton"
+            app:layout_constraintTop_toTopOf="@+id/titleTextView"
+            app:srcCompat="@drawable/ic_reports"
+            app:tint="@color/text_secondary" />
 
         <ImageButton
             android:id="@+id/achievementsButton"

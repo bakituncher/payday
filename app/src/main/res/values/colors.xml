@@ -2,4 +2,14 @@
 <resources>
     <color name="primary">#6D55F7</color> <color name="primary_dark">#5B45E0</color> <color name="secondary">#A855F7</color> <color name="text_primary">#1A202C</color> <color name="text_secondary">#4A5568</color> <color name="text_tertiary">#718096</color> <color name="background_light">#F8F7FF</color> <color name="background_card">#FFFFFF</color> <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <array name="pie_chart_colors">
+        <item>@color/primary</item>
+        <item>#64748B</item>
+        <item>#F59E0B</item>
+        <item>#10B981</item>
+        <item>#EF4444</item>
+        <item>#8B5CF6</item>
+    </array>
+
 </resources>

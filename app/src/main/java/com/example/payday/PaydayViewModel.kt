@@ -6,25 +6,27 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.github.mikephil.charting.data.PieEntry
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.util.*
 
-// PaydayUiState'i finansal özeti içerecek şekilde güncelledik.
+// DÜZELTME: Rapor ekranı için yeni veri alanı eklendi
 data class PaydayUiState(
     val daysLeftText: String = "--",
     val daysLeftSuffix: String = "",
     val isPayday: Boolean = false,
     val savingsGoals: List<SavingsGoal> = emptyList(),
-    val accumulatedSavingsForGoals: Double = 0.0,
     val areGoalsVisible: Boolean = false,
     val areTransactionsVisible: Boolean = false,
-    // Yeni Finansal Özet Verileri
     val incomeText: String = "₺0,00",
     val expensesText: String = "₺0,00",
-    val remainingText: String = "₺0,00"
+    val remainingText: String = "₺0,00",
+    val actualRemainingAmountForGoals: Double = 0.0,
+    val categorySpendingData: List<PieEntry> = emptyList() // Pasta grafik için veri
 )
 
 open class Event<out T>(private val content: T) {
@@ -54,27 +56,63 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     val allTransactions: LiveData<List<Transaction>> = repository.getAllTransactions().asLiveData()
 
     init {
+        checkWeeklyAchievement()
         loadData()
+    }
+
+    private fun checkWeeklyAchievement() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val firstLaunchDateStr = repository.getFirstLaunchDate()
+            if (firstLaunchDateStr == null) {
+                repository.setFirstLaunchDate(today)
+            } else {
+                val firstLaunchDate = LocalDate.parse(firstLaunchDateStr)
+                val daysBetween = ChronoUnit.DAYS.between(firstLaunchDate, today)
+                if (daysBetween >= 7) {
+                    val unlockedIds = repository.getUnlockedAchievementIds()
+                    if (!unlockedIds.contains("FIRST_WEEK")) {
+                        repository.unlockAchievement("FIRST_WEEK")
+                        AchievementsManager.getAllAchievements().find { it.id == "FIRST_WEEK" }?.let {
+                            _newAchievementEvent.postValue(Event(it))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun loadData() {
         viewModelScope.launch {
             currentGoals = repository.getGoals()
-            // Veritabanı ve ayarlardan gelen tüm verileri birleştirerek UI'yı güncelliyoruz.
+            // DÜZELTME: Artık hem toplam harcamaları hem de kategori harcamalarını birleştirerek dinliyoruz.
             repository.getTotalExpenses().collectLatest { totalExpenses ->
-                updateUi(totalExpenses ?: 0.0)
+                repository.getSpendingByCategory().collectLatest { categorySpending ->
+                    updateUi(totalExpenses ?: 0.0, categorySpending)
+                }
             }
         }
     }
 
-    fun insertTransaction(name: String, amount: Double) = viewModelScope.launch {
+    fun insertTransaction(name: String, amount: Double, categoryId: Int) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
-            val transaction = Transaction(name = name, amount = amount, date = Date())
+            val transaction = Transaction(name = name, amount = amount, date = Date(), categoryId = categoryId)
             repository.insertTransaction(transaction)
         }
     }
 
-    private fun updateUi(totalExpenses: Double) {
+    fun updateTransaction(id: Int, newName: String, newAmount: Double, newCategoryId: Int) = viewModelScope.launch {
+        if (newName.isNotBlank() && newAmount > 0) {
+            val updatedTransaction = Transaction(id = id, name = newName, amount = newAmount, date = Date(), categoryId = newCategoryId)
+            repository.updateTransaction(updatedTransaction)
+        }
+    }
+
+    fun deleteTransaction(transaction: Transaction) = viewModelScope.launch {
+        repository.deleteTransaction(transaction)
+    }
+
+    private fun updateUi(totalExpenses: Double, categorySpending: List<CategorySpending>) {
         viewModelScope.launch {
             val result = PaydayCalculator.calculate(
                 payPeriod = repository.getPayPeriod(),
@@ -87,7 +125,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             val salary = repository.getSalaryAmount().toDouble()
             val remainingAmount = salary - totalExpenses
 
-            val accumulatedSavingsForGoals = if (result != null && result.totalDaysInCycle > 0) {
+            val theoreticalSavings = if (result != null && result.totalDaysInCycle > 0) {
                 val monthlySavings = repository.getMonthlySavingsAmount().toDouble()
                 val daysPassed = result.totalDaysInCycle - result.daysLeft
                 val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavings / result.totalDaysInCycle else 0.0
@@ -102,12 +140,18 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                         _newAchievementEvent.postValue(Event(ach))
                     }
                 }
-                if (accumulatedSavingsForGoals >= 1000 && !unlockedIds.contains("SAVER_LV1")) {
+                if (theoreticalSavings >= 1000 && !unlockedIds.contains("SAVER_LV1")) {
                     repository.unlockAchievement("SAVER_LV1")
                     AchievementsManager.getAllAchievements().find { ach -> ach.id == "SAVER_LV1" }?.let { ach ->
                         _newAchievementEvent.postValue(Event(ach))
                     }
                 }
+            }
+
+            // DÜZELTME: Grafik için veriyi işliyoruz.
+            val pieEntries = categorySpending.map { spending ->
+                val category = ExpenseCategory.fromId(spending.categoryId)
+                PieEntry(spending.totalAmount.toFloat(), category.categoryName)
             }
 
             val transactionsList = allTransactions.value ?: emptyList()
@@ -122,12 +166,13 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     daysLeftSuffix = if (result.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
                     isPayday = result.isPayday,
                     savingsGoals = currentGoals.toList(),
-                    accumulatedSavingsForGoals = accumulatedSavingsForGoals,
                     areGoalsVisible = currentGoals.isNotEmpty(),
                     areTransactionsVisible = transactionsList.isNotEmpty(),
                     incomeText = formatCurrency(salary),
                     expensesText = "- ${formatCurrency(totalExpenses)}",
-                    remainingText = formatCurrency(remainingAmount)
+                    remainingText = formatCurrency(remainingAmount),
+                    actualRemainingAmountForGoals = remainingAmount,
+                    categorySpendingData = pieEntries // DÜZELTME: İşlenmiş veriyi UI state'e ekliyoruz
                 )
             }
             _uiState.postValue(newState)
@@ -162,14 +207,14 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             }
-            updateUi(repository.getTotalExpenses().asLiveData().value ?: 0.0)
+            loadData() // UI'ı tam olarak yeniden yükle
         }
     }
 
     fun deleteGoal(goal: SavingsGoal) = viewModelScope.launch {
         currentGoals.remove(goal)
         repository.saveGoals(currentGoals)
-        updateUi(repository.getTotalExpenses().asLiveData().value ?: 0.0)
+        loadData() // UI'ı tam olarak yeniden yükle
     }
 
     fun onSettingsResult() {

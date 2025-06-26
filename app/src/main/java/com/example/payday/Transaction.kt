@@ -10,5 +10,6 @@ data class Transaction(
     val id: Int = 0,
     val name: String,
     val amount: Double,
-    val date: Date
+    val date: Date,
+    val categoryId: Int // DÜZELTME: Kategori ID'si eklendi.
 )

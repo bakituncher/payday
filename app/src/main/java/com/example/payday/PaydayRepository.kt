@@ -8,15 +8,10 @@ import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// DÜZELTME: Constructor artık 'Application' yerine 'Context' alıyor.
-// Bu, sınıfın çağrıldığı her yerden kolayca başlatılabilmesini sağlar.
 class PaydayRepository(context: Context) {
 
     private val gson = Gson()
     private val prefs = context.getSharedPreferences("PaydayPrefs", Context.MODE_PRIVATE)
-
-    // DÜZELTME: Veritabanını 'context.applicationContext' ile başlatıyoruz.
-    // Bu, memory leak (hafıza sızıntısı) riskini önler ve doğru Context'i kullanır.
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
 
     companion object {
@@ -29,15 +24,30 @@ class PaydayRepository(context: Context) {
         const val KEY_MONTHLY_SAVINGS = "monthly_savings"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_UNLOCKED_ACHIEVEMENTS = "unlocked_achievements"
+        const val KEY_FIRST_LAUNCH_DATE = "first_launch_date"
     }
 
-    // Harcama Fonksiyonları
+    // First Launch Date Functions
+    fun getFirstLaunchDate(): String? {
+        return prefs.getString(KEY_FIRST_LAUNCH_DATE, null)
+    }
+
+    fun setFirstLaunchDate(date: LocalDate) {
+        prefs.edit {
+            putString(KEY_FIRST_LAUNCH_DATE, date.format(DateTimeFormatter.ISO_LOCAL_DATE))
+        }
+    }
+
+    // Transaction Functions
     fun getAllTransactions(): Flow<List<Transaction>> = transactionDao.getAllTransactions()
     fun getTotalExpenses(): Flow<Double?> = transactionDao.getTotalExpenses()
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
+    suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
+    suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
+    fun getSpendingByCategory(): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategory()
 
 
-    // Ayar Fonksiyonları
+    // Settings Functions
     fun savePayday(day: Int) {
         prefs.edit {
             putInt(KEY_PAYDAY_VALUE, day)
@@ -72,7 +82,7 @@ class PaydayRepository(context: Context) {
     fun getMonthlySavingsAmount(): Long = prefs.getLong(KEY_MONTHLY_SAVINGS, 0L)
 
 
-    // Tasarruf Hedefi Fonksiyonları
+    // Savings Goal Functions
     fun saveGoals(goals: List<SavingsGoal>) {
         val jsonGoals = gson.toJson(goals)
         prefs.edit { putString(KEY_SAVINGS_GOALS, jsonGoals) }
@@ -88,7 +98,7 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    // Başarım Fonksiyonları
+    // Achievement Functions
     fun getUnlockedAchievementIds(): Set<String> {
         return prefs.getStringSet(KEY_UNLOCKED_ACHIEVEMENTS, emptySet()) ?: emptySet()
     }
@@ -100,11 +110,10 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    // Kurulum Sihirbazı
+    // Onboarding Functions
     fun setOnboardingComplete(isComplete: Boolean) {
         prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, isComplete) }
     }
 
     fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
-
 }

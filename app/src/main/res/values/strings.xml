@@ -82,7 +82,17 @@
     <string name="income">Gelir</string>
     <string name="expenses">Gider</string>
     <string name="remaining">Kalan</string>
-
+    <string name="delete">Sil</string>
+    <string name="delete_transaction_confirmation_title">Harcama Silinsin mi?</string>
+    <string name="delete_transaction_confirmation_message">Bu harcama kalıcı olarak silinecek. Bu işlem geri alınamaz.</string>
+    <string name="edit">Düzenle</string>
+    <string name="edit_transaction_title">Harcamayı Düzenle</string>
+    <string name="transaction_name_hint">Harcama Adı (örn: Kahve)</string>
+    <string name="transaction_amount_hint">Tutar (örn: 95.50)</string>
+    <string name="category">Kategori</string>
+    <string name="reports_title">Raporlar</string>
+    <string name="no_spending_data">Grafiği oluşturmak için henüz harcama verisi yok.</string>
+    <string name="spending_by_category">Kategoriye Göre Harcamalar</string>
     <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
         <item>@string/pay_period_monthly</item>

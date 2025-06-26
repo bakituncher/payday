@@ -17,8 +17,8 @@ class SavingsGoalAdapter(
     private val onDeleteClicked: (SavingsGoal) -> Unit
 ) : ListAdapter<SavingsGoal, SavingsGoalAdapter.SavingsGoalViewHolder>(GoalDiffCallback()) {
 
-    // Her hedef için birikmiş tutarı tutacak değişken
-    var accumulatedAmountForGoals: Double = 0.0
+    // DÜZELTME: Bu değişkenin adı artık daha anlamlı: harcanabilecek gerçek para.
+    var actualAmountAvailableForGoals: Double = 0.0
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SavingsGoalViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -28,7 +28,8 @@ class SavingsGoalAdapter(
 
     override fun onBindViewHolder(holder: SavingsGoalViewHolder, position: Int) {
         val goal = getItem(position)
-        holder.bind(goal, accumulatedAmountForGoals)
+        // DÜZELTME: ViewHolder'a teorik birikimi değil, gerçekte kalan parayı gönderiyoruz.
+        holder.bind(goal, actualAmountAvailableForGoals)
     }
 
     class SavingsGoalViewHolder(
@@ -70,23 +71,27 @@ class SavingsGoalAdapter(
             }
         }
 
-        fun bind(goal: SavingsGoal, accumulatedAmountForGoals: Double) {
+        // DÜZELTME: Fonksiyon artık `actualAmountAvailable` parametresini alıyor.
+        fun bind(goal: SavingsGoal, actualAmountAvailable: Double) {
             currentGoal = goal
             nameTextView.text = goal.name
 
+            // İlerleme yüzdesi, hedefin ne kadarının karşılanabildiğini gösterir.
+            // Eğer kalan para hedeften fazlaysa, ilerleme %100 olur.
             val progressPercentage = if (goal.targetAmount > 0) {
-                (accumulatedAmountForGoals / goal.targetAmount * 100).toInt()
+                (actualAmountAvailable / goal.targetAmount * 100).toInt()
             } else { 0 }
             progressBar.progress = progressPercentage.coerceIn(0, 100)
 
-            val accumulatedFormatted = currencyFormatter.format(accumulatedAmountForGoals.coerceAtMost(goal.targetAmount))
+            // Kalan paranın hedefe yeten kısmını göster.
+            val amountCoveredBySavings = actualAmountAvailable.coerceAtMost(goal.targetAmount)
+            val coveredFormatted = currencyFormatter.format(amountCoveredBySavings)
             val targetFormatted = currencyFormatter.format(goal.targetAmount)
-            progressTextView.text = "$accumulatedFormatted / $targetFormatted"
+            progressTextView.text = "$coveredFormatted / $targetFormatted"
         }
     }
 }
 
-// ListAdapter'ın verimli çalışması için gerekli olan karşılaştırma sınıfı
 class GoalDiffCallback : DiffUtil.ItemCallback<SavingsGoal>() {
     override fun areItemsTheSame(oldItem: SavingsGoal, newItem: SavingsGoal): Boolean {
         return oldItem.id == newItem.id
@@ -96,3 +101,4 @@ class GoalDiffCallback : DiffUtil.ItemCallback<SavingsGoal>() {
         return oldItem == newItem
     }
 }
+    

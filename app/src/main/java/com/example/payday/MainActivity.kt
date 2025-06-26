@@ -24,6 +24,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.payday.databinding.ActivityMainBinding
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import nl.dionsegijn.konfetti.core.Party
@@ -74,6 +76,10 @@ class MainActivity : AppCompatActivity() {
         binding.addTransactionFab.setOnClickListener {
             showTransactionDialog()
         }
+
+        binding.reportsButton.setOnClickListener {
+            startActivity(Intent(this, ReportsActivity::class.java))
+        }
     }
 
     private fun setupRecyclerViews() {
@@ -84,13 +90,27 @@ class MainActivity : AppCompatActivity() {
                     .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
                     .setMessage(R.string.delete_goal_confirmation_message)
                     .setNegativeButton(getString(R.string.cancel), null)
-                    .setPositiveButton(getString(R.string.delete_button_text)) { _, _ -> viewModel.deleteGoal(goal) }
+                    .setPositiveButton(getString(R.string.delete)) { _, _ -> viewModel.deleteGoal(goal) }
                     .show()
             }
         )
         binding.savingsGoalsRecyclerView.adapter = savingsGoalAdapter
 
-        transactionAdapter = TransactionAdapter()
+        transactionAdapter = TransactionAdapter(
+            onEditClicked = { transaction ->
+                showTransactionDialog(transaction)
+            },
+            onDeleteClicked = { transaction ->
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.delete_transaction_confirmation_title)
+                    .setMessage(R.string.delete_transaction_confirmation_message)
+                    .setNegativeButton(getString(R.string.cancel), null)
+                    .setPositiveButton(getString(R.string.delete)) { _, _ ->
+                        viewModel.deleteTransaction(transaction)
+                    }
+                    .show()
+            }
+        )
         binding.transactionsRecyclerView.adapter = transactionAdapter
     }
 
@@ -127,43 +147,71 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi(state: PaydayUiState) {
-        // Geri sayım kartını güncelle
         binding.daysLeftTextView.text = state.daysLeftText
         binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
+        binding.countdownTitleTextView.text = getString(R.string.next_payday_countdown)
 
-        // Yeni finansal özet kartını güncelle
         binding.incomeTextView.text = state.incomeText
         binding.expensesTextView.text = state.expensesText
         binding.remainingTextView.text = state.remainingText
 
-        // Tasarruf hedeflerini güncelle
-        savingsGoalAdapter.accumulatedAmountForGoals = state.accumulatedSavingsForGoals
+        savingsGoalAdapter.actualAmountAvailableForGoals = state.actualRemainingAmountForGoals
         savingsGoalAdapter.submitList(state.savingsGoals)
 
         val hasGoals = state.savingsGoals.isNotEmpty()
         binding.savingsGoalsTitleContainer.visibility = if (hasGoals) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (hasGoals) View.VISIBLE else View.GONE
 
-        // Maaş günü ise konfeti patlat
         if (state.isPayday) {
             startConfettiEffect()
             sendPaydayNotification()
         }
     }
 
-    private fun showTransactionDialog() {
+    // DÜZELTME: Bu fonksiyon artık kategori seçim mantığını da içeriyor.
+    private fun showTransactionDialog(existingTransaction: Transaction? = null) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_transaction_input, null)
         val nameEditText = dialogView.findViewById<EditText>(R.id.transactionNameEditText)
         val amountEditText = dialogView.findViewById<EditText>(R.id.transactionAmountEditText)
+        val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.categoryChipGroup)
+        var selectedCategoryId = existingTransaction?.categoryId ?: ExpenseCategory.OTHER.ordinal
+
+        // Kategorileri Chip olarak diyaloğa ekle
+        ExpenseCategory.values().forEach { category ->
+            val chip = Chip(this).apply {
+                text = category.categoryName
+                id = category.ordinal // Her chip'e ID olarak enum'un sırasını veriyoruz.
+                isCheckable = true
+                isChecked = (id == selectedCategoryId) // Düzenleme modunda doğru chip'i seçili yap.
+            }
+            categoryChipGroup.addView(chip)
+        }
+
+        // Chip seçimini dinle
+        categoryChipGroup.setOnCheckedChangeListener { _, checkedId ->
+            selectedCategoryId = if (checkedId != View.NO_ID) checkedId else ExpenseCategory.OTHER.ordinal
+        }
+
+
+        val dialogTitleRes = if (existingTransaction == null) R.string.add_transaction else R.string.edit_transaction_title
+
+        existingTransaction?.let {
+            nameEditText.setText(it.name)
+            amountEditText.setText(it.amount.toString())
+        }
 
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.add_transaction)
+            .setTitle(dialogTitleRes)
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save)) { _, _ ->
                 val name = nameEditText.text.toString()
                 val amount = amountEditText.text.toString().toDoubleOrNull()
                 if (name.isNotBlank() && amount != null && amount > 0) {
-                    viewModel.insertTransaction(name, amount)
+                    if (existingTransaction == null) {
+                        viewModel.insertTransaction(name, amount, selectedCategoryId)
+                    } else {
+                        viewModel.updateTransaction(existingTransaction.id, name, amount, selectedCategoryId)
+                    }
                 } else {
                     Toast.makeText(this, "Lütfen geçerli bir ad ve tutar girin.", Toast.LENGTH_SHORT).show()
                 }

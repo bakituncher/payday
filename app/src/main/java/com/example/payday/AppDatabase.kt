@@ -5,15 +5,25 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.Date
 
-@Database(entities = [Transaction::class], version = 1, exportSchema = false)
+// DÜZELTME: Versiyon 2'ye yükseltildi.
+@Database(entities = [Transaction::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
 
     companion object {
+        // DÜZELTME: Veritabanına yeni bir sütun ekleyen migration planı.
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transactions ADD COLUMN categoryId INTEGER NOT NULL DEFAULT ${ExpenseCategory.OTHER.ordinal}")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -23,7 +33,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "payday_database"
-                ).build()
+                )
+                    .addMigrations(MIGRATION_1_2) // DÜZELTME: Migration planı eklendi.
+                    .build()
                 INSTANCE = instance
                 instance
             }
@@ -31,7 +43,6 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
-// Room'un Date tipini anlayabilmesi için çevirici sınıf
 class Converters {
     @androidx.room.TypeConverter
     fun fromTimestamp(value: Long?): Date? {
@@ -43,3 +54,4 @@ class Converters {
         return date?.time
     }
 }
+    
