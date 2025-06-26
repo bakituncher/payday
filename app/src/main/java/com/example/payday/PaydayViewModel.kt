@@ -9,9 +9,8 @@ import com.github.mikephil.charting.data.Entry
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.util.Locale
+import java.util.*
 
-// Data class ve Event sınıfı aynı kalıyor...
 data class PaydayUiState(
     val daysLeftText: String = "--",
     val daysLeftSuffix: String = "",
@@ -22,6 +21,7 @@ data class PaydayUiState(
     val areGoalsVisible: Boolean = false,
     val chartData: List<Entry>? = null
 )
+
 open class Event<out T>(private val content: T) {
     var hasBeenHandled = false
         private set
@@ -39,9 +39,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private val _uiState = MutableLiveData<PaydayUiState>()
     val uiState: LiveData<PaydayUiState> = _uiState
 
-    private val _events = MutableLiveData<Event<String>>()
-    val events: LiveData<Event<String>> = _events
-
     private val _widgetUpdateEvent = MutableLiveData<Event<Unit>>()
     val widgetUpdateEvent: LiveData<Event<Unit>> = _widgetUpdateEvent
 
@@ -55,90 +52,58 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             currentGoals = repository.getGoals()
             updateUi()
-
-            val isInitialSetup = repository.getPaydayValue() == -1 && repository.getBiWeeklyRefDateString() == null
-            if (isInitialSetup) {
-                _events.value = Event("show_pay_period_dialog")
-            }
         }
     }
 
-    private suspend fun updateUi() {
-        val result = PaydayCalculator.calculate(
-            payPeriod = repository.getPayPeriod(),
-            paydayValue = repository.getPaydayValue(),
-            biWeeklyRefDateString = repository.getBiWeeklyRefDateString(),
-            salaryAmount = repository.getSalaryAmount(),
-            weekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
-        )
-
-        // ... (hesaplama mantığı aynı kalıyor) ...
-        val accumulatedSavingsForGoals = if (result != null && result.totalDaysInCycle > 0) {
-            val monthlySavings = repository.getMonthlySavingsAmount().toDouble()
-            val daysPassed = result.totalDaysInCycle - result.daysLeft
-            val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavings / result.totalDaysInCycle else 0.0
-            dailySavingsRate * daysPassed.coerceAtLeast(0)
-        } else {
-            0.0
-        }
-
-        val newState = if (result == null) {
-            val isInitialSetup = repository.getPaydayValue() == -1 && repository.getBiWeeklyRefDateString() == null
-            PaydayUiState(
-                daysLeftText = if(isInitialSetup) context.getString(R.string.day_not_set_placeholder) else "!",
-                daysLeftSuffix = if(isInitialSetup) context.getString(R.string.welcome_message) else context.getString(R.string.invalid_day_error)
+    private fun updateUi() {
+        viewModelScope.launch {
+            val result = PaydayCalculator.calculate(
+                payPeriod = repository.getPayPeriod(),
+                paydayValue = repository.getPaydayValue(),
+                biWeeklyRefDateString = repository.getBiWeeklyRefDateString(),
+                salaryAmount = repository.getSalaryAmount(),
+                weekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
             )
-        } else {
-            val chartEntries = result.accumulationData.map { (day, amount) ->
-                Entry(day.toFloat(), amount.toFloat())
+
+            val accumulatedSavingsForGoals = if (result != null && result.totalDaysInCycle > 0) {
+                val monthlySavings = repository.getMonthlySavingsAmount().toDouble()
+                val daysPassed = result.totalDaysInCycle - result.daysLeft
+                val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavings / result.totalDaysInCycle else 0.0
+                dailySavingsRate * daysPassed.coerceAtLeast(0)
+            } else {
+                0.0
             }
-            PaydayUiState(
-                daysLeftText = if (result.isPayday) "" else result.daysLeft.toString(),
-                daysLeftSuffix = if (result.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
-                isPayday = result.isPayday,
-                accumulatedAmountText = formatCurrency(result.accumulatedAmount),
-                savingsGoals = currentGoals.toList(),
-                accumulatedSavingsForGoals = accumulatedSavingsForGoals,
-                areGoalsVisible = currentGoals.isNotEmpty(),
-                chartData = chartEntries
-            )
+
+            val newState = if (result == null) {
+                PaydayUiState(
+                    daysLeftText = context.getString(R.string.day_not_set_placeholder),
+                    daysLeftSuffix = context.getString(R.string.welcome_message)
+                )
+            } else {
+                val chartEntries = result.accumulationData.map { (day, amount) ->
+                    Entry(day.toFloat(), amount.toFloat())
+                }
+                PaydayUiState(
+                    daysLeftText = if (result.isPayday) "" else result.daysLeft.toString(),
+                    daysLeftSuffix = if (result.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
+                    isPayday = result.isPayday,
+                    accumulatedAmountText = formatCurrency(result.accumulatedAmount),
+                    savingsGoals = currentGoals.toList(),
+                    accumulatedSavingsForGoals = accumulatedSavingsForGoals,
+                    areGoalsVisible = currentGoals.isNotEmpty(),
+                    chartData = chartEntries
+                )
+            }
+            _uiState.postValue(newState)
+            _widgetUpdateEvent.postValue(Event(Unit))
         }
-        _uiState.postValue(newState) // Arka plandan LiveData güncellemek için postValue kullanılır
     }
 
-
-    fun savePayday(day: Int) = viewModelScope.launch {
-        repository.savePayday(day)
-        updateUi()
-        _widgetUpdateEvent.value = Event(Unit)
-        _events.value = Event("show_salary_dialog")
-    }
-
-    fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch {
-        repository.saveBiWeeklyReferenceDate(date)
-        updateUi()
-        _widgetUpdateEvent.value = Event(Unit)
-        _events.value = Event("show_salary_dialog")
-    }
-
-    fun savePayPeriod(period: PayPeriod) = viewModelScope.launch {
-        repository.savePayPeriod(period)
-        _events.value = Event("show_dynamic_payday_selection")
-        updateUi()
-        _widgetUpdateEvent.value = Event(Unit)
-    }
-
-    fun saveSalary(salary: Long) = viewModelScope.launch {
-        repository.saveSalary(salary)
-        updateUi()
-        _widgetUpdateEvent.value = Event(Unit)
-        _events.value = Event("show_monthly_savings_dialog")
-    }
-
-    fun saveMonthlySavings(amount: Long) = viewModelScope.launch {
-        repository.saveMonthlySavings(amount)
-        updateUi()
-    }
+    fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
+    fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
+    fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch { repository.saveBiWeeklyReferenceDate(date) }
+    fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
+    fun saveMonthlySavings(amount: Long) = viewModelScope.launch { repository.saveMonthlySavings(amount) }
 
     fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
@@ -162,7 +127,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onSettingsResult() {
-        loadData()
+        viewModelScope.launch {
+            updateUi()
+        }
     }
 
     private fun formatCurrency(amount: Double): String {

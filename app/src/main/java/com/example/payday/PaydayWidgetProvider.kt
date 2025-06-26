@@ -19,10 +19,8 @@ class PaydayWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    // onReceive'i override ederek belirli durumlarda widget'ı güncelleyebiliriz
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        // Eğer ViewModel'dan gelen bir güncelleme isteği varsa tüm widget'ları güncelle
         if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisAppWidget = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
@@ -49,7 +47,6 @@ class PaydayWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.payday_widget_layout)
             views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
-            // Widget'in kendi kendine veri çekmesi gerekiyor.
             val repository = PaydayRepository(context)
             val result = PaydayCalculator.calculate(
                 payPeriod = repository.getPayPeriod(),
@@ -61,14 +58,14 @@ class PaydayWidgetProvider : AppWidgetProvider() {
 
             if (result == null) {
                 views.setTextViewText(R.id.widget_days_left_text_view, "-")
-                views.setTextViewText(R.id.widget_suffix_text_view, "Ayarla")
+                views.setTextViewText(R.id.widget_suffix_text_view, context.getString(R.string.widget_configure))
             } else {
                 if (result.isPayday) {
                     views.setTextViewText(R.id.widget_days_left_text_view, "🎉")
-                    views.setTextViewText(R.id.widget_suffix_text_view, "Maaş Günü!")
+                    views.setTextViewText(R.id.widget_suffix_text_view, context.getString(R.string.widget_payday_today))
                 } else {
                     views.setTextViewText(R.id.widget_days_left_text_view, result.daysLeft.toString())
-                    views.setTextViewText(R.id.widget_suffix_text_view, "Gün Kaldı")
+                    views.setTextViewText(R.id.widget_suffix_text_view, context.getString(R.string.widget_days_left))
                 }
             }
 

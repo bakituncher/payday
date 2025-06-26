@@ -1,38 +1,90 @@
 <resources>
+    <!-- Genel Uygulama Metinleri -->
     <string name="app_name">Payday</string>
+    <string name="save">Kaydet</string>
+    <string name="cancel">İptal</string>
+    <string name="currency_symbol">₺</string>
+    <string name="initial_amount">0,00</string>
+
+    <!-- Ana Ekran -->
+    <string name="title_overview">Genel Bakış</string>
+    <string name="title_savings_goals">Tasarruf Hedefleri</string>
+    <string name="title_accumulation_cycle">Döngü İçinde Birikim</string>
+    <string name="add_new">Yeni Ekle</string>
     <string name="countdown_title">BİR SONRAKİ MAAŞ GÜNÜNE</string>
     <string name="days_left_suffix">GÜN KALDI</string>
-    <string name="set_payday_button">Maaş Gününü Ayarla</string>
-    <string name="select_payday_dialog_title">Maaş Aldığın Günü Seç</string>
     <string name="day_not_set_placeholder">--</string>
     <string name="payday_is_today">BUGÜN MAAŞ GÜNÜ!</string>
+    <string name="welcome_message">Başlamak için ayarları yapın.</string>
+    <string name="invalid_day_error">Geçersiz gün seçimi!</string>
 
-    <string name="welcome_message">Maaş gününü ayarlayarak başlayabilirsin.</string>
-    <string name="invalid_day_error">Bu ay için geçersiz gün seçimi</string>
+    <!-- Kurulum Sihirbazı (Onboarding) -->
+    <string name="onboarding_next">İleri</string>
+    <string name="onboarding_back">Geri</string>
+    <string name="onboarding_finish">Bitir ve Başla</string>
+    <string name="onboarding_pay_period_title">Nasıl Maaş Alıyorsunuz?</string>
+    <string name="onboarding_pay_period_subtitle">Ödeme periyodunuzu seçerek başlayın.</string>
+    <string name="pay_period_monthly">Aylık</string>
+    <string name="pay_period_bi_weekly">2 Haftada Bir</string>
+    <string name="pay_period_weekly">Haftalık</string>
+    <string name="onboarding_payday_title">Maaş Gününüz Ne Zaman?</string>
+    <string name="onboarding_payday_subtitle_monthly">Her ay maaş aldığınız günü seçin.</string>
+    <string name="onboarding_payday_subtitle_bi_weekly">Yaklaşan herhangi bir maaş gününüzün tarihini seçin.</string>
+    <string name="onboarding_payday_subtitle_weekly">Haftanın hangi günü maaş aldığınızı seçin.</string>
+    <string name="onboarding_salary_title">Aylık Net Maaşınız</string>
+    <string name="onboarding_salary_subtitle">Birikimlerinizi hesaplamak için bu bilgiye ihtiyacımız var.</string>
+    <string name="onboarding_salary_hint">Net Maaş (örn: 35000)</string>
+    <string name="onboarding_savings_title">Aylık Tasarruf Hedefiniz</string>
+    <string name="onboarding_savings_subtitle">Her ay ne kadar biriktirmeyi hedefliyorsunuz?</string>
+    <string name="onboarding_savings_hint">Aylık Tasarruf (örn: 5000)</string>
 
+    <!-- Ayarlar Ekranı -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_payment_title">Ödeme Bilgileri</string>
+    <string name="settings_general_title">Genel</string>
+    <string name="set_pay_period_button">Ödeme Periyodu</string>
+    <string name="set_payday_button">Maaş Günü</string>
+    <string name="set_salary_button_text">Aylık Maaş</string>
+    <string name="set_monthly_savings_button">Aylık Tasarruf</string>
+    <string name="weekend_adjustment_label">Hafta sonunu Cumaya ayarla</string>
+    <string name="weekend_adjustment_summary">Maaş günü hafta sonuna denk gelirse, Cuma günü sayılır.</string>
+    <string name="dialog_set_salary_title">Aylık Maaşı Düzenle</string>
+    <string name="dialog_set_monthly_savings_title">Aylık Tasarrufu Düzenle</string>
+    <string name="payday_not_set">Henüz ayarlanmadı</string>
+    <string name="select_payday_dialog_title">Maaş Günü Seçin</string>
+
+    <!-- Tasarruf Hedefleri -->
+    <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
+    <string name="dialog_edit_goal_title">Hedefi Düzenle</string>
+    <string name="dialog_goal_name_hint">Hedef Adı (örn: Tatil)</string>
+    <string name="dialog_goal_amount_hint">Hedef Tutar (örn: 50000)</string>
+    <string name="toast_invalid_goal_input">Lütfen geçerli bir ad ve tutar girin.</string>
+    <string name="delete_goal_confirmation_title">"%s" Silinsin mi?</string>
+    <string name="delete_goal_confirmation_message">Bu hedef kalıcı olarak silinecek. Bu işlem geri alınamaz.</string>
+    <string name="delete_button_text">Sil</string>
+
+    <!-- Widget -->
+    <string name="widget_configure">Ayarla</string>
+    <string name="widget_payday_today">Maaş Günü!</string>
+    <string name="widget_days_left">Gün Kaldı</string>
+
+    <!-- Bildirimler -->
     <string name="notification_channel_name">Maaş Günü Hatırlatıcısı</string>
     <string name="notification_channel_description">Maaş gününüz geldiğinde bildirim gönderir.</string>
     <string name="payday_notification_title">Maaş Günü Geldi!</string>
     <string name="payday_notification_text">Tebrikler! Bugün maaş gününüz. 🎉</string>
-    <string name="weekend_adjustment_label">Maaş günü hafta sonuna gelirse Cuma günü say</string>
-    <string name="accumulation_card_title">ŞU ANA KADAR BİRİKTİRDİN</string>
-    <string name="set_salary_button_text">Maaşı Ayarla</string>
-    <string name="dialog_set_salary_title">Aylık Maaşını Gir</string>
-    <string name="dialog_salary_hint">Örn: 35000</string>
-    <string name="save">Kaydet</string>
-    <string name="cancel">İptal</string>
-    <string name="currency_symbol">₺</string>
-    <string name="initial_amount">0.00</string>
 
-    <string name="set_pay_period_button">Ödeme Periyodunu Ayarla</string>
-    <string name="select_pay_period_dialog_title">Ödeme Periyodunu Seç</string>
+    <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
-        <item>Aylık</item>
-        <item>2 Haftada Bir</item>
-        <item>Haftalık</item>
+        <item>@string/pay_period_monthly</item>
+        <item>@string/pay_period_bi_weekly</item>
+        <item>@string/pay_period_weekly</item>
     </string-array>
-
-    <string name="select_biweekly_ref_date_dialog_title">Bir Maaş Günü Tarihi Seç</string>
+    <string-array name="pay_period_values">
+        <item>MONTHLY</item>
+        <item>BI_WEEKLY</item>
+        <item>WEEKLY</item>
+    </string-array>
     <string-array name="days_of_week">
         <item>Pazartesi</item>
         <item>Salı</item>
@@ -42,13 +94,4 @@
         <item>Cumartesi</item>
         <item>Pazar</item>
     </string-array>
-
-    <string name="add_goal_button_text">Yeni Hedef Ekle</string>
-    <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
-    <string name="dialog_goal_name_hint">Hedef Adı (Örn: Tatil)</string>
-    <string name="dialog_goal_amount_hint">Hedef Tutar (Örn: 50000)</string>
-    <string name="set_monthly_savings_button">Aylık Tasarruf Ayarla</string>
-    <string name="dialog_set_monthly_savings_title">Hedefler İçin Aylık Ayrılan Tutar</string>
-    <string name="dialog_monthly_savings_hint">Örn: 2500</string>
-
 </resources>

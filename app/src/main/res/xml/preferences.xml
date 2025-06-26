@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <androidx.preference.PreferenceCategory app:title="@string/settings_payment_title">
+        <androidx.preference.ListPreference
+            app:key="pay_period"
+            app:title="@string/set_pay_period_button"
+            app:summary="%s"
+            app:entries="@array/pay_periods"
+            app:entryValues="@array/pay_period_values"
+            app:defaultValue="MONTHLY"
+            app:useSimpleSummaryProvider="true" />
+        <androidx.preference.Preference
+            app:key="payday"
+            app:title="@string/set_payday_button"
+            app:summary="@string/payday_not_set"/>
+        <androidx.preference.EditTextPreference
+            app:key="salary"
+            app:title="@string/set_salary_button_text"
+            app:dialogTitle="@string/dialog_set_salary_title"
+            android:inputType="number" />
+        <androidx.preference.EditTextPreference
+            app:key="monthly_savings"
+            app:title="@string/set_monthly_savings_button"
+            app:dialogTitle="@string/dialog_set_monthly_savings_title"
+            android:inputType="number" />
+    </androidx.preference.PreferenceCategory>
+
+    <androidx.preference.PreferenceCategory app:title="@string/settings_general_title">
+        <androidx.preference.SwitchPreferenceCompat
+            app:key="weekend_adjustment"
+            app:title="@string/weekend_adjustment_label"
+            app:summary="@string/weekend_adjustment_summary"/>
+    </androidx.preference.PreferenceCategory>
+
+</androidx.preference.PreferenceScreen>

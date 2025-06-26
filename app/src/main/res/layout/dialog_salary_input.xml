@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    TextInputLayout, EditText'i sarmalayarak dokunma alanını genişletir
-    ve daha iyi bir kullanıcı deneyimi sunar.
+    Bu layout artık sadece eski kodda kalmış olabilir. Yeni yapıda
+    EditTextPreference'lar kendi diyaloglarını yönetir. Yine de projenin
+    bütünlüğü için hatayı düzeltiyoruz.
 -->
 <com.google.android.material.textfield.TextInputLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -15,7 +16,7 @@
         android:id="@+id/salaryEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/dialog_salary_hint"
+        android:hint="@string/onboarding_salary_hint"
         android:inputType="number"
         android:autofillHints="none" />
 

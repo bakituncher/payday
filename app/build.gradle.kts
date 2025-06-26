@@ -43,7 +43,6 @@ android {
 
 dependencies {
 
-    // --- MEVCUT BAĞIMLILIKLARINIZ ---
     implementation(libs.androidx.core.ktx)
     implementation("nl.dionsegijn:konfetti-xml:2.0.2")
     implementation("com.google.code.gson:gson:2.11.0")
@@ -51,18 +50,15 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
-    // --- ViewModel, LiveData VE COROUTINE İÇİN GÜNCELLENMİŞ VE YENİ EKLENMİŞ BAĞIMLILIKLAR ---
-    implementation(libs.androidx.lifecycle.viewmodel.ktx) // Bu satır zaten vardı ve doğru
-    implementation(libs.androidx.lifecycle.livedata.ktx)  // Bu satır zaten vardı ve doğru
-    implementation(libs.androidx.activity.ktx)          // Bu satır zaten vardı ve doğru
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1") // Coroutine Scope için eklendi
-
-
-    // --- TEST BAĞIMLILIKLARI ---
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
+    implementation("androidx.preference:preference-ktx:1.2.1")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

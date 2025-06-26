@@ -7,13 +7,11 @@
     android:background="#F7F9FC"
     tools:context=".MainActivity">
 
-    <!-- Konfeti efekti için arka plan görünümü -->
     <nl.dionsegijn.konfetti.xml.KonfettiView
         android:id="@+id/konfettiView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Üst Kısım: Başlık ve Ayarlar Butonu -->
     <TextView
         android:id="@+id/titleTextView"
         android:layout_width="0dp"
@@ -21,7 +19,7 @@
         android:layout_marginStart="24dp"
         android:layout_marginTop="24dp"
         android:fontFamily="sans-serif-medium"
-        android:text="Genel Bakış"
+        android:text="@string/title_overview"
         android:textColor="#1A202C"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -35,7 +33,7 @@
         android:layout_height="48dp"
         android:layout_marginEnd="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Ayarlar"
+        android:contentDescription="@string/settings_title"
         android:src="@drawable/ic_settings"
         app:layout_constraintBottom_toBottomOf="@+id/titleTextView"
         app:layout_constraintEnd_toEndOf="parent"
@@ -57,7 +55,6 @@
             android:orientation="vertical"
             android:paddingBottom="32dp">
 
-            <!-- Maaş Günü Geri Sayım Kartı -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/countdownCardView"
                 android:layout_width="match_parent"
@@ -81,7 +78,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.05"
-                        android:text="BİR SONRAKİ MAAŞ GÜNÜNE"
+                        android:text="@string/countdown_title"
                         android:textColor="#718096"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -106,7 +103,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Nakit Akış Kartı -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cashFlowCardView"
                 android:layout_width="match_parent"
@@ -128,7 +124,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Döngü İçinde Birikim"
+                        android:text="@string/title_accumulation_cycle"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -143,7 +139,6 @@
                         android:textStyle="bold"
                         tools:text="₺1.234,56" />
 
-                    <!-- DEĞİŞTİRİLEN KISIM -->
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/cashFlowChartView"
                         android:layout_width="match_parent"
@@ -153,7 +148,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Tasarruf Hedefleri Başlığı -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -168,7 +162,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Tasarruf Hedefleri"
+                    android:text="@string/title_savings_goals"
                     android:textColor="#1A202C"
                     android:textSize="22sp"
                     android:textStyle="bold" />
@@ -178,13 +172,12 @@
                     style="@style/Widget.MaterialComponents.Button.TextButton.Icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Yeni Ekle"
+                    android:text="@string/add_new"
                     android:textColor="?attr/colorPrimary"
                     app:icon="@android:drawable/ic_input_add"
                     app:iconTint="?attr/colorPrimary" />
             </LinearLayout>
 
-            <!-- Tasarruf Hedefleri Listesi -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/savingsGoalsRecyclerView"
                 android:layout_width="match_parent"
