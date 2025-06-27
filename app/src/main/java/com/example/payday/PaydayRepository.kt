@@ -1,4 +1,4 @@
-// app/src/main/java/com/example/payday/PaydayRepository.kt
+// Konum: app/src/main/java/com/example/payday/PaydayRepository.kt
 
 package com.example.payday
 
@@ -23,7 +23,6 @@ class PaydayRepository(context: Context) {
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
 
     companion object {
-        // ... (Değişiklik yok)
         val KEY_PAYDAY_VALUE = intPreferencesKey("payday")
         val KEY_WEEKEND_ADJUSTMENT = booleanPreferencesKey("weekend_adjustment")
         val KEY_SALARY = longPreferencesKey("salary")
@@ -34,12 +33,9 @@ class PaydayRepository(context: Context) {
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val KEY_UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val KEY_FIRST_LAUNCH_DATE = stringPreferencesKey("first_launch_date")
-        // YENİ: Son işlenen döngüyü takip etmek için anahtar
         val KEY_LAST_PROCESSED_CYCLE_END_DATE = stringPreferencesKey("last_processed_cycle_end_date")
     }
 
-    // --- Okuma Fonksiyonları ---
-    // ... (Çoğunda değişiklik yok)
     fun getPayPeriod(): Flow<PayPeriod> = prefs.data.map { PayPeriod.valueOf(it[KEY_PAY_PERIOD] ?: PayPeriod.MONTHLY.name) }
     fun getPaydayValue(): Flow<Int> = prefs.data.map { it[KEY_PAYDAY_VALUE] ?: -1 }
     fun getBiWeeklyRefDateString(): Flow<String?> = prefs.data.map { it[KEY_BI_WEEKLY_REF_DATE] }
@@ -48,9 +44,7 @@ class PaydayRepository(context: Context) {
     fun getMonthlySavingsAmount(): Flow<Long> = prefs.data.map { it[KEY_MONTHLY_SAVINGS] ?: 0L }
     fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
     fun getFirstLaunchDate(): Flow<String?> = prefs.data.map { it[KEY_FIRST_LAUNCH_DATE] }
-    // YENİ:
     fun getLastProcessedCycleEndDate(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] }
-
 
     fun getGoals(): Flow<MutableList<SavingsGoal>> {
         return prefs.data.map { preferences ->
@@ -64,13 +58,8 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    fun getUnlockedAchievementIds(): Flow<Set<String>> {
-        return prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
-    }
+    fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
 
-
-    // --- Yazma Fonksiyonları ---
-    // ... (Çoğunda değişiklik yok)
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
     suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
     suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
@@ -79,9 +68,7 @@ class PaydayRepository(context: Context) {
     suspend fun saveBiWeeklyReferenceDate(date: LocalDate) = prefs.edit { it[KEY_BI_WEEKLY_REF_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveMonthlySavings(amount: Long) = prefs.edit { it[KEY_MONTHLY_SAVINGS] = amount }
     suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-    // YENİ:
     suspend fun saveLastProcessedCycleEndDate(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-
 
     suspend fun unlockAchievement(achievementId: String) {
         prefs.edit { preferences ->
@@ -92,7 +79,6 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    // --- YENİ VE GÜNCELLENMİŞ Room Fonksiyonları ---
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
     fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate)
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate)

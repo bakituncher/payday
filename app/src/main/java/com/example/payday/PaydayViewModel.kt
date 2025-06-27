@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/PaydayViewModel.kt
+// Konum: app/src/main/java/com/example/payday/PaydayViewModel.kt (NİHAİ VE TAM SÜRÜM)
 
 package com.example.payday
 
@@ -87,14 +87,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val salaryAmount = values[4] as Long
                 val monthlySavings = values[5] as Long
                 val goals = values[6] as MutableList<SavingsGoal>
-
                 val result = PaydayCalculator.calculate(payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
                 if (result != null) {
                     currentPayCycle.value = Pair(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
-
                     checkAndProcessNewCycle(result)
-
                     val totalExpensesFlow = repository.getTotalExpensesBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
                     val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
 
@@ -119,10 +116,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val remainingAmount = salaryAmount.toDouble() - totalExpenses
 
-            val pieEntries = categorySpending.map { spending ->
-                val category = ExpenseCategory.fromId(spending.categoryId)
-                PieEntry(spending.totalAmount.toFloat(), category.categoryName)
-            }
+            val pieEntries = categorySpending
+                .filter { it.categoryId != ExpenseCategory.SAVINGS.ordinal }
+                .map { spending ->
+                    val category = ExpenseCategory.fromId(spending.categoryId)
+                    PieEntry(spending.totalAmount.toFloat(), category.categoryName)
+                }
 
             val transactionsList = transactionsForCurrentCycle.value ?: emptyList()
             val newState = PaydayUiState(
@@ -180,11 +179,14 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             val isFirstGoal = currentGoals.isEmpty() && existingGoalId == null
 
             if (existingGoalId == null) {
-                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, targetDate = targetDate))
+                // Yeni hedef eklenirken savedAmount sıfır olarak başlar.
+                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate))
             } else {
                 val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
-                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, targetDate = targetDate)
+                    // Düzenlemede, mevcut birikimi koruyarak diğer bilgileri güncelle.
+                    val existingSavedAmount = currentGoals[index].savedAmount
+                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, savedAmount = existingSavedAmount, targetDate = targetDate)
                 }
             }
             repository.saveGoals(currentGoals)
@@ -258,7 +260,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             name = "'${goal.name}' hedefine aktarıldı",
             amount = finalAmountToAdd,
             date = Date(),
-            categoryId = ExpenseCategory.OTHER.ordinal,
+            categoryId = ExpenseCategory.SAVINGS.ordinal,
             isRecurringTemplate = false
         )
         repository.insertTransaction(transaction)
