@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
-                // İzin verildi, gelecekte bildirimler çalışacaktır.
+                // İzin verildi.
             }
         }
 
@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Toolbar'ı Action Bar olarak ayarla
         setSupportActionBar(binding.toolbar)
 
         setupRecyclerViews()
@@ -66,13 +65,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // DialogFragment'a taşındığı için bu metod artık daha temiz.
         binding.addGoalButton.setOnClickListener {
             SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
         }
 
         binding.addTransactionFab.setOnClickListener {
-            // Yeni harcama için null ID ile çağır
             TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
         }
     }
@@ -80,7 +77,6 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
             onEditClicked = { goal ->
-                // Düzenleme için DialogFragment'ı ID ile çağır
                 SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
             },
             onDeleteClicked = { goal ->
@@ -96,7 +92,6 @@ class MainActivity : AppCompatActivity() {
 
         transactionAdapter = TransactionAdapter(
             onEditClicked = { transaction ->
-                // Düzenleme için DialogFragment'ı ID ile çağır
                 TransactionDialogFragment.newInstance(transaction.id).show(supportFragmentManager, TransactionDialogFragment.TAG)
             },
             onDeleteClicked = { transaction ->
@@ -117,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.uiState.observe(this) { state ->
             updateUi(state)
         }
+
         viewModel.widgetUpdateEvent.observe(this) { event ->
             event.getContentIfNotHandled()?.let {
                 updateAllWidgets()
@@ -145,11 +141,11 @@ class MainActivity : AppCompatActivity() {
         sendBroadcast(intent)
     }
 
+    // *** HATAYI DÜZELTEN VE BASİTLEŞTİRİLEN FONKSİYON ***
     private fun updateUi(state: PaydayUiState) {
         binding.daysLeftTextView.text = state.daysLeftText
         binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
         binding.countdownTitleTextView.text = getString(R.string.next_payday_countdown)
-
         binding.incomeTextView.text = state.incomeText
         binding.expensesTextView.text = state.expensesText
         binding.remainingTextView.text = state.remainingText
@@ -157,9 +153,9 @@ class MainActivity : AppCompatActivity() {
         savingsGoalAdapter.actualAmountAvailableForGoals = state.actualRemainingAmountForGoals
         savingsGoalAdapter.submitList(state.savingsGoals)
 
-        val hasGoals = state.savingsGoals.isNotEmpty()
-        binding.savingsGoalsTitleContainer.visibility = if (hasGoals) View.VISIBLE else View.GONE
-        binding.savingsGoalsRecyclerView.visibility = if (hasGoals) View.VISIBLE else View.GONE
+        // Yeni ve doğru mantık: Sadece RecyclerView'ı gizle/göster.
+        // Başlık ve buton her zaman görünür kalacak.
+        binding.savingsGoalsRecyclerView.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
 
         if (state.isPayday) {
             startConfettiEffect()
@@ -215,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         snackbarLayout.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
         snackbarLayout.setPadding(0, 0, 0, 0)
 
-        val customView = layoutInflater.inflate(R.layout.toast_achievement_unlocked, null)
+        val customView = layoutInflater.inflate(R.layout.toast_achievement_unlocked, snackbarLayout, false)
 
         customView.findViewById<ImageView>(R.id.toast_icon).setImageResource(achievement.iconResId)
         customView.findViewById<TextView>(R.id.toast_achievement_name).text = achievement.title

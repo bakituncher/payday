@@ -93,6 +93,10 @@
     <string name="reports_title">Raporlar</string>
     <string name="no_spending_data">Grafiği oluşturmak için henüz harcama verisi yok.</string>
     <string name="spending_by_category">Kategoriye Göre Harcamalar</string>
+    <string name="dialog_goal_date_hint">Hedef Tarihi (İsteğe Bağlı)</string>
+    <string name="select_date_button">Tarih Seç</string>
+    <string name="goal_date_info">Hedef: %1$s (%2$d gün kaldı)</string>
+    <string name="recurring_transaction_label">Bu harcamayı her ay tekrarla</string>
     <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
         <item>@string/pay_period_monthly</item>

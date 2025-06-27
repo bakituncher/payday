@@ -17,12 +17,12 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <!-- Kategori İkonu (Gelecek için) -->
         <ImageView
             android:id="@+id/goalIcon"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/widget_background" android:padding="8dp"
+            android:background="@drawable/widget_background"
+            android:padding="8dp"
             android:src="@drawable/ic_launcher_foreground"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -48,7 +48,6 @@
             android:layout_marginTop="2dp"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="@+id/goalIcon"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@+id/goalNameTextView"
             app:layout_constraintTop_toBottomOf="@id/goalNameTextView"
@@ -60,11 +59,27 @@
             android:layout_width="0dp"
             android:layout_height="8dp"
             android:layout_marginTop="16dp"
-            android:progressDrawable="@drawable/widget_background" app:layout_constraintEnd_toEndOf="parent"
+            android:progressDrawable="@drawable/widget_background"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/goalIcon"
             tools:progress="60" />
 
+        <TextView
+            android:id="@+id/goalDateInfoTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="end"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="italic"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/goalProgressBar"
+            tools:text="Hedef: 31 Aralık 2025 (180 gün kaldı)"
+            tools:visibility="visible" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </com.google.android.material.card.MaterialCardView>

@@ -1,5 +1,6 @@
 package com.example.payday
 
+import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.*
 import com.github.mikephil.charting.data.PieEntry
@@ -12,29 +13,7 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.*
 
-data class PaydayUiState(
-    val daysLeftText: String = "--",
-    val daysLeftSuffix: String = "",
-    val isPayday: Boolean = false,
-    val savingsGoals: List<SavingsGoal> = emptyList(),
-    val areGoalsVisible: Boolean = false,
-    val areTransactionsVisible: Boolean = false,
-    val incomeText: String = "₺0,00",
-    val expensesText: String = "₺0,00",
-    val remainingText: String = "₺0,00",
-    val actualRemainingAmountForGoals: Double = 0.0,
-    val categorySpendingData: List<PieEntry> = emptyList()
-)
-
-open class Event<out T>(private val content: T) {
-    var hasBeenHandled = false
-        private set
-    fun getContentIfNotHandled(): T? = if (hasBeenHandled) null else {
-        hasBeenHandled = true
-        content
-    }
-}
-
+@SuppressLint("StaticFieldLeak")
 class PaydayViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PaydayRepository(application)
@@ -59,16 +38,16 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private fun checkWeeklyAchievement() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            val firstLaunchDateStr = repository.getFirstLaunchDate().first() // Flow'dan al
+            val firstLaunchDateStr = repository.getFirstLaunchDate().first()
             if (firstLaunchDateStr == null) {
                 repository.setFirstLaunchDate(today)
             } else {
                 val firstLaunchDate = LocalDate.parse(firstLaunchDateStr)
                 val daysBetween = ChronoUnit.DAYS.between(firstLaunchDate, today)
                 if (daysBetween >= 7) {
-                    val unlockedIds = repository.getUnlockedAchievementIds().first() // Flow'dan al
+                    val unlockedIds = repository.getUnlockedAchievementIds().first()
                     if (!unlockedIds.contains("FIRST_WEEK")) {
-                        repository.unlockAchievement("FIRST_WEEK") // suspend fonksiyon
+                        repository.unlockAchievement("FIRST_WEEK")
                         AchievementsManager.getAllAchievements().find { it.id == "FIRST_WEEK" }?.let {
                             _newAchievementEvent.postValue(Event(it))
                         }
@@ -78,9 +57,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun loadData() {
         viewModelScope.launch {
-            // Birden çok Flow'u birleştirerek dinle
             combine(
                 repository.getTotalExpenses(),
                 repository.getSpendingByCategory(),
@@ -92,7 +71,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 repository.getMonthlySavingsAmount(),
                 repository.getGoals()
             ) { values ->
-                // Değerleri güvenli bir şekilde dönüştür (Unchecked cast uyarısını giderir)
                 val totalExpenses = values[0] as? Double ?: 0.0
                 val categorySpending = values[1] as? List<CategorySpending> ?: emptyList()
                 val payPeriod = values[2] as PayPeriod
@@ -103,30 +81,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val monthlySavings = values[7] as Long
                 val goals = values[8] as? MutableList<SavingsGoal> ?: mutableListOf()
 
-                // UI'ı bu verilerle güncelle
                 updateUi(totalExpenses, categorySpending, payPeriod, paydayValue, biWeeklyRefDate, salaryAmount, weekendAdjustment, monthlySavings, goals)
 
             }.collectLatest { }
         }
-    }
-
-
-    fun insertTransaction(name: String, amount: Double, categoryId: Int) = viewModelScope.launch {
-        if (name.isNotBlank() && amount > 0) {
-            val transaction = Transaction(name = name, amount = amount, date = Date(), categoryId = categoryId)
-            repository.insertTransaction(transaction)
-        }
-    }
-
-    fun updateTransaction(id: Int, newName: String, newAmount: Double, newCategoryId: Int) = viewModelScope.launch {
-        if (newName.isNotBlank() && newAmount > 0) {
-            val updatedTransaction = Transaction(id = id, name = newName, amount = newAmount, date = Date(), categoryId = newCategoryId)
-            repository.updateTransaction(updatedTransaction)
-        }
-    }
-
-    fun deleteTransaction(transaction: Transaction) = viewModelScope.launch {
-        repository.deleteTransaction(transaction)
     }
 
     private fun updateUi(totalExpenses: Double, categorySpending: List<CategorySpending>, payPeriod: PayPeriod, paydayValue: Int, biWeeklyRefDateString: String?, salaryAmount: Long, weekendAdjustmentEnabled: Boolean, monthlySavingsAmount: Long, goals: List<SavingsGoal>) {
@@ -135,14 +93,14 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
             val remainingAmount = salaryAmount.toDouble() - totalExpenses
 
-            val theoreticalSavings = if (result != null && result.totalDaysInCycle > 0) {
+            val theoreticalSavings = if (result != null) {
                 val daysPassed = result.totalDaysInCycle - result.daysLeft
                 val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavingsAmount.toDouble() / result.totalDaysInCycle else 0.0
                 dailySavingsRate * daysPassed.coerceAtLeast(0)
             } else { 0.0 }
 
             result?.let {
-                val unlockedIds = repository.getUnlockedAchievementIds().first() // Flow'dan al
+                val unlockedIds = repository.getUnlockedAchievementIds().first()
                 if (it.isPayday && !unlockedIds.contains("PAYDAY_HYPE")) {
                     repository.unlockAchievement("PAYDAY_HYPE")
                     AchievementsManager.getAllAchievements().find { ach -> ach.id == "PAYDAY_HYPE" }?.let { ach ->
@@ -185,23 +143,48 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
-    fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
-    fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch { repository.saveBiWeeklyReferenceDate(date) }
-    fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
-    fun saveMonthlySavings(amount: Long) = viewModelScope.launch { repository.saveMonthlySavings(amount) }
+    fun insertTransaction(name: String, amount: Double, categoryId: Int, isRecurring: Boolean) = viewModelScope.launch {
+        if (name.isNotBlank() && amount > 0) {
+            val transaction = Transaction(
+                name = name,
+                amount = amount,
+                date = Date(),
+                categoryId = categoryId,
+                isRecurringTemplate = isRecurring
+            )
+            repository.insertTransaction(transaction)
+        }
+    }
 
-    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?) = viewModelScope.launch {
+    fun updateTransaction(id: Int, newName: String, newAmount: Double, newCategoryId: Int, isRecurring: Boolean) = viewModelScope.launch {
+        if (newName.isNotBlank() && newAmount > 0) {
+            val updatedTransaction = Transaction(
+                id = id,
+                name = newName,
+                amount = newAmount,
+                date = Date(),
+                categoryId = newCategoryId,
+                isRecurringTemplate = isRecurring
+            )
+            repository.updateTransaction(updatedTransaction)
+        }
+    }
+
+    fun deleteTransaction(transaction: Transaction) = viewModelScope.launch {
+        repository.deleteTransaction(transaction)
+    }
+
+    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val currentGoals = repository.getGoals().first().toMutableList()
             val isFirstGoal = currentGoals.isEmpty() && existingGoalId == null
 
             if (existingGoalId == null) {
-                currentGoals.add(SavingsGoal(name = name, targetAmount = amount))
+                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, targetDate = targetDate))
             } else {
                 val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
-                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount)
+                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, targetDate = targetDate)
                 }
             }
             repository.saveGoals(currentGoals)
@@ -224,12 +207,15 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         repository.saveGoals(currentGoals)
     }
 
-    fun onSettingsResult() {
-        // loadData is already observing changes, so this might not be needed
-        // but can be kept for explicit re-triggering if necessary.
-    }
+    fun onSettingsResult() {}
 
     private fun formatCurrency(amount: Double): String {
         return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
     }
+
+    fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
+    fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
+    fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch { repository.saveBiWeeklyReferenceDate(date) }
+    fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
+    fun saveMonthlySavings(amount: Long) = viewModelScope.launch { repository.saveMonthlySavings(amount) }
 }
