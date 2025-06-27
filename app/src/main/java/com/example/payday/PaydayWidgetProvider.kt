@@ -55,9 +55,9 @@ class PaydayWidgetProvider : AppWidgetProvider() {
                 payPeriod = payPeriod,
                 paydayValue = paydayValue,
                 biWeeklyRefDateString = biWeeklyRefDate,
-                salaryAmount = salary,
                 weekendAdjustmentEnabled = weekendAdjustment
             )
+
 
             if (result == null) {
                 views.setTextViewText(R.id.widget_days_left_text_view, "-")

@@ -80,6 +80,18 @@
             app:layout_constraintTop_toBottomOf="@+id/goalProgressBar"
             tools:text="Hedef: 31 Aralık 2025 (180 gün kaldı)"
             tools:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/addFundsButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Para Ekle"
+            app:icon="@drawable/ic_achievement_money"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/goalDateInfoTextView" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </com.google.android.material.card.MaterialCardView>

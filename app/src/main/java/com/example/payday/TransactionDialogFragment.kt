@@ -21,8 +21,7 @@ class TransactionDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
         val transactionId = arguments?.getInt(ARG_TRANSACTION_ID, -1) ?: -1
         if (transactionId != -1) {
-            existingTransaction = viewModel.allTransactions.value?.find { it.id == transactionId }
-        }
+            existingTransaction = viewModel.transactionsForCurrentCycle.value?.find { it.id == transactionId }        }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {

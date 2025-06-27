@@ -1,3 +1,5 @@
+// Konum: app/src/main/java/com/example/payday/MainActivity.kt
+
 package com.example.payday
 
 import android.Manifest
@@ -10,12 +12,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +33,8 @@ import com.google.android.material.snackbar.Snackbar
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.text.NumberFormat
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -50,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onSettingsResult()
     }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +84,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
+            onAddFundsClicked = { goal ->
+                showAddFundsDialog(goal)
+            },
             onEditClicked = { goal ->
                 SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
             },
@@ -123,12 +134,44 @@ class MainActivity : AppCompatActivity() {
                 showAchievementSnackbar(achievement)
             }
         }
-        viewModel.allTransactions.observe(this) { transactions ->
+        viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
             transactionAdapter.submitList(transactions)
-            binding.emptyTransactionsTextView.visibility = if (transactions.isEmpty()) View.VISIBLE else View.GONE
-            binding.transactionsRecyclerView.visibility = if (transactions.isEmpty()) View.GONE else View.VISIBLE
-            binding.transactionsTitle.visibility = if (transactions.isEmpty()) View.GONE else View.VISIBLE
+            val areTransactionsEmpty = transactions.isNullOrEmpty()
+            binding.emptyTransactionsTextView.visibility = if (areTransactionsEmpty) View.VISIBLE else View.GONE
+            binding.transactionsRecyclerView.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
+            binding.transactionsTitle.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
         }
+    }
+
+    private fun showAddFundsDialog(goal: SavingsGoal) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_funds, null)
+        val amountEditText = dialogView.findViewById<EditText>(R.id.amountEditText)
+        val titleTextView = dialogView.findViewById<TextView>(R.id.dialogTitleTextView)
+        val availableFundsTextView = dialogView.findViewById<TextView>(R.id.availableFundsTextView)
+
+        val currentRemainingAmount = viewModel.uiState.value?.actualRemainingAmountForGoals ?: 0.0
+        val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+
+        titleTextView.text = "'${goal.name}' hedefine para ekle"
+        availableFundsTextView.text = "Kullanılabilir Bakiye: ${currencyFormatter.format(currentRemainingAmount)}"
+
+        MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setPositiveButton("Ekle") { _, _ ->
+                val amountText = amountEditText.text.toString()
+                val amount = amountText.toDoubleOrNull()
+                if (amount != null && amount > 0) {
+                    if (amount > currentRemainingAmount) {
+                        Toast.makeText(this, "Yetersiz bakiye!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        viewModel.addFundsToGoal(goal.id, amount)
+                    }
+                } else {
+                    Toast.makeText(this, "Lütfen geçerli bir tutar girin.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("İptal", null)
+            .show()
     }
 
     private fun updateAllWidgets() {
@@ -141,7 +184,6 @@ class MainActivity : AppCompatActivity() {
         sendBroadcast(intent)
     }
 
-    // *** HATAYI DÜZELTEN VE BASİTLEŞTİRİLEN FONKSİYON ***
     private fun updateUi(state: PaydayUiState) {
         binding.daysLeftTextView.text = state.daysLeftText
         binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
@@ -150,11 +192,8 @@ class MainActivity : AppCompatActivity() {
         binding.expensesTextView.text = state.expensesText
         binding.remainingTextView.text = state.remainingText
 
-        savingsGoalAdapter.actualAmountAvailableForGoals = state.actualRemainingAmountForGoals
         savingsGoalAdapter.submitList(state.savingsGoals)
 
-        // Yeni ve doğru mantık: Sadece RecyclerView'ı gizle/göster.
-        // Başlık ve buton her zaman görünür kalacak.
         binding.savingsGoalsRecyclerView.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
 
         if (state.isPayday) {

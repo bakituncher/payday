@@ -1,12 +1,13 @@
+// Konum: app/src/main/java/com/example/payday/PaydayViewModel.kt
+
 package com.example.payday
 
 import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.*
 import com.github.mikephil.charting.data.PieEntry
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -28,7 +29,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private val _newAchievementEvent = MutableLiveData<Event<Achievement>>()
     val newAchievementEvent: LiveData<Event<Achievement>> = _newAchievementEvent
 
-    val allTransactions: LiveData<List<Transaction>> = repository.getAllTransactions().asLiveData()
+    private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val transactionsForCurrentCycle: LiveData<List<Transaction>> = currentPayCycle.flatMapLatest { cycle ->
+        if (cycle != null) {
+            repository.getTransactionsBetweenDates(cycle.first, cycle.second)
+        } else {
+            flowOf(emptyList())
+        }
+    }.asLiveData()
+
 
     init {
         checkWeeklyAchievement()
@@ -57,87 +68,76 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun loadData() {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun loadData() {
         viewModelScope.launch {
             combine(
-                repository.getTotalExpenses(),
-                repository.getSpendingByCategory(),
                 repository.getPayPeriod(),
                 repository.getPaydayValue(),
                 repository.getBiWeeklyRefDateString(),
-                repository.getSalaryAmount(),
                 repository.isWeekendAdjustmentEnabled(),
+                repository.getSalaryAmount(),
                 repository.getMonthlySavingsAmount(),
                 repository.getGoals()
             ) { values ->
-                val totalExpenses = values[0] as? Double ?: 0.0
-                val categorySpending = values[1] as? List<CategorySpending> ?: emptyList()
-                val payPeriod = values[2] as PayPeriod
-                val paydayValue = values[3] as Int
-                val biWeeklyRefDate = values[4] as? String
-                val salaryAmount = values[5] as Long
-                val weekendAdjustment = values[6] as Boolean
-                val monthlySavings = values[7] as Long
-                val goals = values[8] as? MutableList<SavingsGoal> ?: mutableListOf()
+                val payPeriod = values[0] as PayPeriod
+                val paydayValue = values[1] as Int
+                val biWeeklyRefDate = values[2] as? String
+                val weekendAdjustment = values[3] as Boolean
+                val salaryAmount = values[4] as Long
+                val monthlySavings = values[5] as Long
+                val goals = values[6] as MutableList<SavingsGoal>
 
-                updateUi(totalExpenses, categorySpending, payPeriod, paydayValue, biWeeklyRefDate, salaryAmount, weekendAdjustment, monthlySavings, goals)
+                val result = PaydayCalculator.calculate(payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
-            }.collectLatest { }
+                if (result != null) {
+                    currentPayCycle.value = Pair(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
+
+                    checkAndProcessNewCycle(result)
+
+                    val totalExpensesFlow = repository.getTotalExpensesBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
+                    val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
+
+                    combine(totalExpensesFlow, categorySpendingFlow) { totalExpenses, categorySpending ->
+                        updateUi(result, salaryAmount, monthlySavings, totalExpenses ?: 0.0, categorySpending, goals)
+                    }.collect()
+                } else {
+                    _uiState.postValue(PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message)))
+                }
+            }.collect()
         }
     }
 
-    private fun updateUi(totalExpenses: Double, categorySpending: List<CategorySpending>, payPeriod: PayPeriod, paydayValue: Int, biWeeklyRefDateString: String?, salaryAmount: Long, weekendAdjustmentEnabled: Boolean, monthlySavingsAmount: Long, goals: List<SavingsGoal>) {
+    private fun updateUi(
+        paydayResult: PaydayResult,
+        salaryAmount: Long,
+        monthlySavingsAmount: Long,
+        totalExpenses: Double,
+        categorySpending: List<CategorySpending>,
+        goals: List<SavingsGoal>
+    ) {
         viewModelScope.launch {
-            val result = PaydayCalculator.calculate(payPeriod, paydayValue, biWeeklyRefDateString, salaryAmount, weekendAdjustmentEnabled)
-
             val remainingAmount = salaryAmount.toDouble() - totalExpenses
-
-            val theoreticalSavings = if (result != null) {
-                val daysPassed = result.totalDaysInCycle - result.daysLeft
-                val dailySavingsRate = if (result.totalDaysInCycle > 0) monthlySavingsAmount.toDouble() / result.totalDaysInCycle else 0.0
-                dailySavingsRate * daysPassed.coerceAtLeast(0)
-            } else { 0.0 }
-
-            result?.let {
-                val unlockedIds = repository.getUnlockedAchievementIds().first()
-                if (it.isPayday && !unlockedIds.contains("PAYDAY_HYPE")) {
-                    repository.unlockAchievement("PAYDAY_HYPE")
-                    AchievementsManager.getAllAchievements().find { ach -> ach.id == "PAYDAY_HYPE" }?.let { ach ->
-                        _newAchievementEvent.postValue(Event(ach))
-                    }
-                }
-                if (theoreticalSavings >= 1000 && !unlockedIds.contains("SAVER_LV1")) {
-                    repository.unlockAchievement("SAVER_LV1")
-                    AchievementsManager.getAllAchievements().find { ach -> ach.id == "SAVER_LV1" }?.let { ach ->
-                        _newAchievementEvent.postValue(Event(ach))
-                    }
-                }
-            }
 
             val pieEntries = categorySpending.map { spending ->
                 val category = ExpenseCategory.fromId(spending.categoryId)
                 PieEntry(spending.totalAmount.toFloat(), category.categoryName)
             }
 
-            val transactionsList = allTransactions.value ?: emptyList()
-            val newState = if (result == null) {
-                PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message))
-            } else {
-                PaydayUiState(
-                    daysLeftText = if (result.isPayday) "🎉" else result.daysLeft.toString(),
-                    daysLeftSuffix = if (result.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
-                    isPayday = result.isPayday,
-                    savingsGoals = goals,
-                    areGoalsVisible = goals.isNotEmpty(),
-                    areTransactionsVisible = transactionsList.isNotEmpty(),
-                    incomeText = formatCurrency(salaryAmount.toDouble()),
-                    expensesText = "- ${formatCurrency(totalExpenses)}",
-                    remainingText = formatCurrency(remainingAmount),
-                    actualRemainingAmountForGoals = remainingAmount,
-                    categorySpendingData = pieEntries
-                )
-            }
+            val transactionsList = transactionsForCurrentCycle.value ?: emptyList()
+            val newState = PaydayUiState(
+                daysLeftText = if (paydayResult.isPayday) "🎉" else paydayResult.daysLeft.toString(),
+                daysLeftSuffix = if (paydayResult.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
+                isPayday = paydayResult.isPayday,
+                savingsGoals = goals,
+                areGoalsVisible = goals.isNotEmpty(),
+                areTransactionsVisible = transactionsList.isNotEmpty(),
+                incomeText = formatCurrency(salaryAmount.toDouble()),
+                expensesText = "- ${formatCurrency(totalExpenses)}",
+                remainingText = formatCurrency(remainingAmount),
+                actualRemainingAmountForGoals = remainingAmount,
+                categorySpendingData = pieEntries
+            )
             _uiState.postValue(newState)
             _widgetUpdateEvent.postValue(Event(Unit))
         }
@@ -207,7 +207,62 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         repository.saveGoals(currentGoals)
     }
 
-    fun onSettingsResult() {}
+    fun onSettingsResult() {
+        loadData()
+    }
+
+    private suspend fun checkAndProcessNewCycle(result: PaydayResult) {
+        val lastProcessedCycleEndDateStr = repository.getLastProcessedCycleEndDate().first()
+        val currentCycleStartDate = result.cycleStartDate
+
+        if (lastProcessedCycleEndDateStr == null || LocalDate.parse(lastProcessedCycleEndDateStr).isBefore(currentCycleStartDate)) {
+            val templates = repository.getRecurringTransactionTemplates().first()
+            templates.forEach { template ->
+                val newTransaction = Transaction(
+                    name = template.name,
+                    amount = template.amount,
+                    date = Date(),
+                    categoryId = template.categoryId,
+                    isRecurringTemplate = false
+                )
+                repository.insertTransaction(newTransaction)
+            }
+            repository.saveLastProcessedCycleEndDate(result.cycleEndDate)
+        }
+    }
+
+    fun addFundsToGoal(goalId: String, amountToAdd: Double) = viewModelScope.launch {
+        val currentState = _uiState.value ?: return@launch
+        val currentGoals = repository.getGoals().first().toMutableList()
+
+        val goalIndex = currentGoals.indexOfFirst { it.id == goalId }
+        if (goalIndex == -1) return@launch
+
+        val goal = currentGoals[goalIndex]
+
+        if (amountToAdd > currentState.actualRemainingAmountForGoals) {
+            return@launch
+        }
+
+        val neededAmount = goal.targetAmount - goal.savedAmount
+        val finalAmountToAdd = minOf(amountToAdd, neededAmount)
+
+        if (finalAmountToAdd <= 0) return@launch
+
+        val updatedGoal = goal.copy(savedAmount = goal.savedAmount + finalAmountToAdd)
+        currentGoals[goalIndex] = updatedGoal
+
+        repository.saveGoals(currentGoals)
+
+        val transaction = Transaction(
+            name = "'${goal.name}' hedefine aktarıldı",
+            amount = finalAmountToAdd,
+            date = Date(),
+            categoryId = ExpenseCategory.OTHER.ordinal,
+            isRecurringTemplate = false
+        )
+        repository.insertTransaction(transaction)
+    }
 
     private fun formatCurrency(amount: Double): String {
         return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
