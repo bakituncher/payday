@@ -6,8 +6,16 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class PaydayWidgetProvider : AppWidgetProvider() {
+
+    // Widget'ın kendi CoroutineScope'u
+    private val appWidgetScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onUpdate(
         context: Context,
@@ -19,25 +27,12 @@ class PaydayWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val thisAppWidget = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
-            if (thisAppWidget != null) {
-                for (appWidgetId in thisAppWidget) {
-                    updateAppWidget(context, appWidgetManager, appWidgetId)
-                }
-            }
-        }
-    }
-
-    companion object {
-        internal fun updateAppWidget(
-            context: Context,
-            appWidgetManager: AppWidgetManager,
-            appWidgetId: Int
-        ) {
+    private fun updateAppWidget(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int
+    ) {
+        appWidgetScope.launch {
             val intent = Intent(context, MainActivity::class.java)
             val pendingIntent = PendingIntent.getActivity(
                 context, 0, intent,
@@ -48,12 +43,20 @@ class PaydayWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
             val repository = PaydayRepository(context)
+
+            // Flow'lardan verileri asenkron olarak 'first()' ile al
+            val payPeriod = repository.getPayPeriod().first()
+            val paydayValue = repository.getPaydayValue().first()
+            val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
+            val salary = repository.getSalaryAmount().first()
+            val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
+
             val result = PaydayCalculator.calculate(
-                payPeriod = repository.getPayPeriod(),
-                paydayValue = repository.getPaydayValue(),
-                biWeeklyRefDateString = repository.getBiWeeklyRefDateString(),
-                salaryAmount = repository.getSalaryAmount(),
-                weekendAdjustmentEnabled = repository.isWeekendAdjustmentEnabled()
+                payPeriod = payPeriod,
+                paydayValue = paydayValue,
+                biWeeklyRefDateString = biWeeklyRefDate,
+                salaryAmount = salary,
+                weekendAdjustmentEnabled = weekendAdjustment
             )
 
             if (result == null) {
@@ -68,7 +71,6 @@ class PaydayWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_suffix_text_view, context.getString(R.string.widget_days_left))
                 }
             }
-
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }

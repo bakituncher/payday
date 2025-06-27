@@ -6,6 +6,7 @@ import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.example.payday.databinding.ActivityOnboardingBinding
@@ -14,10 +15,13 @@ import com.example.payday.onboarding.OnboardingPaydayFragment
 import com.example.payday.onboarding.OnboardingSalaryFragment
 import com.example.payday.onboarding.OnboardingSavingsFragment
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class OnboardingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityOnboardingBinding
+    // Bu uyarıyı görmezden gelin, fragment'lar için gereklidir.
     private val viewModel: PaydayViewModel by viewModels()
     private lateinit var repository: PaydayRepository
 
@@ -25,11 +29,19 @@ class OnboardingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         repository = PaydayRepository(this)
 
-        if (repository.isOnboardingComplete()) {
-            navigateToMain()
-            return
+        // Coroutine başlatarak kurulumun tamamlanıp tamamlanmadığını kontrol et
+        lifecycleScope.launch {
+            // Flow'dan ilk gelen değeri al ve kontrol et
+            if (repository.isOnboardingComplete().first()) {
+                navigateToMain()
+            } else {
+                // Kurulum tamamlanmadıysa, UI'ı oluştur
+                setupUI()
+            }
         }
+    }
 
+    private fun setupUI() {
         binding = ActivityOnboardingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupViewPager()
@@ -69,13 +81,16 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun onOnboardingFinished() {
-        repository.setOnboardingComplete(true)
-        navigateToMain()
+        // suspend fonksiyonu coroutine içinde çağır
+        lifecycleScope.launch {
+            repository.setOnboardingComplete(true)
+            navigateToMain()
+        }
     }
 
     private fun navigateToMain() {
         startActivity(Intent(this, MainActivity::class.java))
-        finish()
+        finish() // Bu activity'yi kapat ki geri tuşuyla dönülmesin
     }
 
     private class OnboardingAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {

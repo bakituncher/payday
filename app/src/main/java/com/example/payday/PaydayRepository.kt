@@ -1,119 +1,90 @@
 package com.example.payday
 
 import android.content.Context
-import androidx.core.content.edit
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "PaydayPrefs")
 
 class PaydayRepository(context: Context) {
 
     private val gson = Gson()
-    private val prefs = context.getSharedPreferences("PaydayPrefs", Context.MODE_PRIVATE)
+    private val prefs = context.dataStore
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
 
     companion object {
-        const val KEY_PAYDAY_VALUE = "payday"
-        const val KEY_WEEKEND_ADJUSTMENT = "weekend_adjustment"
-        const val KEY_SALARY = "salary"
-        const val KEY_PAY_PERIOD = "pay_period"
-        const val KEY_BI_WEEKLY_REF_DATE = "bi_weekly_ref_date"
-        const val KEY_SAVINGS_GOALS = "savings_goals"
-        const val KEY_MONTHLY_SAVINGS = "monthly_savings"
-        const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
-        const val KEY_UNLOCKED_ACHIEVEMENTS = "unlocked_achievements"
-        const val KEY_FIRST_LAUNCH_DATE = "first_launch_date"
+        val KEY_PAYDAY_VALUE = intPreferencesKey("payday")
+        val KEY_WEEKEND_ADJUSTMENT = booleanPreferencesKey("weekend_adjustment")
+        val KEY_SALARY = longPreferencesKey("salary")
+        val KEY_PAY_PERIOD = stringPreferencesKey("pay_period")
+        val KEY_BI_WEEKLY_REF_DATE = stringPreferencesKey("bi_weekly_ref_date")
+        val KEY_SAVINGS_GOALS = stringPreferencesKey("savings_goals")
+        val KEY_MONTHLY_SAVINGS = longPreferencesKey("monthly_savings")
+        val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+        val KEY_UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
+        val KEY_FIRST_LAUNCH_DATE = stringPreferencesKey("first_launch_date")
     }
 
-    // First Launch Date Functions
-    fun getFirstLaunchDate(): String? {
-        return prefs.getString(KEY_FIRST_LAUNCH_DATE, null)
-    }
+    // --- Okuma Fonksiyonları (Flow<T> döndürür) ---
+    fun getPayPeriod(): Flow<PayPeriod> = prefs.data.map { PayPeriod.valueOf(it[KEY_PAY_PERIOD] ?: PayPeriod.MONTHLY.name) }
+    fun getPaydayValue(): Flow<Int> = prefs.data.map { it[KEY_PAYDAY_VALUE] ?: -1 }
+    fun getBiWeeklyRefDateString(): Flow<String?> = prefs.data.map { it[KEY_BI_WEEKLY_REF_DATE] }
+    fun getSalaryAmount(): Flow<Long> = prefs.data.map { it[KEY_SALARY] ?: 0L }
+    fun isWeekendAdjustmentEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_WEEKEND_ADJUSTMENT] ?: false }
+    fun getMonthlySavingsAmount(): Flow<Long> = prefs.data.map { it[KEY_MONTHLY_SAVINGS] ?: 0L }
+    fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
+    fun getFirstLaunchDate(): Flow<String?> = prefs.data.map { it[KEY_FIRST_LAUNCH_DATE] }
 
-    fun setFirstLaunchDate(date: LocalDate) {
-        prefs.edit {
-            putString(KEY_FIRST_LAUNCH_DATE, date.format(DateTimeFormatter.ISO_LOCAL_DATE))
+    fun getGoals(): Flow<MutableList<SavingsGoal>> {
+        return prefs.data.map { preferences ->
+            val jsonGoals = preferences[KEY_SAVINGS_GOALS]
+            if (jsonGoals != null) {
+                val type = object : TypeToken<MutableList<SavingsGoal>>() {}.type
+                gson.fromJson(jsonGoals, type)
+            } else {
+                mutableListOf()
+            }
         }
     }
 
-    // Transaction Functions
+    // Başarım ID'lerini Flow olarak oku
+    fun getUnlockedAchievementIds(): Flow<Set<String>> {
+        return prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
+    }
+
+    // --- Yazma Fonksiyonları (suspend) ---
+    suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
+    suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
+    suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
+    suspend fun saveGoals(goals: List<SavingsGoal>) = prefs.edit { it[KEY_SAVINGS_GOALS] = gson.toJson(goals) }
+    suspend fun setOnboardingComplete(isComplete: Boolean) = prefs.edit { it[KEY_ONBOARDING_COMPLETE] = isComplete }
+    suspend fun saveBiWeeklyReferenceDate(date: LocalDate) = prefs.edit { it[KEY_BI_WEEKLY_REF_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    suspend fun saveMonthlySavings(amount: Long) = prefs.edit { it[KEY_MONTHLY_SAVINGS] = amount }
+    suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+
+    // Başarım kilidini aç (suspend)
+    suspend fun unlockAchievement(achievementId: String) {
+        prefs.edit { preferences ->
+            val unlocked = preferences[KEY_UNLOCKED_ACHIEVEMENTS]?.toMutableSet() ?: mutableSetOf()
+            if (unlocked.add(achievementId)) {
+                preferences[KEY_UNLOCKED_ACHIEVEMENTS] = unlocked
+            }
+        }
+    }
+
+
+    // --- Room Veritabanı Fonksiyonları (Değişiklik Yok) ---
     fun getAllTransactions(): Flow<List<Transaction>> = transactionDao.getAllTransactions()
     fun getTotalExpenses(): Flow<Double?> = transactionDao.getTotalExpenses()
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
     suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
     fun getSpendingByCategory(): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategory()
-
-
-    // Settings Functions
-    fun savePayday(day: Int) {
-        prefs.edit {
-            putInt(KEY_PAYDAY_VALUE, day)
-            remove(KEY_BI_WEEKLY_REF_DATE)
-        }
-    }
-
-    fun savePayPeriod(payPeriod: PayPeriod) {
-        prefs.edit { putString(KEY_PAY_PERIOD, payPeriod.name) }
-    }
-
-    fun saveBiWeeklyReferenceDate(date: LocalDate) {
-        prefs.edit {
-            putString(KEY_BI_WEEKLY_REF_DATE, date.format(DateTimeFormatter.ISO_LOCAL_DATE))
-            remove(KEY_PAYDAY_VALUE)
-        }
-    }
-
-    fun saveSalary(salary: Long) {
-        prefs.edit { putLong(KEY_SALARY, salary) }
-    }
-
-    fun saveMonthlySavings(amount: Long) {
-        prefs.edit { putLong(KEY_MONTHLY_SAVINGS, amount) }
-    }
-
-    fun getPaydayValue(): Int = prefs.getInt(KEY_PAYDAY_VALUE, -1)
-    fun getPayPeriod(): PayPeriod = PayPeriod.valueOf(prefs.getString(KEY_PAY_PERIOD, PayPeriod.MONTHLY.name)!!)
-    fun getBiWeeklyRefDateString(): String? = prefs.getString(KEY_BI_WEEKLY_REF_DATE, null)
-    fun getSalaryAmount(): Long = prefs.getLong(KEY_SALARY, 0L)
-    fun isWeekendAdjustmentEnabled(): Boolean = prefs.getBoolean(KEY_WEEKEND_ADJUSTMENT, false)
-    fun getMonthlySavingsAmount(): Long = prefs.getLong(KEY_MONTHLY_SAVINGS, 0L)
-
-
-    // Savings Goal Functions
-    fun saveGoals(goals: List<SavingsGoal>) {
-        val jsonGoals = gson.toJson(goals)
-        prefs.edit { putString(KEY_SAVINGS_GOALS, jsonGoals) }
-    }
-
-    fun getGoals(): MutableList<SavingsGoal> {
-        val jsonGoals = prefs.getString(KEY_SAVINGS_GOALS, null)
-        return if (jsonGoals != null) {
-            val type = object : TypeToken<MutableList<SavingsGoal>>() {}.type
-            gson.fromJson(jsonGoals, type)
-        } else {
-            mutableListOf()
-        }
-    }
-
-    // Achievement Functions
-    fun getUnlockedAchievementIds(): Set<String> {
-        return prefs.getStringSet(KEY_UNLOCKED_ACHIEVEMENTS, emptySet()) ?: emptySet()
-    }
-
-    fun unlockAchievement(achievementId: String) {
-        val unlocked = getUnlockedAchievementIds().toMutableSet()
-        if (unlocked.add(achievementId)) {
-            prefs.edit { putStringSet(KEY_UNLOCKED_ACHIEVEMENTS, unlocked) }
-        }
-    }
-
-    // Onboarding Functions
-    fun setOnboardingComplete(isComplete: Boolean) {
-        prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, isComplete) }
-    }
-
-    fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
 }

@@ -1,13 +1,16 @@
 package com.example.payday
 
 import android.app.DatePickerDialog
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.InputType
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -25,97 +28,104 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
 
-        // Maaş günü seçimi için dinleyici
-        findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE)?.setOnPreferenceClickListener {
-            showPaydaySelectionDialog()
-            true
-        }
-
-        // DÜZELTME: Maaş ve Tasarruf alanlarının doğru şekilde (sayı olarak) kaydedilmesini sağlıyoruz.
-        setupCurrencyPreference(PaydayRepository.KEY_SALARY)
-        setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS)
+        setupPayPeriodPreference()
+        setupPaydayPreference()
+        // Maaş ve Tasarruf alanları için özel dinleyiciyi kuruyoruz
+        setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
+        setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
     }
 
+    private fun setupPayPeriodPreference() {
+        val payPeriodPref = findPreference<ListPreference>(PaydayRepository.KEY_PAY_PERIOD.name)
+        payPeriodPref?.setOnPreferenceChangeListener { _, _ ->
+            lifecycleScope.launch {
+                repository.savePayday(-1)
+            }
+            true
+        }
+    }
+
+    private fun setupPaydayPreference() {
+        findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE.name)?.setOnPreferenceClickListener {
+            lifecycleScope.launch {
+                showPaydaySelectionDialog()
+            }
+            true
+        }
+    }
+
+    // *** HATAYI DÜZELTEN KISIM BURASI ***
     private fun setupCurrencyPreference(key: String) {
         val preference = findPreference<EditTextPreference>(key)
         preference?.setOnBindEditTextListener { editText ->
             editText.inputType = InputType.TYPE_CLASS_NUMBER
         }
 
-        // Değer değiştiğinde, metin olarak değil, sayı (Long) olarak kaydedilmesini sağlıyoruz.
         preference?.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { pref, newValue ->
+            // Gelen yeni değeri (String) Long'a çevir
             val valueAsLong = (newValue as? String)?.toLongOrNull() ?: 0L
 
-            if (key == PaydayRepository.KEY_SALARY) {
-                repository.saveSalary(valueAsLong)
-            } else if (key == PaydayRepository.KEY_MONTHLY_SAVINGS) {
-                repository.saveMonthlySavings(valueAsLong)
+            // Coroutine içinde ilgili repository fonksiyonunu çağır
+            lifecycleScope.launch {
+                if (key == PaydayRepository.KEY_SALARY.name) {
+                    repository.saveSalary(valueAsLong)
+                } else if (key == PaydayRepository.KEY_MONTHLY_SAVINGS.name) {
+                    repository.saveMonthlySavings(valueAsLong)
+                }
+                // Kaydettikten sonra özeti güncelle
+                pref.summary = formatToCurrency(valueAsLong)
             }
 
-            // Özeti manuel olarak güncelliyoruz.
-            pref.summary = formatToCurrency(valueAsLong)
-
-            // false dönerek EditTextPreference'ın kendisinin metin olarak kaydetmesini engelliyoruz.
+            // 'false' döndürerek EditTextPreference'ın değeri kendisinin
+            // String olarak kaydetmesini engelliyoruz.
             false
         }
     }
 
-
     override fun onResume() {
         super.onResume()
-        preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(sharedPreferenceListener)
-        updateAllSummaries() // Ekrana dönüldüğünde özetleri yenile
-    }
-
-    override fun onPause() {
-        super.onPause()
-        preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(sharedPreferenceListener)
-    }
-
-    // Maaş periyodu gibi diğer ayar değişikliklerini dinlemek için
-    private val sharedPreferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == PaydayRepository.KEY_PAY_PERIOD) {
-            repository.savePayday(-1) // Eski maaş günü ayarını temizle
-            updateAllSummaries()
-        }
+        updateAllSummaries()
     }
 
     private fun updateAllSummaries() {
-        updatePaydaySummary()
-        updateCurrencySummary(PaydayRepository.KEY_SALARY, repository.getSalaryAmount())
-        updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS, repository.getMonthlySavingsAmount())
+        lifecycleScope.launch {
+            updatePaydaySummary()
+            updateCurrencySummary(PaydayRepository.KEY_SALARY.name, repository.getSalaryAmount().first())
+            updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS.name, repository.getMonthlySavingsAmount().first())
+        }
     }
 
-    private fun updatePaydaySummary() {
-        val paydayPref = findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE)
-        val period = repository.getPayPeriod()
-        val dayValue = repository.getPaydayValue()
-        val dateString = repository.getBiWeeklyRefDateString()
+    private suspend fun updatePaydaySummary() {
+        val paydayPref = findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE.name)
+        val period = repository.getPayPeriod().first()
+        val dayValue = repository.getPaydayValue().first()
+        val dateString = repository.getBiWeeklyRefDateString().first()
 
         paydayPref?.summary = when (period) {
             PayPeriod.MONTHLY -> if (dayValue != -1) "Her ayın $dayValue. günü" else getString(R.string.payday_not_set)
             PayPeriod.WEEKLY -> if (dayValue != -1) "Her hafta ${DayOfWeek.of(dayValue).getDisplayName(TextStyle.FULL, Locale("tr"))}" else getString(R.string.payday_not_set)
-            PayPeriod.BI_WEEKLY -> if (dateString != null) LocalDate.parse(dateString).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale("tr"))) else getString(R.string.payday_not_set)
+            PayPeriod.BI_WEEKLY -> if (!dateString.isNullOrEmpty()) LocalDate.parse(dateString).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale("tr"))) else getString(R.string.payday_not_set)
         }
     }
 
     private fun updateCurrencySummary(key: String, value: Long) {
-        findPreference<EditTextPreference>(key)?.summary = formatToCurrency(value)
+        val pref = findPreference<EditTextPreference>(key)
+        pref?.summary = formatToCurrency(value)
+        pref?.text = if (value > 0) value.toString() else null
     }
 
     private fun formatToCurrency(value: Long): String {
         return if (value > 0) currencyFormatter.format(value) else getString(R.string.payday_not_set)
     }
 
-    private fun showPaydaySelectionDialog() {
-        when (repository.getPayPeriod()) {
+    private suspend fun showPaydaySelectionDialog() {
+        when (repository.getPayPeriod().first()) {
             PayPeriod.MONTHLY -> {
                 val days = (1..31).map { it.toString() }.toTypedArray()
                 AlertDialog.Builder(requireContext())
                     .setTitle(R.string.select_payday_dialog_title)
                     .setItems(days) { _, which ->
-                        repository.savePayday(which + 1)
-                        updatePaydaySummary()
+                        lifecycleScope.launch { repository.savePayday(which + 1); updatePaydaySummary() }
                     }
                     .show()
             }
@@ -124,21 +134,22 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 AlertDialog.Builder(requireContext())
                     .setTitle(R.string.select_payday_dialog_title)
                     .setItems(daysOfWeek) { _, which ->
-                        repository.savePayday(which + 1)
-                        updatePaydaySummary()
+                        lifecycleScope.launch { repository.savePayday(which + 1); updatePaydaySummary() }
                     }
                     .show()
             }
             PayPeriod.BI_WEEKLY -> {
-                val c = Calendar.getInstance()
-                repository.getBiWeeklyRefDateString()?.let {
+                val today = Calendar.getInstance()
+                repository.getBiWeeklyRefDateString().first()?.let {
                     val date = LocalDate.parse(it)
-                    c.set(date.year, date.monthValue - 1, date.dayOfMonth)
+                    today.set(date.year, date.monthValue - 1, date.dayOfMonth)
                 }
                 DatePickerDialog(requireContext(), { _, year, month, day ->
-                    repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, day))
-                    updatePaydaySummary()
-                }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+                    lifecycleScope.launch {
+                        repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, day))
+                        updatePaydaySummary()
+                    }
+                }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
             }
         }
     }

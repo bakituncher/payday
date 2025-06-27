@@ -1,20 +1,19 @@
-# gradle/libs.versions.toml
-
 [versions]
 agp = "8.10.0"
-desugar_jdk_libs = "2.1.5"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
+appcompat = "1.7.1"
+material = "1.12.0"
+# --- Sürümler Güncellendi ---
+lifecycle = "2.9.1"
+activityKtx = "1.10.1"
+room = "2.7.2"
+# -------------------------
+desugar_jdk_libs = "2.1.5"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-appcompat = "1.7.1"
-material = "1.12.0"
-# activity = "1.10.1"  -> activityKtx bunu kapsayacak, bu satırı güncelleyelim
 constraintlayout = "2.2.1"
-lifecycle = "2.8.3" # YENİ
-activityKtx = "1.9.1" # YENİ (eski activity'yi güncelliyoruz)
-
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -24,12 +23,13 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-# androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" } -> Bu satırı silip yenisini ekleyin
-androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" } # YENİ
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" } # YENİ
-androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" } # YENİ
-
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

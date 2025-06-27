@@ -10,13 +10,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -24,8 +23,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.payday.databinding.ActivityMainBinding
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import nl.dionsegijn.konfetti.core.Party
@@ -46,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
-                // İzin verildi.
+                // İzin verildi, gelecekte bildirimler çalışacaktır.
             }
         }
 
@@ -59,6 +56,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Toolbar'ı Action Bar olarak ayarla
+        setSupportActionBar(binding.toolbar)
+
         setupRecyclerViews()
         setupListeners()
         setupObservers()
@@ -66,25 +66,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.settingsButton.setOnClickListener {
-            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
-        }
-        binding.addGoalButton.setOnClickListener { showGoalDialog() }
-        binding.achievementsButton.setOnClickListener {
-            startActivity(Intent(this, AchievementsActivity::class.java))
-        }
-        binding.addTransactionFab.setOnClickListener {
-            showTransactionDialog()
+        // DialogFragment'a taşındığı için bu metod artık daha temiz.
+        binding.addGoalButton.setOnClickListener {
+            SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
         }
 
-        binding.reportsButton.setOnClickListener {
-            startActivity(Intent(this, ReportsActivity::class.java))
+        binding.addTransactionFab.setOnClickListener {
+            // Yeni harcama için null ID ile çağır
+            TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
         }
     }
 
     private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
-            onEditClicked = { goal -> showGoalDialog(goal) },
+            onEditClicked = { goal ->
+                // Düzenleme için DialogFragment'ı ID ile çağır
+                SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
+            },
             onDeleteClicked = { goal ->
                 MaterialAlertDialogBuilder(this)
                     .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
@@ -98,7 +96,8 @@ class MainActivity : AppCompatActivity() {
 
         transactionAdapter = TransactionAdapter(
             onEditClicked = { transaction ->
-                showTransactionDialog(transaction)
+                // Düzenleme için DialogFragment'ı ID ile çağır
+                TransactionDialogFragment.newInstance(transaction.id).show(supportFragmentManager, TransactionDialogFragment.TAG)
             },
             onDeleteClicked = { transaction ->
                 MaterialAlertDialogBuilder(this)
@@ -168,85 +167,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // DÜZELTME: Bu fonksiyon artık kategori seçim mantığını da içeriyor.
-    private fun showTransactionDialog(existingTransaction: Transaction? = null) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_transaction_input, null)
-        val nameEditText = dialogView.findViewById<EditText>(R.id.transactionNameEditText)
-        val amountEditText = dialogView.findViewById<EditText>(R.id.transactionAmountEditText)
-        val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.categoryChipGroup)
-        var selectedCategoryId = existingTransaction?.categoryId ?: ExpenseCategory.OTHER.ordinal
-
-        // Kategorileri Chip olarak diyaloğa ekle
-        ExpenseCategory.values().forEach { category ->
-            val chip = Chip(this).apply {
-                text = category.categoryName
-                id = category.ordinal // Her chip'e ID olarak enum'un sırasını veriyoruz.
-                isCheckable = true
-                isChecked = (id == selectedCategoryId) // Düzenleme modunda doğru chip'i seçili yap.
-            }
-            categoryChipGroup.addView(chip)
-        }
-
-        // Chip seçimini dinle
-        categoryChipGroup.setOnCheckedChangeListener { _, checkedId ->
-            selectedCategoryId = if (checkedId != View.NO_ID) checkedId else ExpenseCategory.OTHER.ordinal
-        }
-
-
-        val dialogTitleRes = if (existingTransaction == null) R.string.add_transaction else R.string.edit_transaction_title
-
-        existingTransaction?.let {
-            nameEditText.setText(it.name)
-            amountEditText.setText(it.amount.toString())
-        }
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle(dialogTitleRes)
-            .setView(dialogView)
-            .setPositiveButton(getString(R.string.save)) { _, _ ->
-                val name = nameEditText.text.toString()
-                val amount = amountEditText.text.toString().toDoubleOrNull()
-                if (name.isNotBlank() && amount != null && amount > 0) {
-                    if (existingTransaction == null) {
-                        viewModel.insertTransaction(name, amount, selectedCategoryId)
-                    } else {
-                        viewModel.updateTransaction(existingTransaction.id, name, amount, selectedCategoryId)
-                    }
-                } else {
-                    Toast.makeText(this, "Lütfen geçerli bir ad ve tutar girin.", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
-
-    private fun showGoalDialog(existingGoal: SavingsGoal? = null) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_goal_input, null)
-        val nameEditText = dialogView.findViewById<EditText>(R.id.goalNameEditText)
-        val amountEditText = dialogView.findViewById<EditText>(R.id.goalAmountEditText)
-
-        val dialogTitle = if (existingGoal == null) getString(R.string.dialog_add_goal_title) else getString(R.string.dialog_edit_goal_title)
-        existingGoal?.let {
-            nameEditText.setText(it.name)
-            amountEditText.setText(it.targetAmount.toLong().toString())
-        }
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle(dialogTitle)
-            .setView(dialogView)
-            .setPositiveButton(getString(R.string.save)) { _, _ ->
-                val name = nameEditText.text.toString()
-                val amount = amountEditText.text.toString().toDoubleOrNull()
-                if (name.isNotBlank() && amount != null && amount > 0) {
-                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id)
-                } else {
-                    Toast.makeText(this, getString(R.string.toast_invalid_goal_input), Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
-
     private fun startConfettiEffect() {
         binding.konfettiView.start(
             Party(
@@ -282,7 +202,9 @@ class MainActivity : AppCompatActivity() {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
         with(NotificationManagerCompat.from(this)) {
-            notify(notificationId, builder.build())
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                notify(notificationId, builder.build())
+            }
         }
     }
 
@@ -300,5 +222,28 @@ class MainActivity : AppCompatActivity() {
 
         snackbarLayout.addView(customView, 0)
         snackbar.show()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> {
+                settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+                true
+            }
+            R.id.action_reports -> {
+                startActivity(Intent(this, ReportsActivity::class.java))
+                true
+            }
+            R.id.action_achievements -> {
+                startActivity(Intent(this, AchievementsActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 }

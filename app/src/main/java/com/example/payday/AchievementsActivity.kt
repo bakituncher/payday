@@ -1,11 +1,12 @@
-// Dosya: app/src/main/java/com/example/payday/AchievementsActivity.kt
-
 package com.example.payday
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.payday.databinding.ActivityAchievementsBinding
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class AchievementsActivity : AppCompatActivity() {
 
@@ -19,7 +20,10 @@ class AchievementsActivity : AppCompatActivity() {
         repository = PaydayRepository(this)
 
         setupToolbar()
-        setupRecyclerView()
+        // RecyclerView'ı bir coroutine içinde kur
+        lifecycleScope.launch {
+            setupRecyclerView()
+        }
     }
 
     private fun setupToolbar() {
@@ -28,9 +32,11 @@ class AchievementsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupRecyclerView() {
+    // Bu fonksiyon artık suspend olabilir veya içinde coroutine başlatabilir.
+    private suspend fun setupRecyclerView() {
         val allAchievements = AchievementsManager.getAllAchievements().toMutableList()
-        val unlockedIds = repository.getUnlockedAchievementIds()
+        // Flow'dan kilitli ID listesini asenkron olarak al
+        val unlockedIds = repository.getUnlockedAchievementIds().first()
 
         // Başarımların kilit durumunu güncelle
         allAchievements.forEach { achievement ->

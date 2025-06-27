@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_reports"
+        android:icon="@drawable/ic_reports"
+        android:title="@string/reports_title"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_achievements"
+        android:icon="@android:drawable/btn_star"
+        android:title="@string/achievements"
+        app:showAsAction="ifRoom"
+        app:iconTint="@color/text_secondary" />
+
     <item
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
-        android:title="Ayarlar"
+        android:title="@string/settings_title"
         app:showAsAction="ifRoom" />
 </menu>

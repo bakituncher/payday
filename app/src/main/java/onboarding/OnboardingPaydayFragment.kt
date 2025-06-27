@@ -6,12 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.payday.PayPeriod
 import com.example.payday.PaydayRepository
 import com.example.payday.PaydayViewModel
 import com.example.payday.R
 import com.example.payday.databinding.FragmentOnboardingPaydayBinding
 import com.google.android.material.chip.Chip
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class OnboardingPaydayFragment : Fragment() {
@@ -32,11 +35,16 @@ class OnboardingPaydayFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupUIForPayPeriod()
+        // UI kurulumunu bir coroutine içinde başlat
+        viewLifecycleOwner.lifecycleScope.launch {
+            setupUIForPayPeriod()
+        }
     }
 
-    private fun setupUIForPayPeriod() {
-        val payPeriod = repository.getPayPeriod()
+    // Fonksiyonu 'suspend' olarak işaretle
+    private suspend fun setupUIForPayPeriod() {
+        // repository'den gelen Flow'dan .first() ile ilk değeri al
+        val payPeriod = repository.getPayPeriod().first()
 
         when (payPeriod) {
             PayPeriod.MONTHLY -> {
@@ -61,7 +69,6 @@ class OnboardingPaydayFragment : Fragment() {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun setupWeeklyPicker() {
         val daysOfWeek = resources.getStringArray(R.array.days_of_week)
         binding.daysOfWeekChipGroup.removeAllViews()
@@ -69,14 +76,16 @@ class OnboardingPaydayFragment : Fragment() {
             val chip = Chip(requireContext()).apply {
                 text = dayName
                 isCheckable = true
-                id = index
+                id = index + 1
             }
             binding.daysOfWeekChipGroup.addView(chip)
         }
 
-        binding.daysOfWeekChipGroup.setOnCheckedChangeListener { _, checkedId ->
-            if (checkedId != View.NO_ID) {
-                viewModel.savePayday(checkedId + 1)
+        // Deprecated olan listener'ı yenisiyle değiştiriyoruz
+        binding.daysOfWeekChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+            // listede seçili ID varsa onu kullan
+            if (checkedIds.isNotEmpty()) {
+                viewModel.savePayday(checkedIds.first())
             }
         }
     }
