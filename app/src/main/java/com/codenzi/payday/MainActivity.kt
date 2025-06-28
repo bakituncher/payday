@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/MainActivity.kt
+// Konum: app/src/main/java/com/codenzi/payday/MainActivity.kt
 
 package com.codenzi.payday
 
@@ -17,6 +17,8 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -43,6 +45,14 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: PaydayViewModel by viewModels()
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
     private lateinit var transactionAdapter: TransactionAdapter
+
+    // --- Animasyon Değişkenleri ---
+    private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
+    private val rotateClose: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_backward) }
+    private val fromBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_open) }
+    private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
+    private var isFabMenuOpen = false
+    // ---------------------------------
 
     private val notificationId = 1
     private val channelId = "payday_channel"
@@ -73,14 +83,58 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.addGoalButton.setOnClickListener {
-            SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
+        // Ana FAB tıklandığında menüyü aç/kapat
+        binding.addTransactionFab.setOnClickListener {
+            toggleFabMenu()
         }
 
-        binding.addTransactionFab.setOnClickListener {
+        // Harcama ekle butonuna tıklandığında
+        binding.addTransactionSecondaryFab.setOnClickListener {
             TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
+            toggleFabMenu() // Menüyü kapat
+        }
+
+        // Tasarruf hedefi ekle butonuna tıklandığında
+        binding.addSavingsGoalFab.setOnClickListener {
+            SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
+            toggleFabMenu() // Menüyü kapat
         }
     }
+
+    // --- Yeni Eklenen Animasyon Fonksiyonları ---
+    private fun toggleFabMenu() {
+        if (isFabMenuOpen) {
+            // Menüyü kapat
+            binding.addTransactionFab.startAnimation(rotateClose)
+            binding.addTransactionSecondaryFab.startAnimation(toBottom)
+            binding.addSavingsGoalFab.startAnimation(toBottom)
+            binding.addTransactionFabLabel.startAnimation(toBottom)
+            binding.addSavingsGoalFabLabel.startAnimation(toBottom)
+
+            binding.addTransactionSecondaryFab.isClickable = false
+            binding.addSavingsGoalFab.isClickable = false
+            binding.addTransactionSecondaryFab.visibility = View.INVISIBLE
+            binding.addSavingsGoalFab.visibility = View.INVISIBLE
+            binding.addTransactionFabLabel.visibility = View.INVISIBLE
+            binding.addSavingsGoalFabLabel.visibility = View.INVISIBLE
+        } else {
+            // Menüyü aç
+            binding.addTransactionFab.startAnimation(rotateOpen)
+            binding.addTransactionSecondaryFab.startAnimation(fromBottom)
+            binding.addSavingsGoalFab.startAnimation(fromBottom)
+            binding.addTransactionFabLabel.startAnimation(fromBottom)
+            binding.addSavingsGoalFabLabel.startAnimation(fromBottom)
+
+            binding.addTransactionSecondaryFab.visibility = View.VISIBLE
+            binding.addSavingsGoalFab.visibility = View.VISIBLE
+            binding.addTransactionFabLabel.visibility = View.VISIBLE
+            binding.addSavingsGoalFabLabel.visibility = View.VISIBLE
+            binding.addTransactionSecondaryFab.isClickable = true
+            binding.addSavingsGoalFab.isClickable = true
+        }
+        isFabMenuOpen = !isFabMenuOpen
+    }
+    // ------------------------------------------
 
     private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
@@ -194,7 +248,10 @@ class MainActivity : AppCompatActivity() {
 
         savingsGoalAdapter.submitList(state.savingsGoals)
 
+        // Tasarruf hedefleri listesinin görünürlüğünü kontrol et
+        binding.savingsGoalsTitleContainer.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
+
 
         if (state.isPayday) {
             startConfettiEffect()

@@ -22,7 +22,6 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -223,15 +222,6 @@
                     android:textSize="22sp"
                     android:textStyle="bold" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/addGoalButton"
-                    style="@style/Widget.MaterialComponents.Button.TextButton.Icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/add_new"
-                    android:textColor="?attr/colorPrimary"
-                    app:icon="@android:drawable/ic_input_add"
-                    app:iconTint="?attr/colorPrimary" />
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -288,17 +278,95 @@
                 tools:visibility="visible" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
     </androidx.core.widget.NestedScrollView>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/addTransactionFab"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:contentDescription="@string/add_transaction"
-        app:backgroundTint="@color/primary"
-        app:srcCompat="@android:drawable/ic_input_add"
-        app:tint="@color/white" />
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/addTransactionSecondaryFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:visibility="invisible"
+            app:backgroundTint="?attr/colorPrimary"
+            app:fabSize="mini"
+            app:layout_constraintBottom_toTopOf="@id/addSavingsGoalFab"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:srcCompat="@drawable/ic_add_expense"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/addTransactionFabLabel"
+            style="@style/TextAppearance.MaterialComponents.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/widget_background"
+            android:backgroundTint="@color/background_card"
+            android:elevation="2dp"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="Harcama Ekle"
+            android:textColor="@color/text_primary"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="@id/addTransactionSecondaryFab"
+            app:layout_constraintEnd_toStartOf="@id/addTransactionSecondaryFab"
+            app:layout_constraintTop_toTopOf="@id/addTransactionSecondaryFab"
+            tools:visibility="visible" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/addSavingsGoalFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:visibility="invisible"
+            app:backgroundTint="?attr/colorPrimary"
+            app:fabSize="mini"
+            app:layout_constraintBottom_toTopOf="@id/addTransactionFab"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:srcCompat="@drawable/ic_add_goal"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/addSavingsGoalFabLabel"
+            style="@style/TextAppearance.MaterialComponents.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/widget_background"
+            android:backgroundTint="@color/background_card"
+            android:elevation="2dp"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="Tasarruf Hedefi Ekle"
+            android:textColor="@color/text_primary"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="@id/addSavingsGoalFab"
+            app:layout_constraintEnd_toStartOf="@id/addSavingsGoalFab"
+            app:layout_constraintTop_toTopOf="@id/addSavingsGoalFab"
+            tools:visibility="visible" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/addTransactionFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/add_transaction"
+            app:backgroundTint="?attr/colorPrimary"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:srcCompat="@android:drawable/ic_input_add"
+            app:tint="@color/white" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
