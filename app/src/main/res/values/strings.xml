@@ -97,6 +97,9 @@
     <string name="select_date_button">Tarih Seç</string>
     <string name="goal_date_info">Hedef: %1$s (%2$d gün kaldı)</string>
     <string name="recurring_transaction_label">Bu harcamayı her ay tekrarla</string>
+    <string name="add_goal_fab">Tasarruf Hedefi Ekle</string>
+    <string name="add_expense_fab">Harcama Ekle</string>
+    <string name="toggle_fab_menu_description">Ekleme menüsünü aç veya kapat</string>
     <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
         <item>@string/pay_period_monthly</item>
