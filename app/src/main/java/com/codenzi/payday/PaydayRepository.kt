@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/PaydayRepository.kt
+// Konum: app/src/main/java/com/codenzi/payday/PaydayRepository.kt
 
 package com.codenzi.payday
 
@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -87,4 +90,50 @@ class PaydayRepository(context: Context) {
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
     suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
+
+    // --- YENİ EKLENEN YEDEKLEME VE GERİ YÜKLEME FONKSİYONLARI ---
+
+    suspend fun getAllDataForBackup(): BackupData = withContext(Dispatchers.IO) {
+        val allTransactions = transactionDao.getAllTransactions()
+        val goals = getGoals().first()
+
+        val settingsMap = mutableMapOf<String, String?>()
+        val prefsSnapshot = prefs.data.first()
+
+        prefsSnapshot.asMap().forEach { (key, value) ->
+            settingsMap[key.name] = value.toString()
+        }
+
+        return@withContext BackupData(
+            transactions = allTransactions,
+            savingsGoals = goals,
+            settings = settingsMap
+        )
+    }
+
+    suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
+        // Mevcut verileri temizle
+        transactionDao.deleteAllTransactions()
+        // Yedekten gelen işlemleri ekle
+        backupData.transactions.forEach { transactionDao.insert(it) }
+
+        // Hedefleri geri yükle
+        saveGoals(backupData.savingsGoals)
+
+        // Ayarları geri yükle
+        prefs.edit { preferences ->
+            preferences.clear()
+            backupData.settings.forEach { (key, value) ->
+                when (key) {
+                    KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toInt() ?: -1
+                    KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                    KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLong() ?: 0L
+                    KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLong() ?: 0L
+                    KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                    KEY_PAY_PERIOD.name -> preferences[stringPreferencesKey(key)] = value ?: PayPeriod.MONTHLY.name
+                    KEY_BI_WEEKLY_REF_DATE.name -> value?.let { preferences[stringPreferencesKey(key)] = it }
+                }
+            }
+        }
+    }
 }

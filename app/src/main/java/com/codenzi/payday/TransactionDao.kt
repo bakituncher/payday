@@ -32,4 +32,10 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE isRecurringTemplate = 1")
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>>
+
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactions(): List<Transaction>
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAllTransactions()
 }

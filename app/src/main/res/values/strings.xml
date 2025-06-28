@@ -100,6 +100,13 @@
     <string name="add_goal_fab">Tasarruf Hedefi Ekle</string>
     <string name="add_expense_fab">Harcama Ekle</string>
     <string name="toggle_fab_menu_description">Ekleme menüsünü aç veya kapat</string>
+    <string name="action_backup">Yedekle</string>
+    <string name="action_restore">Geri Yükle</string>
+    <string name="backup_success">Veriler başarıyla Google Drive\'a yedeklendi.</string>
+    <string name="backup_failed">Yedekleme başarısız oldu.</string>
+    <string name="restore_success">Veriler başarıyla geri yüklendi. Uygulamayı yeniden başlatın.</string>
+    <string name="restore_failed">Geri yükleme başarısız oldu veya yedek bulunamadı.</string>
+    <string name="google_sign_in_failed">Google ile giriş yapılamadı.</string>
     <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
         <item>@string/pay_period_monthly</item>

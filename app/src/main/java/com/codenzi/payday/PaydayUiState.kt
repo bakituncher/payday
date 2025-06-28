@@ -8,6 +8,7 @@ data class PaydayUiState(
     val isPayday: Boolean = false,
     val savingsGoals: List<SavingsGoal> = emptyList(),
     val areGoalsVisible: Boolean = false,
+    val transactions: List<Transaction> = emptyList(),
     val areTransactionsVisible: Boolean = false,
     val incomeText: String = "₺0,00",
     val expensesText: String = "₺0,00",
