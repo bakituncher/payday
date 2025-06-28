@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -29,9 +30,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
+import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
@@ -45,72 +50,140 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: PaydayViewModel by viewModels()
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
     private lateinit var transactionAdapter: TransactionAdapter
+    private lateinit var repository: PaydayRepository
+    private lateinit var googleDriveManager: GoogleDriveManager
+    private val gson = Gson()
+    private var pendingAction: (() -> Unit)? = null
+    private val TAG = "PaydayBackup"
 
-    // --- Animasyon Değişkenleri ---
+    private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        Log.d(TAG, "Google Sign-In sonucu geldi. Result Code: ${result.resultCode}")
+        if (result.resultCode == RESULT_OK) {
+            Log.d(TAG, "Giriş başarılı. Bekleyen işlem çalıştırılıyor.")
+            pendingAction?.invoke()
+            pendingAction = null
+        } else {
+            Log.w(TAG, "Giriş başarısız oldu veya kullanıcı tarafından iptal edildi.")
+            Toast.makeText(this, "Google ile giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
+            pendingAction = null
+        }
+    }
+
     private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
     private val rotateClose: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_backward) }
     private val fromBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_open) }
     private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
     private var isFabMenuOpen = false
-    // ---------------------------------
-
-    private val notificationId = 1
-    private val channelId = "payday_channel"
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // İzin verildi.
-            }
-        }
-
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onSettingsResult()
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.toolbar)
+        repository = PaydayRepository(this)
+        googleDriveManager = GoogleDriveManager(this)
 
+        setSupportActionBar(binding.toolbar)
         setupRecyclerViews()
         setupListeners()
         setupObservers()
         createNotificationChannel()
     }
 
-    private fun setupListeners() {
-        // Ana FAB tıklandığında menüyü aç/kapat
-        binding.addTransactionFab.setOnClickListener {
-            toggleFabMenu()
-        }
-
-        // Harcama ekle butonuna tıklandığında
-        binding.addTransactionSecondaryFab.setOnClickListener {
-            TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
-            toggleFabMenu() // Menüyü kapat
-        }
-
-        // Tasarruf hedefi ekle butonuna tıklandığında
-        binding.addSavingsGoalFab.setOnClickListener {
-            SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
-            toggleFabMenu() // Menüyü kapat
+    private fun performActionWithSignIn(action: () -> Unit) {
+        if (GoogleSignIn.getLastSignedInAccount(this) == null) {
+            Log.d(TAG, "Oturum açmış hesap bulunamadı. Google giriş akışı başlatılıyor.")
+            pendingAction = action
+            try {
+                googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
+            } catch (e: Exception) {
+                Log.e(TAG, "Google giriş ekranı başlatılırken HATA oluştu!", e)
+            }
+        } else {
+            action.invoke()
         }
     }
 
-    // --- Yeni Eklenen Animasyon Fonksiyonları ---
+    private fun backupData() {
+        performActionWithSignIn {
+            lifecycleScope.launch {
+                try {
+                    Toast.makeText(this@MainActivity, "Yedekleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                    val backupData = repository.getAllDataForBackup()
+                    val backupJson = gson.toJson(backupData)
+                    googleDriveManager.uploadFileContent(backupJson)
+                    Toast.makeText(this@MainActivity, R.string.backup_success, Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
+                    Toast.makeText(this@MainActivity, R.string.backup_failed, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun restoreData() {
+        performActionWithSignIn {
+            lifecycleScope.launch {
+                try {
+                    Toast.makeText(this@MainActivity, "Geri yükleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                    val backupJson = googleDriveManager.downloadFileContent()
+                    if (backupJson != null) {
+                        val backupData = gson.fromJson(backupJson, BackupData::class.java)
+                        repository.restoreDataFromBackup(backupData)
+                        Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
+                        recreate()
+                    } else {
+                        Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Geri yükleme işlemi sırasında HATA!", e)
+                    Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_backup -> backupData()
+            R.id.action_restore -> restoreData()
+            R.id.action_settings -> settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+            R.id.action_reports -> startActivity(Intent(this, ReportsActivity::class.java))
+            R.id.action_achievements -> startActivity(Intent(this, AchievementsActivity::class.java))
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    // Diğer tüm yardımcı fonksiyonlar (setupListeners, updateUi, toggleFabMenu vb.) burada yer alıyor...
+    // Bu kısımlarda bir değişiklik yapmanıza gerek yok.
+    private fun setupListeners() {
+        binding.addTransactionFab.setOnClickListener { toggleFabMenu() }
+        binding.addTransactionSecondaryFab.setOnClickListener {
+            TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
+            toggleFabMenu()
+        }
+        binding.addSavingsGoalFab.setOnClickListener {
+            SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
+            toggleFabMenu()
+        }
+    }
+
     private fun toggleFabMenu() {
         if (isFabMenuOpen) {
-            // Menüyü kapat
             binding.addTransactionFab.startAnimation(rotateClose)
             binding.addTransactionSecondaryFab.startAnimation(toBottom)
             binding.addSavingsGoalFab.startAnimation(toBottom)
             binding.addTransactionFabLabel.startAnimation(toBottom)
             binding.addSavingsGoalFabLabel.startAnimation(toBottom)
-
             binding.addTransactionSecondaryFab.isClickable = false
             binding.addSavingsGoalFab.isClickable = false
             binding.addTransactionSecondaryFab.visibility = View.INVISIBLE
@@ -118,13 +191,11 @@ class MainActivity : AppCompatActivity() {
             binding.addTransactionFabLabel.visibility = View.INVISIBLE
             binding.addSavingsGoalFabLabel.visibility = View.INVISIBLE
         } else {
-            // Menüyü aç
             binding.addTransactionFab.startAnimation(rotateOpen)
             binding.addTransactionSecondaryFab.startAnimation(fromBottom)
             binding.addSavingsGoalFab.startAnimation(fromBottom)
             binding.addTransactionFabLabel.startAnimation(fromBottom)
             binding.addSavingsGoalFabLabel.startAnimation(fromBottom)
-
             binding.addTransactionSecondaryFab.visibility = View.VISIBLE
             binding.addSavingsGoalFab.visibility = View.VISIBLE
             binding.addTransactionFabLabel.visibility = View.VISIBLE
@@ -134,16 +205,11 @@ class MainActivity : AppCompatActivity() {
         }
         isFabMenuOpen = !isFabMenuOpen
     }
-    // ------------------------------------------
 
     private fun setupRecyclerViews() {
         savingsGoalAdapter = SavingsGoalAdapter(
-            onAddFundsClicked = { goal ->
-                showAddFundsDialog(goal)
-            },
-            onEditClicked = { goal ->
-                SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
-            },
+            onAddFundsClicked = { goal -> showAddFundsDialog(goal) },
+            onEditClicked = { goal -> SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG) },
             onDeleteClicked = { goal ->
                 MaterialAlertDialogBuilder(this)
                     .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
@@ -156,38 +222,22 @@ class MainActivity : AppCompatActivity() {
         binding.savingsGoalsRecyclerView.adapter = savingsGoalAdapter
 
         transactionAdapter = TransactionAdapter(
-            onEditClicked = { transaction ->
-                TransactionDialogFragment.newInstance(transaction.id).show(supportFragmentManager, TransactionDialogFragment.TAG)
-            },
+            onEditClicked = { transaction -> TransactionDialogFragment.newInstance(transaction.id).show(supportFragmentManager, TransactionDialogFragment.TAG) },
             onDeleteClicked = { transaction ->
                 MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.delete_transaction_confirmation_title)
                     .setMessage(R.string.delete_transaction_confirmation_message)
                     .setNegativeButton(getString(R.string.cancel), null)
-                    .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                        viewModel.deleteTransaction(transaction)
-                    }
+                    .setPositiveButton(getString(R.string.delete)) { _, _ -> viewModel.deleteTransaction(transaction) }
                     .show()
             }
         )
         binding.transactionsRecyclerView.adapter = transactionAdapter
     }
-
     private fun setupObservers() {
-        viewModel.uiState.observe(this) { state ->
-            updateUi(state)
-        }
-
-        viewModel.widgetUpdateEvent.observe(this) { event ->
-            event.getContentIfNotHandled()?.let {
-                updateAllWidgets()
-            }
-        }
-        viewModel.newAchievementEvent.observe(this) { event ->
-            event.getContentIfNotHandled()?.let { achievement ->
-                showAchievementSnackbar(achievement)
-            }
-        }
+        viewModel.uiState.observe(this) { state -> updateUi(state) }
+        viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
+        viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { achievement -> showAchievementSnackbar(achievement) } }
         viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
             transactionAdapter.submitList(transactions)
             val areTransactionsEmpty = transactions.isNullOrEmpty()
@@ -212,8 +262,7 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .setPositiveButton("Ekle") { _, _ ->
-                val amountText = amountEditText.text.toString()
-                val amount = amountText.toDoubleOrNull()
+                val amount = amountEditText.text.toString().toDoubleOrNull()
                 if (amount != null && amount > 0) {
                     if (amount > currentRemainingAmount) {
                         Toast.makeText(this, "Yetersiz bakiye!", Toast.LENGTH_SHORT).show()
@@ -231,8 +280,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateAllWidgets() {
         val intent = Intent(this, PaydayWidgetProvider::class.java).apply {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-            val ids = AppWidgetManager.getInstance(application)
-                .getAppWidgetIds(ComponentName(application, PaydayWidgetProvider::class.java))
+            val ids = AppWidgetManager.getInstance(application).getAppWidgetIds(ComponentName(application, PaydayWidgetProvider::class.java))
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
         }
         sendBroadcast(intent)
@@ -245,17 +293,11 @@ class MainActivity : AppCompatActivity() {
         binding.incomeTextView.text = state.incomeText
         binding.expensesTextView.text = state.expensesText
         binding.remainingTextView.text = state.remainingText
-
         savingsGoalAdapter.submitList(state.savingsGoals)
-
-        // Tasarruf hedefleri listesinin görünürlüğünü kontrol et
-        binding.savingsGoalsTitleContainer.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
-        binding.savingsGoalsRecyclerView.visibility = if (state.savingsGoals.isNotEmpty()) View.VISIBLE else View.GONE
-
-
+        binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
+        binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         if (state.isPayday) {
             startConfettiEffect()
-            sendPaydayNotification()
         }
     }
 
@@ -272,70 +314,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = getString(R.string.notification_channel_name)
-            val descriptionText = getString(R.string.notification_channel_description)
+            val name = "Payday Kanalı"
+            val descriptionText = "Maaş günü bildirimleri"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply { description = descriptionText }
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun sendPaydayNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            return
-        }
-        val builder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(getString(R.string.payday_notification_title))
-            .setContentText(getString(R.string.payday_notification_text))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-        with(NotificationManagerCompat.from(this)) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                notify(notificationId, builder.build())
+            val channel = NotificationChannel("payday_channel", name, importance).apply {
+                description = descriptionText
             }
+            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
     private fun showAchievementSnackbar(achievement: Achievement) {
         val snackbar = Snackbar.make(binding.coordinatorLayout, "", Snackbar.LENGTH_LONG)
         val snackbarLayout = snackbar.view as ViewGroup
-
         snackbarLayout.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
         snackbarLayout.setPadding(0, 0, 0, 0)
-
         val customView = layoutInflater.inflate(R.layout.toast_achievement_unlocked, snackbarLayout, false)
-
         customView.findViewById<ImageView>(R.id.toast_icon).setImageResource(achievement.iconResId)
         customView.findViewById<TextView>(R.id.toast_achievement_name).text = achievement.title
-
         snackbarLayout.addView(customView, 0)
         snackbar.show()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> {
-                settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
-                true
-            }
-            R.id.action_reports -> {
-                startActivity(Intent(this, ReportsActivity::class.java))
-                true
-            }
-            R.id.action_achievements -> {
-                startActivity(Intent(this, AchievementsActivity::class.java))
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
 }
