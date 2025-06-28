@@ -1,3 +1,5 @@
+// Konum: app/src/main/java/com/codenzi/payday/SavingsGoalDialogFragment.kt
+
 package com.codenzi.payday
 
 import android.app.DatePickerDialog
@@ -11,6 +13,8 @@ import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
@@ -20,10 +24,10 @@ class SavingsGoalDialogFragment : DialogFragment() {
 
     private val viewModel: PaydayViewModel by activityViewModels()
     private var existingGoal: SavingsGoal? = null
-    // Seçilen tarihi milisaniye (Long) olarak tutacak değişken
     private var selectedTimestamp: Long? = null
-    // Tarihi formatlamak için yardımcı
     private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
+
+    private var selectedCategoryId: Int = SavingsGoalCategory.OTHER.ordinal
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,8 +36,8 @@ class SavingsGoalDialogFragment : DialogFragment() {
             runBlocking {
                 existingGoal = viewModel.uiState.value?.savingsGoals?.find { it.id == goalId }
             }
-            // Mevcut hedefin tarihini de al
             selectedTimestamp = existingGoal?.targetDate
+            selectedCategoryId = existingGoal?.categoryId ?: SavingsGoalCategory.OTHER.ordinal
         }
     }
 
@@ -43,6 +47,22 @@ class SavingsGoalDialogFragment : DialogFragment() {
         val amountEditText = dialogView.findViewById<EditText>(R.id.goalAmountEditText)
         val selectDateButton = dialogView.findViewById<Button>(R.id.selectDateButton)
         val selectedDateTextView = dialogView.findViewById<TextView>(R.id.selectedDateTextView)
+        val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.goalCategoryChipGroup)
+
+        SavingsGoalCategory.entries.forEach { category ->
+            val chip = Chip(requireContext()).apply {
+                text = category.categoryName
+                id = category.ordinal
+                isCheckable = true
+                isChecked = (id == selectedCategoryId)
+            }
+            categoryChipGroup.addView(chip)
+        }
+        categoryChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isNotEmpty()) {
+                selectedCategoryId = checkedIds.first()
+            }
+        }
 
         val dialogTitle = if (existingGoal == null) {
             getString(R.string.dialog_add_goal_title)
@@ -50,17 +70,14 @@ class SavingsGoalDialogFragment : DialogFragment() {
             getString(R.string.dialog_edit_goal_title)
         }
 
-        // Mevcut verileri doldur
         existingGoal?.let {
             nameEditText.setText(it.name)
             amountEditText.setText(it.targetAmount.toLong().toString())
         }
-        // Mevcut tarih varsa formatlayıp göster
         selectedTimestamp?.let {
             selectedDateTextView.text = dateFormatter.format(Date(it))
         }
 
-        // Tarih Seç Butonuna tıklama olayı
         selectDateButton.setOnClickListener {
             showDatePickerDialog(selectedDateTextView)
         }
@@ -72,8 +89,7 @@ class SavingsGoalDialogFragment : DialogFragment() {
                 val name = nameEditText.text.toString()
                 val amount = amountEditText.text.toString().toDoubleOrNull()
                 if (name.isNotBlank() && amount != null && amount > 0) {
-                    // ViewModel'a seçilen tarihi de gönder
-                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp)
+                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp, selectedCategoryId)
                 } else {
                     Toast.makeText(requireContext(), getString(R.string.toast_invalid_goal_input), Toast.LENGTH_SHORT).show()
                 }
@@ -84,7 +100,6 @@ class SavingsGoalDialogFragment : DialogFragment() {
 
     private fun showDatePickerDialog(dateTextView: TextView) {
         val calendar = Calendar.getInstance()
-        // Eğer daha önce bir tarih seçilmişse, takvimi o tarihten başlat
         selectedTimestamp?.let {
             calendar.timeInMillis = it
         }
@@ -92,18 +107,15 @@ class SavingsGoalDialogFragment : DialogFragment() {
         val datePickerDialog = DatePickerDialog(
             requireContext(),
             { _, year, month, dayOfMonth ->
-                // Seçilen tarihi al ve timestamp'e çevir
                 val selectedCalendar = Calendar.getInstance()
                 selectedCalendar.set(year, month, dayOfMonth)
                 selectedTimestamp = selectedCalendar.timeInMillis
-                // Seçilen tarihi formatlayıp TextView'de göster
                 dateTextView.text = dateFormatter.format(selectedCalendar.time)
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
-        // Geçmiş bir tarihin seçilmesini engelle
         datePickerDialog.datePicker.minDate = System.currentTimeMillis()
         datePickerDialog.show()
     }

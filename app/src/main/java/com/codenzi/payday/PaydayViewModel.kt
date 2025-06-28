@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/PaydayViewModel.kt (NİHAİ VE TAM SÜRÜM)
+// Konum: app/src/main/java/com/codenzi/payday/PaydayViewModel.kt
 
 package com.codenzi.payday
 
@@ -152,6 +152,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 isRecurringTemplate = isRecurring
             )
             repository.insertTransaction(transaction)
+            loadData()
         }
     }
 
@@ -166,30 +167,31 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 isRecurringTemplate = isRecurring
             )
             repository.updateTransaction(updatedTransaction)
+            loadData()
         }
     }
 
     fun deleteTransaction(transaction: Transaction) = viewModelScope.launch {
         repository.deleteTransaction(transaction)
+        loadData()
     }
 
-    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?) = viewModelScope.launch {
+    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val currentGoals = repository.getGoals().first().toMutableList()
             val isFirstGoal = currentGoals.isEmpty() && existingGoalId == null
 
             if (existingGoalId == null) {
-                // Yeni hedef eklenirken savedAmount sıfır olarak başlar.
-                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate))
+                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate, categoryId = categoryId))
             } else {
                 val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
-                    // Düzenlemede, mevcut birikimi koruyarak diğer bilgileri güncelle.
                     val existingSavedAmount = currentGoals[index].savedAmount
-                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, savedAmount = existingSavedAmount, targetDate = targetDate)
+                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, savedAmount = existingSavedAmount, targetDate = targetDate, categoryId = categoryId)
                 }
             }
             repository.saveGoals(currentGoals)
+            loadData()
 
             if (isFirstGoal) {
                 val unlockedIds = repository.getUnlockedAchievementIds().first()
@@ -207,6 +209,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val currentGoals = repository.getGoals().first().toMutableList()
         currentGoals.remove(goal)
         repository.saveGoals(currentGoals)
+        loadData()
     }
 
     fun onSettingsResult() {
@@ -264,6 +267,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             isRecurringTemplate = false
         )
         repository.insertTransaction(transaction)
+        loadData()
     }
 
     private fun formatCurrency(amount: Double): String {

@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/SavingsGoalAdapter.kt
+// Konum: app/src/main/java/com/codenzi/payday/SavingsGoalAdapter.kt
 
 package com.codenzi.payday
 
@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -47,6 +48,7 @@ class SavingsGoalAdapter(
         private val progressTextView: TextView = itemView.findViewById(R.id.goalProgressTextView)
         private val dateInfoTextView: TextView = itemView.findViewById(R.id.goalDateInfoTextView)
         private val addFundsButton: Button = itemView.findViewById(R.id.addFundsButton)
+        private val iconImageView: ImageView = itemView.findViewById(R.id.goalIcon)
 
         private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
         private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
@@ -85,6 +87,9 @@ class SavingsGoalAdapter(
         fun bind(goal: SavingsGoal) {
             currentGoal = goal
             nameTextView.text = goal.name
+
+            val category = SavingsGoalCategory.fromId(goal.categoryId)
+            iconImageView.setImageResource(category.iconResId)
 
             val progressPercentage = if (goal.targetAmount > 0) {
                 (goal.savedAmount / goal.targetAmount * 100).toInt()

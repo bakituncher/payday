@@ -37,6 +37,21 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/category"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="14sp" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/goalCategoryChipGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        app:chipSpacingHorizontal="8dp"
+        app:singleLine="true" />
+    <TextView
         android:id="@+id/selectedDateTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

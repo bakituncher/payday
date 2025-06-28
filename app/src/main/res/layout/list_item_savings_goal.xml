@@ -23,10 +23,10 @@
             android:layout_height="40dp"
             android:background="@drawable/widget_background"
             android:padding="8dp"
-            android:src="@drawable/ic_launcher_foreground"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/white" />
+            app:tint="@color/white"
+            tools:src="@drawable/ic_goal_car" />
 
         <TextView
             android:id="@+id/goalNameTextView"
@@ -59,7 +59,8 @@
             android:layout_width="0dp"
             android:layout_height="8dp"
             android:layout_marginTop="16dp"
-            android:progressDrawable="@drawable/widget_background"
+            android:scaleY="2.5"
+            android:progressTint="?attr/colorPrimary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/goalIcon"
