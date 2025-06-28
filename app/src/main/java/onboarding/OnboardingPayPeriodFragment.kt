@@ -1,4 +1,4 @@
-package com.example.payday.onboarding
+package com.codenzi.payday.onboarding
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,10 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.example.payday.PayPeriod
-import com.example.payday.PaydayViewModel
-import com.example.payday.R
-import com.example.payday.databinding.FragmentOnboardingPayPeriodBinding
+import com.codenzi.payday.PayPeriod
+import com.codenzi.payday.PaydayViewModel
+import com.codenzi.payday.R
+import com.codenzi.payday.databinding.FragmentOnboardingPayPeriodBinding
 
 class OnboardingPayPeriodFragment : Fragment() {
 

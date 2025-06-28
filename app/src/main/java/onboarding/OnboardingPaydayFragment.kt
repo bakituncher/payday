@@ -1,4 +1,4 @@
-package com.example.payday.onboarding
+package com.codenzi.payday.onboarding
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,11 +7,11 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
-import com.example.payday.PayPeriod
-import com.example.payday.PaydayRepository
-import com.example.payday.PaydayViewModel
-import com.example.payday.R
-import com.example.payday.databinding.FragmentOnboardingPaydayBinding
+import com.codenzi.payday.PayPeriod
+import com.codenzi.payday.PaydayRepository
+import com.codenzi.payday.PaydayViewModel
+import com.codenzi.payday.R
+import com.codenzi.payday.databinding.FragmentOnboardingPaydayBinding
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch

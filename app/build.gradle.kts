@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.payday"
+    namespace = "com.codenzi.payday"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.payday"
+        applicationId = "com.codenzi.payday"
         minSdk = 24
         targetSdk = 35 // compileSdk ile aynı olması en iyi pratiktir.
         versionCode = 1
@@ -18,6 +18,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    packaging {
+        resources {
+            excludes.add("META-INF/DEPENDENCIES")
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -59,6 +64,22 @@ dependencies {
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.8.1")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // ===== GOOGLE DRIVE ENTEGRASYONU İÇİN YENİ EKLENENLER =====
+    // Google ile Giriş Yapma (Authentication)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // Google Drive API'ı için Gerekli Kütüphaneler
+    implementation("com.google.api-client:google-api-client-android:2.2.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0") {
+        exclude("org.apache.httpcomponents")
+    }
+    implementation("com.google.http-client:google-http-client-gson:1.44.2") {
+        exclude("org.apache.httpcomponents")
+    }
+    // =========================================================
+
+    implementation(libs.androidx.core.ktx)
+    implementation("nl.dionsegijn:konfetti-xml:2.0.2")
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")

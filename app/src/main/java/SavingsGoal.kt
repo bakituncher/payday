@@ -1,6 +1,6 @@
 // Konum: app/src/main/java/SavingsGoal.kt
 
-package com.example.payday
+package com.codenzi.payday
 
 import java.util.UUID
 
