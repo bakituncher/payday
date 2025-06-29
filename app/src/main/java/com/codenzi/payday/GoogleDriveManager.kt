@@ -23,7 +23,7 @@ import java.io.InputStreamReader
 class GoogleDriveManager(private val context: Context) {
 
     private val backupFileName = "payday_backup.json"
-    private var cachedFileId: String? = null // Dosya ID'sini önbelleğe alarak tekrar tekrar aramayı önler
+    private var cachedFileId: String? = null
 
     private fun getDriveService(): Drive? {
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
@@ -40,24 +40,25 @@ class GoogleDriveManager(private val context: Context) {
     }
 
     private suspend fun getBackupFileId(drive: Drive): String? {
-        // Önbellekte varsa, doğrudan onu kullan
-        if (cachedFileId != null) {
-            Log.d("GoogleDriveManager", "Önbellekten dosya ID'si kullanıldı: $cachedFileId")
-            return cachedFileId
-        }
-
-        // Önbellekte yoksa, Google Drive'da ara
-        Log.d("GoogleDriveManager", "Dosya ID'si için Google Drive'da arama yapılıyor...")
-        val fileList = drive.files().list()
+        if (cachedFileId != null) return cachedFileId
+        return drive.files().list()
             .setSpaces("appDataFolder")
             .setFields("files(id)")
             .setQ("name='$backupFileName' and trashed=false")
             .execute()
+            .files.firstOrNull()?.id?.also { cachedFileId = it }
+    }
 
-        // Bulunan ilk dosyanın ID'sini al ve önbelleğe kaydet
-        return fileList.files.firstOrNull()?.id?.also {
-            cachedFileId = it
-            Log.d("GoogleDriveManager", "Dosya bulundu ve ID'si önbelleğe alındı: $it")
+    // *** YENİ EKLENEN FONKSİYON ***
+    // Bir yedeğin var olup olmadığını hızlıca kontrol eder.
+    suspend fun isBackupAvailable(): Boolean = withContext(Dispatchers.IO) {
+        val drive = getDriveService() ?: return@withContext false
+        try {
+            val fileId = getBackupFileId(drive)
+            return@withContext fileId != null
+        } catch (e: Exception) {
+            Log.e("GoogleDriveManager", "Yedek kontrolü sırasında hata", e)
+            return@withContext false
         }
     }
 
@@ -65,33 +66,21 @@ class GoogleDriveManager(private val context: Context) {
         val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
         val fileId = getBackupFileId(drive)
         val mediaContent = ByteArrayContent.fromString("application/json", content)
-
         if (fileId == null) {
-            // Dosya hiç yoksa oluştur
-            Log.d("GoogleDriveManager", "Yedek dosyası bulunamadı, yeni bir tane oluşturuluyor.")
             val fileMetadata = File().apply {
                 name = backupFileName
                 parents = listOf("appDataFolder")
             }
             val createdFile = drive.files().create(fileMetadata, mediaContent).setFields("id").execute()
-            cachedFileId = createdFile.id // Yeni ID'yi önbelleğe al
-            Log.d("GoogleDriveManager", "Yeni yedek dosyası oluşturuldu. ID: $cachedFileId")
+            cachedFileId = createdFile.id
         } else {
-            // Dosya varsa güncelle
-            Log.d("GoogleDriveManager", "Mevcut yedek dosyası güncelleniyor. ID: $fileId")
             drive.files().update(fileId, null, mediaContent).execute()
         }
     }
 
     suspend fun downloadFileContent(): String? = withContext(Dispatchers.IO) {
         val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
-        val fileId = getBackupFileId(drive)
-            ?: run {
-                Log.w("GoogleDriveManager", "Geri yüklenecek yedek dosyası bulunamadı.")
-                return@withContext null // Dosya ID'si bulunamazsa yedek yoktur.
-            }
-
-        Log.d("GoogleDriveManager", "Yedek dosyası indiriliyor. ID: $fileId")
+        val fileId = getBackupFileId(drive) ?: return@withContext null
         try {
             val inputStream = drive.files().get(fileId).executeMediaAsInputStream()
             return@withContext BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
@@ -108,7 +97,7 @@ class GoogleDriveManager(private val context: Context) {
                 .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
                 .build()
             val client = GoogleSignIn.getClient(context, gso)
-            client.signOut() // Her seferinde temiz bir başlangıç için oturumu kapat
+            client.signOut()
             return client.signInIntent
         }
     }

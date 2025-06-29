@@ -1,22 +1,31 @@
 // Konum: app/src/main/java/com/codenzi/payday/LoginActivity.kt
+// Nihai ve Tam Sürüm
 
 package com.codenzi.payday
 
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityLoginBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.gson.Gson
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
+    private lateinit var googleDriveManager: GoogleDriveManager
+    private lateinit var repository: PaydayRepository
     private val TAG = "LoginActivity"
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -24,32 +33,32 @@ class LoginActivity : AppCompatActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             handleSignInResult(task)
         } else {
-            Log.w(TAG, "Google giriş akışı iptal edildi veya başarısız oldu. Result code: ${result.resultCode}")
-            Toast.makeText(this, "Giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
+            showLoading(false)
+            Log.w(TAG, "Giriş akışı başarısız oldu veya iptal edildi.")
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        googleDriveManager = GoogleDriveManager(this)
+        repository = PaydayRepository(this)
 
-        // Kullanıcı daha önce giriş yapmışsa, bu ekranı hiç gösterme, doğrudan devam et.
+        // Kullanıcı daha önce giriş yapmışsa, bu ekranı hiç gösterme
         if (GoogleSignIn.getLastSignedInAccount(this) != null) {
-            Log.d(TAG, "Kullanıcı zaten giriş yapmış. Onboarding ekranına yönlendiriliyor.")
             navigateToNextScreen()
-            return // onCreate'i erken bitirerek layout'un yüklenmesini engelle
+            return
         }
 
-        // Kullanıcı giriş yapmamışsa, karşılama ekranını göster
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         binding.signInButton.setOnClickListener {
+            showLoading(true)
             val signInIntent = GoogleDriveManager.getSignInIntent(this)
             googleSignInLauncher.launch(signInIntent)
         }
 
         binding.skipButton.setOnClickListener {
-            Log.d(TAG, "Kullanıcı girişi atladı. Onboarding ekranına yönlendiriliyor.")
             navigateToNextScreen()
         }
     }
@@ -57,18 +66,81 @@ class LoginActivity : AppCompatActivity() {
     private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
         try {
             val account = completedTask.getResult(ApiException::class.java)
-            Log.d(TAG, "Giriş başarılı. Kullanıcı: ${account.displayName}")
+            Log.d(TAG, "Giriş başarılı: ${account.displayName}")
             Toast.makeText(this, "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
-            navigateToNextScreen()
+            checkForExistingBackup()
         } catch (e: ApiException) {
+            showLoading(false)
             Log.w(TAG, "Giriş hatası, kod: " + e.statusCode)
-            Toast.makeText(this, "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Giriş sırasında bir hata oluştu.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun checkForExistingBackup() {
+        showLoading(true)
+        lifecycleScope.launch {
+            if (googleDriveManager.isBackupAvailable()) {
+                showLoading(false)
+                showRestoreDialog()
+            } else {
+                Log.d(TAG, "Yedek bulunamadı, normal akışa devam ediliyor.")
+                navigateToNextScreen()
+            }
+        }
+    }
+
+    private fun showRestoreDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Yedek Bulundu")
+            .setMessage("Google Drive'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi?")
+            .setCancelable(false)
+            .setPositiveButton("Evet, Geri Yükle") { _, _ ->
+                restoreBackup()
+            }
+            .setNegativeButton("Hayır, Yeni Başla") { _, _ ->
+                navigateToNextScreen()
+            }
+            .show()
+    }
+
+    private fun restoreBackup() {
+        showLoading(true)
+        lifecycleScope.launch {
+            try {
+                val backupJson = googleDriveManager.downloadFileContent()
+                if (backupJson != null) {
+                    val backupData = Gson().fromJson(backupJson, BackupData::class.java)
+                    repository.restoreDataFromBackup(backupData)
+                    Toast.makeText(this@LoginActivity, "Verileriniz başarıyla geri yüklendi.", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@LoginActivity, "Yedek indirilemedi, yeni profil oluşturuluyor.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Geri yükleme sırasında kritik hata", e)
+                Toast.makeText(this@LoginActivity, "Geri yükleme başarısız oldu.", Toast.LENGTH_LONG).show()
+            } finally {
+                navigateToNextScreen()
+            }
         }
     }
 
     private fun navigateToNextScreen() {
-        // Kullanıcıyı bir sonraki aşama olan Onboarding ekranına yönlendir
-        startActivity(Intent(this, OnboardingActivity::class.java))
-        finish() // Bu ekrana geri dönülmesini engelle
+        lifecycleScope.launch {
+            // Kullanıcının onboarding'i tamamlayıp tamamlamadığını kontrol et
+            val isOnboardingComplete = repository.isOnboardingComplete().first()
+            val targetActivity = if (isOnboardingComplete) {
+                MainActivity::class.java
+            } else {
+                OnboardingActivity::class.java
+            }
+            startActivity(Intent(this@LoginActivity, targetActivity))
+            finish() // Bu ekrana geri dönülmesini engelle
+        }
+    }
+
+    private fun showLoading(isLoading: Boolean) {
+        binding.loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        binding.signInButton.isEnabled = !isLoading
+        binding.skipButton.isEnabled = !isLoading
     }
 }
