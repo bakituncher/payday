@@ -29,24 +29,52 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
 
+        // ÖNCEKİ TÜM KARIŞIKLIĞI KALDIRIYORUZ.
+        // TEMA İÇİN ARTIK STANDART YÖNTEMİ KULLANACAĞIZ.
+        findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
+            val theme = newValue as String
+
+            lifecycleScope.launch {
+                // Ayarı sadece DataStore'a kaydedeceğiz.
+                repository.saveTheme(theme)
+
+                // Temayı uygula
+                when (theme) {
+                    "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                    "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                    else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                }
+            }
+            true
+        }
+
+        // Diğer ayarlar
         setupPayPeriodPreference()
         setupPaydayPreference()
         setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
         setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
-        setupThemePreference()
     }
 
-    private fun setupThemePreference() {
-        findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
-            when (newValue.toString()) {
-                "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-                "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-                "System" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-            }
-            activity?.recreate()
-            true
+    override fun onResume() {
+        super.onResume()
+        // Ayarlar ekranı her açıldığında, değerleri DataStore'dan oku ve göster
+        updateSummaries()
+    }
+
+    private fun updateSummaries() {
+        lifecycleScope.launch {
+            // Kayıtlı temayı DataStore'dan oku ve ekranda onu seçili göster
+            val themePreference = findPreference<ListPreference>("theme")
+            themePreference?.value = repository.getTheme().first()
+
+            // Diğer ayarların özetlerini de güncelle
+            updatePaydaySummary()
+            updateCurrencySummary(PaydayRepository.KEY_SALARY.name, repository.getSalaryAmount().first())
+            updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS.name, repository.getMonthlySavingsAmount().first())
         }
     }
+
+    // --- SINIFIN GERİ KALANI (Buralarda sorun yok) ---
 
     private fun setupPayPeriodPreference() {
         val payPeriodPref = findPreference<ListPreference>(PaydayRepository.KEY_PAY_PERIOD.name)
@@ -84,19 +112,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 pref.summary = formatToCurrency(valueAsLong)
             }
             false
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateAllSummaries()
-    }
-
-    private fun updateAllSummaries() {
-        lifecycleScope.launch {
-            updatePaydaySummary()
-            updateCurrencySummary(PaydayRepository.KEY_SALARY.name, repository.getSalaryAmount().first())
-            updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS.name, repository.getMonthlySavingsAmount().first())
         }
     }
 

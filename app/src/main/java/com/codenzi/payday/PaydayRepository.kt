@@ -68,6 +68,12 @@ class PaydayRepository(context: Context) {
     fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
 
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
+    suspend fun saveTheme(theme: String) {
+        prefs.edit {
+            it[KEY_THEME] = theme
+        }
+    }
+
     suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
     suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
     suspend fun saveGoals(goals: List<SavingsGoal>) = prefs.edit { it[KEY_SAVINGS_GOALS] = gson.toJson(goals) }
