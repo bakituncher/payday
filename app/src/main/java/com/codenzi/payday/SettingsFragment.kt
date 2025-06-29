@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.os.Bundle
 import android.text.InputType
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -30,9 +31,21 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         setupPayPeriodPreference()
         setupPaydayPreference()
-        // Maaş ve Tasarruf alanları için özel dinleyiciyi kuruyoruz
         setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
         setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
+        setupThemePreference()
+    }
+
+    private fun setupThemePreference() {
+        findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
+            when (newValue.toString()) {
+                "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                "System" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            }
+            activity?.recreate()
+            true
+        }
     }
 
     private fun setupPayPeriodPreference() {
@@ -54,7 +67,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    // *** HATAYI DÜZELTEN KISIM BURASI ***
     private fun setupCurrencyPreference(key: String) {
         val preference = findPreference<EditTextPreference>(key)
         preference?.setOnBindEditTextListener { editText ->
@@ -62,22 +74,15 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         preference?.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { pref, newValue ->
-            // Gelen yeni değeri (String) Long'a çevir
             val valueAsLong = (newValue as? String)?.toLongOrNull() ?: 0L
-
-            // Coroutine içinde ilgili repository fonksiyonunu çağır
             lifecycleScope.launch {
                 if (key == PaydayRepository.KEY_SALARY.name) {
                     repository.saveSalary(valueAsLong)
                 } else if (key == PaydayRepository.KEY_MONTHLY_SAVINGS.name) {
                     repository.saveMonthlySavings(valueAsLong)
                 }
-                // Kaydettikten sonra özeti güncelle
                 pref.summary = formatToCurrency(valueAsLong)
             }
-
-            // 'false' döndürerek EditTextPreference'ın değeri kendisinin
-            // String olarak kaydetmesini engelliyoruz.
             false
         }
     }
