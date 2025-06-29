@@ -1,4 +1,5 @@
 // Konum: app/src/main/java/com/codenzi/payday/MainActivity.kt
+// Arayüz Yenileme Sorunu Giderilmiş Nihai Sürüm
 
 package com.codenzi.payday
 
@@ -57,7 +58,6 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "PaydayBackup"
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        Log.d(TAG, "Google Sign-In sonucu geldi. Result Code: ${result.resultCode}")
         if (result.resultCode == RESULT_OK) {
             Log.d(TAG, "Giriş başarılı. Bekleyen işlem çalıştırılıyor.")
             pendingAction?.invoke()
@@ -82,10 +82,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         repository = PaydayRepository(this)
         googleDriveManager = GoogleDriveManager(this)
-
         setSupportActionBar(binding.toolbar)
         setupRecyclerViews()
         setupListeners()
@@ -95,13 +93,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun performActionWithSignIn(action: () -> Unit) {
         if (GoogleSignIn.getLastSignedInAccount(this) == null) {
-            Log.d(TAG, "Oturum açmış hesap bulunamadı. Google giriş akışı başlatılıyor.")
             pendingAction = action
-            try {
-                googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
-            } catch (e: Exception) {
-                Log.e(TAG, "Google giriş ekranı başlatılırken HATA oluştu!", e)
-            }
+            googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
         } else {
             action.invoke()
         }
@@ -133,8 +126,15 @@ class MainActivity : AppCompatActivity() {
                     if (backupJson != null) {
                         val backupData = gson.fromJson(backupJson, BackupData::class.java)
                         repository.restoreDataFromBackup(backupData)
+
+                        // *** NİHAİ DÜZELTME: Veriyi yeniden yükle ve arayüzün kendi kendine güncellenmesine izin ver. ***
+                        viewModel.loadData()
+
                         Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
-                        recreate()
+
+                        // 'recreate()' komutu kaldırıldı çünkü arayüz yenileme sorununa yol açıyordu.
+                        // Artık ViewModel'den gelen veri akışı arayüzü anında ve doğru bir şekilde güncelleyecektir.
+
                     } else {
                         Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
                     }
@@ -163,8 +163,7 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    // Diğer tüm yardımcı fonksiyonlar (setupListeners, updateUi, toggleFabMenu vb.) burada yer alıyor...
-    // Bu kısımlarda bir değişiklik yapmanıza gerek yok.
+    // ... Diğer tüm yardımcı fonksiyonlar (setupListeners, updateUi, vb.) burada değişiklik olmadan yer alabilir ...
     private fun setupListeners() {
         binding.addTransactionFab.setOnClickListener { toggleFabMenu() }
         binding.addTransactionSecondaryFab.setOnClickListener {

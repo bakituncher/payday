@@ -1,4 +1,5 @@
 // Konum: app/src/main/java/com/codenzi/payday/PaydayRepository.kt
+// Veri Kaybını Önleyen Nihai Sürüm
 
 package com.codenzi.payday
 
@@ -53,8 +54,12 @@ class PaydayRepository(context: Context) {
         return prefs.data.map { preferences ->
             val jsonGoals = preferences[KEY_SAVINGS_GOALS]
             if (jsonGoals != null) {
-                val type = object : TypeToken<MutableList<SavingsGoal>>() {}.type
-                gson.fromJson(jsonGoals, type)
+                try {
+                    val type = object : TypeToken<MutableList<SavingsGoal>>() {}.type
+                    gson.fromJson(jsonGoals, type)
+                } catch (e: Exception) {
+                    mutableListOf()
+                }
             } else {
                 mutableListOf()
             }
@@ -91,19 +96,14 @@ class PaydayRepository(context: Context) {
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
     suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
 
-    // --- YENİ EKLENEN YEDEKLEME VE GERİ YÜKLEME FONKSİYONLARI ---
-
     suspend fun getAllDataForBackup(): BackupData = withContext(Dispatchers.IO) {
         val allTransactions = transactionDao.getAllTransactions()
         val goals = getGoals().first()
-
-        val settingsMap = mutableMapOf<String, String?>()
+        val settingsMap = mutableMapOf<String, String>()
         val prefsSnapshot = prefs.data.first()
-
         prefsSnapshot.asMap().forEach { (key, value) ->
             settingsMap[key.name] = value.toString()
         }
-
         return@withContext BackupData(
             transactions = allTransactions,
             savingsGoals = goals,
@@ -112,27 +112,42 @@ class PaydayRepository(context: Context) {
     }
 
     suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
-        // Mevcut verileri temizle
+        // Veritabanını geri yükle
         transactionDao.deleteAllTransactions()
-        // Yedekten gelen işlemleri ekle
         backupData.transactions.forEach { transactionDao.insert(it) }
 
-        // Hedefleri geri yükle
-        saveGoals(backupData.savingsGoals)
-
-        // Ayarları geri yükle
+        // DataStore'u (Ayarlar ve Hedefler) atomik olarak geri yükle
         prefs.edit { preferences ->
+            // Önce tüm eski verileri temizle
             preferences.clear()
+
+            // Ayarları geri yükle, AMA hedefleri atla
             backupData.settings.forEach { (key, value) ->
-                when (key) {
-                    KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toInt() ?: -1
-                    KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                    KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLong() ?: 0L
-                    KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLong() ?: 0L
-                    KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                    KEY_PAY_PERIOD.name -> preferences[stringPreferencesKey(key)] = value ?: PayPeriod.MONTHLY.name
-                    KEY_BI_WEEKLY_REF_DATE.name -> value?.let { preferences[stringPreferencesKey(key)] = it }
+                // *** DÜZELTME: Hedefler anahtarını bu döngüde kasıtlı olarak görmezden gel ***
+                if (key != KEY_SAVINGS_GOALS.name) {
+                    when (key) {
+                        KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
+                        KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
+                        KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
+                        KEY_PAY_PERIOD.name,
+                        KEY_BI_WEEKLY_REF_DATE.name,
+                        KEY_FIRST_LAUNCH_DATE.name,
+                        KEY_LAST_PROCESSED_CYCLE_END_DATE.name -> {
+                            if (value != null) {
+                                preferences[stringPreferencesKey(key)] = value
+                            }
+                        }
+                    }
                 }
+            }
+
+            // Döngü bittikten sonra, doğru tasarruf hedeflerini AYNI İŞLEM içinde yaz
+            // Bu, hedeflerin kalıcı olarak kaydedilmesini garanti eder.
+            if (backupData.savingsGoals.isNotEmpty()) {
+                val goalsJson = gson.toJson(backupData.savingsGoals)
+                preferences[KEY_SAVINGS_GOALS] = goalsJson
             }
         }
     }
