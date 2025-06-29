@@ -1,6 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/PaydayRepository.kt
-// Raporlama Özellikleri Eklenmiş Nihai Sürüm
-
 package com.codenzi.payday
 
 import android.content.Context
@@ -38,6 +35,7 @@ class PaydayRepository(context: Context) {
         val KEY_UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val KEY_FIRST_LAUNCH_DATE = stringPreferencesKey("first_launch_date")
         val KEY_LAST_PROCESSED_CYCLE_END_DATE = stringPreferencesKey("last_processed_cycle_end_date")
+        val KEY_THEME = stringPreferencesKey("theme")
     }
 
     fun getPayPeriod(): Flow<PayPeriod> = prefs.data.map { PayPeriod.valueOf(it[KEY_PAY_PERIOD] ?: PayPeriod.MONTHLY.name) }
@@ -49,6 +47,7 @@ class PaydayRepository(context: Context) {
     fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
     fun getFirstLaunchDate(): Flow<String?> = prefs.data.map { it[KEY_FIRST_LAUNCH_DATE] }
     fun getLastProcessedCycleEndDate(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] }
+    fun getTheme(): Flow<String> = prefs.data.map { it[KEY_THEME] ?: "System" }
 
     fun getGoals(): Flow<MutableList<SavingsGoal>> {
         return prefs.data.map { preferences ->
@@ -93,16 +92,12 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    // --- DAO Fonksiyonları ---
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
     fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate)
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate)
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>> = transactionDao.getRecurringTransactionTemplates()
-
-    // --- Raporlama İçin Eklenen Yeni Fonksiyonlar ---
     fun getDailySpendingForChart(startDate: Date, endDate: Date): Flow<List<DailySpending>> = transactionDao.getDailySpendingForChart(startDate, endDate)
     fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>> = transactionDao.getMonthlySpendingForCategory(categoryId)
-
 
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
@@ -124,18 +119,12 @@ class PaydayRepository(context: Context) {
     }
 
     suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
-        // Veritabanını geri yükle
         transactionDao.deleteAllTransactions()
         backupData.transactions.forEach { transactionDao.insert(it) }
 
-        // DataStore'u (Ayarlar ve Hedefler) atomik olarak geri yükle
         prefs.edit { preferences ->
-            // Önce tüm eski verileri temizle
             preferences.clear()
-
-            // Ayarları geri yükle
             backupData.settings.forEach { (key, value) ->
-                // *** DÜZELTME: Hedefler anahtarını bu döngüde kasıtlı olarak görmezden gel ***
                 if (key != KEY_SAVINGS_GOALS.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
@@ -146,21 +135,16 @@ class PaydayRepository(context: Context) {
                         KEY_PAY_PERIOD.name,
                         KEY_BI_WEEKLY_REF_DATE.name,
                         KEY_FIRST_LAUNCH_DATE.name,
-                        KEY_LAST_PROCESSED_CYCLE_END_DATE.name -> {
+                        KEY_LAST_PROCESSED_CYCLE_END_DATE.name,
+                        KEY_THEME.name -> {
                             if (value != null) {
                                 preferences[stringPreferencesKey(key)] = value
                             }
-                        }
-                        KEY_UNLOCKED_ACHIEVEMENTS.name -> {
-                            // stringSetPreferencesKey'i bu şekilde geri yüklemek daha güvenli olabilir
-                            // ancak basitlik adına bu örnekte atlanmıştır.
                         }
                     }
                 }
             }
 
-            // Döngü bittikten sonra, doğru tasarruf hedeflerini AYNI İŞLEM içinde yaz
-            // Bu, hedeflerin kalıcı olarak kaydedilmesini garanti eder.
             if (backupData.savingsGoals.isNotEmpty()) {
                 val goalsJson = gson.toJson(backupData.savingsGoals)
                 preferences[KEY_SAVINGS_GOALS] = goalsJson
