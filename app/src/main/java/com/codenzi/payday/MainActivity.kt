@@ -1,17 +1,8 @@
-// Konum: app/src/main/java/com/codenzi/payday/MainActivity.kt
-// Arayüz Yenileme Sorunu Giderilmiş Nihai Sürüm
-
 package com.codenzi.payday
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -28,8 +19,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
@@ -42,7 +31,7 @@ import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.text.NumberFormat
-import java.util.Locale
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -80,15 +69,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Tema yükleme kodları buradan tamamen kaldırılmıştır.
+        // Bu işlem artık PaydayApplication sınıfı tarafından yönetilmektedir.
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         repository = PaydayRepository(this)
         googleDriveManager = GoogleDriveManager(this)
         setSupportActionBar(binding.toolbar)
         setupRecyclerViews()
         setupListeners()
         setupObservers()
-        createNotificationChannel()
     }
 
     private fun performActionWithSignIn(action: () -> Unit) {
@@ -126,15 +119,8 @@ class MainActivity : AppCompatActivity() {
                     if (backupJson != null) {
                         val backupData = gson.fromJson(backupJson, BackupData::class.java)
                         repository.restoreDataFromBackup(backupData)
-
-                        // *** NİHAİ DÜZELTME: Veriyi yeniden yükle ve arayüzün kendi kendine güncellenmesine izin ver. ***
                         viewModel.loadData()
-
                         Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
-
-                        // 'recreate()' komutu kaldırıldı çünkü arayüz yenileme sorununa yol açıyordu.
-                        // Artık ViewModel'den gelen veri akışı arayüzü anında ve doğru bir şekilde güncelleyecektir.
-
                     } else {
                         Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
                     }
@@ -163,7 +149,6 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    // ... Diğer tüm yardımcı fonksiyonlar (setupListeners, updateUi, vb.) burada değişiklik olmadan yer alabilir ...
     private fun setupListeners() {
         binding.addTransactionFab.setOnClickListener { toggleFabMenu() }
         binding.addTransactionSecondaryFab.setOnClickListener {
@@ -309,19 +294,6 @@ class MainActivity : AppCompatActivity() {
                 position = Position.Relative(0.5, 0.3)
             )
         )
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Payday Kanalı"
-            val descriptionText = "Maaş günü bildirimleri"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("payday_channel", name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
     }
 
     private fun showAchievementSnackbar(achievement: Achievement) {
