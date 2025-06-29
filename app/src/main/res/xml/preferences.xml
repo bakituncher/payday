@@ -28,21 +28,10 @@
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory app:title="@string/settings_general_title">
-
-        <androidx.preference.ListPreference
-            app:key="theme"
-            app:title="@string/settings_theme_title"
-            app:dialogTitle="@string/settings_theme_dialog_title"
-            app:entries="@array/theme_entries"
-            app:entryValues="@array/theme_values"
-            app:defaultValue="System"
-            app:useSimpleSummaryProvider="true"/>
-
         <androidx.preference.SwitchPreferenceCompat
             app:key="weekend_adjustment"
             app:title="@string/weekend_adjustment_label"
             app:summary="@string/weekend_adjustment_summary"/>
-
     </androidx.preference.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

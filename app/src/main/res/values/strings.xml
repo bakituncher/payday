@@ -107,22 +107,6 @@
     <string name="restore_success">Veriler başarıyla geri yüklendi. Uygulamayı yeniden başlatın.</string>
     <string name="restore_failed">Geri yükleme başarısız oldu veya yedek bulunamadı.</string>
     <string name="google_sign_in_failed">Google ile giriş yapılamadı.</string>
-
-    <string name="settings_theme_title">Uygulama Teması</string>
-    <string name="settings_theme_dialog_title">Temayı Seçin</string>
-
-    <string-array name="theme_entries">
-        <item>Açık</item>
-        <item>Koyu</item>
-        <item>Sistem Varsayılanı</item>
-    </string-array>
-
-    <string-array name="theme_values">
-        <item>Light</item>
-        <item>Dark</item>
-        <item>System</item>
-    </string-array>
-
     <!-- DİZİLER (ARRAYS) -->
     <string-array name="pay_periods">
         <item>@string/pay_period_monthly</item>

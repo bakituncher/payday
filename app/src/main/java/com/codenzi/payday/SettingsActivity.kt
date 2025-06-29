@@ -8,10 +8,6 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Bu aktiviteden tüm tema yükleme kodları kaldırılmıştır.
-        // Tema, uygulama açılırken PaydayApplication sınıfında ayarlanır.
-
         val binding = ActivitySettingsContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
