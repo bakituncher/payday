@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#7B68EE</color> <color name="primary_dark">#6D55F7</color>
+    <color name="secondary">#B972F8</color> <color name="text_primary">#F1F5F9</color>   <color name="text_secondary">#94A3B8</color> <color name="text_tertiary">#64748B</color>  <color name="background_light">#0F172A</color> <color name="background_card">#1E293B</color>  <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <array name="pie_chart_colors">
+        <item>@color/primary</item>
+        <item>#64748B</item>
+        <item>#F59E0B</item>
+        <item>#10B981</item>
+        <item>#EF4444</item>
+        <item>#8B5CF6</item>
+    </array>
+</resources>
