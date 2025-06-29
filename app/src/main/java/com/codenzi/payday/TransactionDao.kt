@@ -1,4 +1,4 @@
-// Konum: app/src/main/java/com/example/payday/TransactionDao.kt
+// Konum: app/src/main/java/com/codenzi/payday/TransactionDao.kt
 
 package com.codenzi.payday
 
@@ -38,4 +38,15 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
+
+    // --- YENİ EKLENEN FONKSİYONLAR ---
+    @Query("SELECT strftime('%Y-%m-%d', date / 1000, 'unixepoch') as day, SUM(amount) as totalAmount FROM transactions WHERE date BETWEEN :startDate AND :endDate GROUP BY day ORDER BY day ASC")
+    fun getDailySpendingForChart(startDate: Date, endDate: Date): Flow<List<DailySpending>>
+
+    @Query("SELECT strftime('%Y-%m', date / 1000, 'unixepoch') as month, SUM(amount) as totalAmount FROM transactions WHERE categoryId = :categoryId GROUP BY month ORDER BY month ASC")
+    fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>>
 }
+
+// --- YENİ EKLENEN VERİ SINIFLARI ---
+data class DailySpending(val day: String, val totalAmount: Double)
+data class MonthlyCategorySpending(val month: String, val totalAmount: Double)

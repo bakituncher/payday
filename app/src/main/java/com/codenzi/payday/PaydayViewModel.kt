@@ -1,16 +1,20 @@
 // Konum: app/src/main/java/com/codenzi/payday/PaydayViewModel.kt
+// Raporlama Özellikleri Eklenmiş Nihai Sürüm
 
 package com.codenzi.payday
 
 import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.*
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.PieEntry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.*
 
@@ -28,6 +32,13 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _newAchievementEvent = MutableLiveData<Event<Achievement>>()
     val newAchievementEvent: LiveData<Event<Achievement>> = _newAchievementEvent
+
+    // --- Raporlama İçin Eklenen Yeni LiveData'lar ---
+    private val _dailySpendingData = MutableLiveData<Pair<List<BarEntry>, List<String>>>()
+    val dailySpendingData: LiveData<Pair<List<BarEntry>, List<String>>> = _dailySpendingData
+
+    private val _monthlyCategorySpendingData = MutableLiveData<Pair<List<Entry>, List<String>>>()
+    val monthlyCategorySpendingData: LiveData<Pair<List<Entry>, List<String>>> = _monthlyCategorySpendingData
 
     private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
 
@@ -162,7 +173,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 id = id,
                 name = newName,
                 amount = newAmount,
-                date = Date(),
+                date = Date(), // Veya orijinal tarihi koru
                 categoryId = newCategoryId,
                 isRecurringTemplate = isRecurring
             )
@@ -228,7 +239,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     amount = template.amount,
                     date = Date(),
                     categoryId = template.categoryId,
-                    isRecurringTemplate = false
+                    isRecurringTemplate = false // Yeni döngüde normal harcama olarak eklenir
                 )
                 repository.insertTransaction(newTransaction)
             }
@@ -246,6 +257,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val goal = currentGoals[goalIndex]
 
         if (amountToAdd > currentState.actualRemainingAmountForGoals) {
+            // Yetersiz bakiye durumu burada ele alınabilir (örn: Toast mesajı)
             return@launch
         }
 
@@ -269,6 +281,36 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         repository.insertTransaction(transaction)
         loadData()
     }
+
+    // --- Raporlama İçin Eklenen Yeni Fonksiyonlar ---
+    fun loadDailySpending(startDate: Date, endDate: Date) {
+        viewModelScope.launch {
+            repository.getDailySpendingForChart(startDate, endDate).collect { dailySpendingList ->
+                val labels = dailySpendingList.map { it.day.substring(5) } // "YYYY-MM-DD" -> "MM-DD"
+                val barEntries = dailySpendingList.mapIndexed { index, dailySpending ->
+                    BarEntry(index.toFloat(), dailySpending.totalAmount.toFloat())
+                }
+                _dailySpendingData.postValue(Pair(barEntries, labels))
+            }
+        }
+    }
+
+    fun loadMonthlySpendingForCategory(categoryId: Int) {
+        viewModelScope.launch {
+            repository.getMonthlySpendingForCategory(categoryId).collect { monthlySpendingList ->
+                val labels = monthlySpendingList.map {
+                    val dateParts = it.month.split("-")
+                    // "YYYY-MM" -> "MM/YYYY" formatına çevirme
+                    if (dateParts.size == 2) "${dateParts[1]}/${dateParts[0]}" else it.month
+                }
+                val lineEntries = monthlySpendingList.mapIndexed { index, monthlySpending ->
+                    Entry(index.toFloat(), monthlySpending.totalAmount.toFloat())
+                }
+                _monthlyCategorySpendingData.postValue(Pair(lineEntries, labels))
+            }
+        }
+    }
+
 
     private fun formatCurrency(amount: Double): String {
         return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
