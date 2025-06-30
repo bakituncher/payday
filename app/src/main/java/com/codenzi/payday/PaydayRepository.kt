@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -14,14 +15,16 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "PaydayPrefs")
 
-class PaydayRepository(context: Context) {
+class PaydayRepository(private val context: Context) {
 
     private val gson = Gson()
     private val prefs = context.dataStore
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
+    private val googleDriveManager = GoogleDriveManager(context)
 
     companion object {
         val KEY_PAYDAY_VALUE = intPreferencesKey("payday")
@@ -40,6 +43,7 @@ class PaydayRepository(context: Context) {
         val KEY_SHOW_SIGN_IN_PROMPT = booleanPreferencesKey("show_sign_in_prompt")
         val KEY_SHOW_LOGIN_ON_START = booleanPreferencesKey("show_login_on_start")
         val KEY_AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
+        val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
     }
 
     // GETTERS
@@ -58,6 +62,7 @@ class PaydayRepository(context: Context) {
     fun shouldShowSignInPrompt(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_SIGN_IN_PROMPT] ?: true }
     fun shouldShowLoginOnStart(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_LOGIN_ON_START] ?: true }
     fun isAutoBackupEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_BACKUP_ENABLED] ?: false }
+    fun getLastBackupTimestamp(): Flow<Long> = prefs.data.map { it[KEY_LAST_BACKUP_TIMESTAMP] ?: 0L }
 
     // SETTERS
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
@@ -75,11 +80,37 @@ class PaydayRepository(context: Context) {
     suspend fun setShowLoginOnStart(shouldShow: Boolean) { prefs.edit { it[KEY_SHOW_LOGIN_ON_START] = shouldShow } }
     suspend fun setAutoBackupEnabled(isEnabled: Boolean) { prefs.edit { it[KEY_AUTO_BACKUP_ENABLED] = isEnabled } }
 
+    private suspend fun saveLastBackupTimestamp(timestamp: Long) {
+        prefs.edit { it[KEY_LAST_BACKUP_TIMESTAMP] = timestamp }
+    }
+
     suspend fun unlockAchievement(achievementId: String) {
         prefs.edit { preferences ->
             val unlocked = preferences[KEY_UNLOCKED_ACHIEVEMENTS]?.toMutableSet() ?: mutableSetOf()
             if (unlocked.add(achievementId)) {
                 preferences[KEY_UNLOCKED_ACHIEVEMENTS] = unlocked
+            }
+        }
+    }
+
+    /**
+     * Otomatik yedekleme ayarlarını kontrol eder ve gerekirse yedeklemeyi başlatır.
+     */
+    suspend fun performSmartBackup() {
+        if (isAutoBackupEnabled().first() && GoogleSignIn.getLastSignedInAccount(context) != null) {
+            val lastBackupTimestamp = getLastBackupTimestamp().first()
+            val fifteenMinutesInMillis = TimeUnit.MINUTES.toMillis(15)
+
+            if ((System.currentTimeMillis() - lastBackupTimestamp) > fifteenMinutesInMillis) {
+                try {
+                    val backupData = getAllDataForBackup()
+                    val backupJson = gson.toJson(backupData)
+                    googleDriveManager.uploadFileContent(backupJson)
+                    saveLastBackupTimestamp(System.currentTimeMillis())
+                } catch (e: Exception) {
+                    // Hata durumunda bir sonraki denemeyi engellememek için sessiz kal.
+                    // Gerçek bir uygulamada bu hata bir loglama servisine gönderilebilir.
+                }
             }
         }
     }
@@ -131,15 +162,10 @@ class PaydayRepository(context: Context) {
         backupData.transactions.forEach { transactionDao.insert(it) }
 
         prefs.edit { preferences ->
-            // Geri yükleme başlamadan önce mevcut otomatik yedekleme tercihini sakla.
             val currentAutoBackupSetting = preferences[KEY_AUTO_BACKUP_ENABLED]
-
-            // Diğer tüm ayarları temizle.
             preferences.clear()
 
-            // Yedekten gelen ayarları geri yükle.
             backupData.settings.forEach { (key, value) ->
-                // Otomatik yedekleme ayarını yedekten geri YÜKLEME.
                 if (key != KEY_SAVINGS_GOALS.name && key != KEY_AUTO_BACKUP_ENABLED.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
@@ -175,8 +201,6 @@ class PaydayRepository(context: Context) {
                 val goalsJson = gson.toJson(backupData.savingsGoals)
                 preferences[KEY_SAVINGS_GOALS] = goalsJson
             }
-
-            // Saklanan güncel otomatik yedekleme tercihini geri yaz.
             if (currentAutoBackupSetting != null) {
                 preferences[KEY_AUTO_BACKUP_ENABLED] = currentAutoBackupSetting
             }
