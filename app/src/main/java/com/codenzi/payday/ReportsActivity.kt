@@ -1,5 +1,5 @@
 // Konum: app/src/main/java/com/codenzi/payday/ReportsActivity.kt
-// 'R' referans hatası ve renk sorunları düzeltilmiş nihai sürüm
+// Nihai sürüm: boş ekran durumu dahil edildi, tüm mevcut kodlar korundu
 
 package com.codenzi.payday
 
@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Button
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -22,7 +23,7 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.google.android.material.color.MaterialColors
 import java.util.Calendar
 import java.util.Date
-import com.codenzi.payday.R // HATA İÇİN EKLENEN IMPORT
+import com.codenzi.payday.R
 
 class ReportsActivity : AppCompatActivity() {
 
@@ -35,10 +36,7 @@ class ReportsActivity : AppCompatActivity() {
         binding = ActivityReportsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Mevcut temadan doğru metin rengini al
         chartTextColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface, Color.BLACK)
-
-        // Başarım tetikleme
         viewModel.triggerReportsViewedAchievement()
 
         setupToolbar()
@@ -46,7 +44,11 @@ class ReportsActivity : AppCompatActivity() {
         setupFilters()
         setupObservers()
 
-        // Başlangıç verilerini yükle (son 30 gün)
+        // Yeni: Boş ekran butonu işlevi
+        binding.reportsEmptyState.root.findViewById<Button>(R.id.add_expense_button).setOnClickListener {
+            finish()
+        }
+
         val calendar = Calendar.getInstance()
         val endDate = calendar.time
         calendar.add(Calendar.DAY_OF_YEAR, -30)
@@ -61,7 +63,6 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun setupCharts() {
-        // PieChart Kurulumu
         binding.pieChart.apply {
             setUsePercentValues(true)
             description.isEnabled = false
@@ -74,7 +75,6 @@ class ReportsActivity : AppCompatActivity() {
             animateY(1400, Easing.EaseInOutQuad)
         }
 
-        // BarChart Kurulumu
         binding.barChart.apply {
             description.isEnabled = false
             xAxis.textColor = chartTextColor
@@ -87,7 +87,6 @@ class ReportsActivity : AppCompatActivity() {
             animateY(1500)
         }
 
-        // LineChart Kurulumu
         binding.lineChart.apply {
             description.isEnabled = false
             xAxis.textColor = chartTextColor
@@ -119,26 +118,20 @@ class ReportsActivity : AppCompatActivity() {
     private fun setupObservers() {
         viewModel.uiState.observe(this) { state ->
             val hasPieData = state.categorySpendingData.any { it.y > 0 }
-            val hasBarData = binding.barChart.data != null && binding.barChart.data.entryCount > 0
-
-            binding.pieChart.visibility = if (hasPieData) View.VISIBLE else View.GONE
-            binding.emptyChartTextView.visibility = if (!hasPieData && !hasBarData) View.VISIBLE else View.GONE
-
+            updateVisibility(hasPieData || binding.barChart.data?.entryCount ?: 0 > 0)
             if (hasPieData) {
                 setDataToPieChart(state.categorySpendingData)
             }
         }
+
         viewModel.dailySpendingData.observe(this) { (entries, labels) ->
-            val hasPieData = binding.pieChart.data != null && binding.pieChart.data.entryCount > 0
             val hasBarData = entries.isNotEmpty()
-
-            binding.barChart.visibility = if (hasBarData) View.VISIBLE else View.GONE
-            binding.emptyChartTextView.visibility = if (!hasPieData && !hasBarData) View.VISIBLE else View.GONE
-
+            updateVisibility(hasBarData || binding.pieChart.data?.entryCount ?: 0 > 0)
             if (hasBarData) {
                 setDataToBarChart(entries, labels)
             }
         }
+
         viewModel.monthlyCategorySpendingData.observe(this) { (entries, labels) ->
             val hasLineData = entries.isNotEmpty()
             binding.lineChart.visibility = if (hasLineData) View.VISIBLE else View.GONE
@@ -149,8 +142,18 @@ class ReportsActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateVisibility(hasData: Boolean) {
+        if (hasData) {
+            binding.reportsScrollView.visibility = View.VISIBLE
+            binding.reportsEmptyState.root.visibility = View.GONE
+        } else {
+            binding.reportsScrollView.visibility = View.GONE
+            binding.reportsEmptyState.root.visibility = View.VISIBLE
+        }
+    }
+
     private fun setDataToPieChart(entries: List<PieEntry>) {
-        val dataSet = PieDataSet(entries.filter{ it.y > 0 }, "")
+        val dataSet = PieDataSet(entries.filter { it.y > 0 }, "")
         dataSet.sliceSpace = 3f
         dataSet.selectionShift = 5f
         dataSet.colors = resources.getIntArray(R.array.pie_chart_colors).toList()
