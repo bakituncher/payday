@@ -1,13 +1,14 @@
-// Konum: app/src/main/java/com/codenzi/payday/PaydayViewModel.kt
-
 package com.codenzi.payday
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.*
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.PieEntry
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.gson.Gson
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -51,22 +52,16 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
 
     init {
-        // ViewModel başlatıldığında, kullanım süresine bağlı başarımları kontrol et
         checkUsageStreakAchievements()
         loadData()
     }
 
-    /**
-     * Kullanım süresine dayalı başarımları kontrol eder (7 gün, 30 gün, 180 gün, 1 yıl).
-     * Uygulama her açıldığında çağrılır.
-     */
     private fun checkUsageStreakAchievements() {
         viewModelScope.launch {
             val today = LocalDate.now()
             val firstLaunchDateStr = repository.getFirstLaunchDate().first()
 
             if (firstLaunchDateStr == null) {
-                // Bu, uygulamanın ilk açılışı. Tarihi kaydet.
                 repository.setFirstLaunchDate(today)
                 return@launch
             }
@@ -163,12 +158,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Yeni bir harcama ekler ve ilgili başarımları kontrol eder.
-     * - "Harcama Günlüğü" (FIRST_TRANSACTION)
-     * - "Kategori Uzmanı" (CATEGORY_EXPERT)
-     * - "Otomatik Pilot" (AUTO_PILOT)
-     */
     fun insertTransaction(name: String, amount: Double, categoryId: Int, isRecurring: Boolean) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val transaction = Transaction(
@@ -179,14 +168,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 isRecurringTemplate = isRecurring
             )
             repository.insertTransaction(transaction)
-
-            // Başarım kontrolleri
             unlockAchievement("FIRST_TRANSACTION")
             if (isRecurring) {
                 unlockAchievement("AUTO_PILOT")
             }
             checkCategoryExpertAchievement()
-
             loadData()
         }
     }
@@ -202,13 +188,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 isRecurringTemplate = isRecurring
             )
             repository.updateTransaction(updatedTransaction)
-
-            // Başarım kontrolleri
             if (isRecurring) {
                 unlockAchievement("AUTO_PILOT")
             }
             checkCategoryExpertAchievement()
-
             loadData()
         }
     }
@@ -218,22 +201,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
-    /**
-     * Yeni bir tasarruf hedefi ekler/günceller ve ilgili başarımları kontrol eder.
-     * - "İlk Adım" (FIRST_GOAL)
-     * - "Koleksiyoncu" (COLLECTOR)
-     */
     fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val currentGoals = repository.getGoals().first().toMutableList()
 
-            if (existingGoalId == null) { // Yeni hedef ekleniyor
+            if (existingGoalId == null) {
                 currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate, categoryId = categoryId))
                 unlockAchievement("FIRST_GOAL")
                 if (currentGoals.size >= 3) {
                     unlockAchievement("COLLECTOR")
                 }
-            } else { // Mevcut hedef güncelleniyor
+            } else {
                 val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
                     val existingSavedAmount = currentGoals[index].savedAmount
@@ -253,27 +231,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onSettingsResult() {
-        // Ayarlar ekranından dönüldüğünde temayla ilgili başarımı kontrol et
         checkThemeAchievement()
         loadData()
     }
 
-    /**
-     * Yeni bir ödeme döngüsü başladığında tetiklenir ve ilgili başarımları kontrol eder.
-     * - "Maaş Günü!" (PAYDAY_HYPE)
-     * - "Bütçe Sihirbazı" (BUDGET_WIZARD)
-     * - "Döngü Şampiyonu" (CYCLE_CHAMPION)
-     */
     private suspend fun checkAndProcessNewCycle(result: PaydayResult) {
         val lastProcessedCycleEndDateStr = repository.getLastProcessedCycleEndDate().first()
         val currentCycleStartDate = result.cycleStartDate
 
         if (lastProcessedCycleEndDateStr == null || LocalDate.parse(lastProcessedCycleEndDateStr).isBefore(currentCycleStartDate)) {
-            // ----- YENİ DÖNGÜ BAŞLADI -----
-
             unlockAchievement("PAYDAY_HYPE")
 
-            // Bir önceki döngü pozitif bakiye ile mi bitti?
             val previousCycleEndDate = currentCycleStartDate.minusDays(1).toDate()
             val previousCycleStartDate = PaydayCalculator.calculate(
                 repository.getPayPeriod().first(),
@@ -286,21 +254,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val salary = repository.getSalaryAmount().first()
                 val expenses = repository.getTotalExpensesBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
                 if (salary > expenses) {
-                    // Önceki döngü pozitifte bitti
                     unlockAchievement("BUDGET_WIZARD")
-
                     val consecutivePositiveCycles = (repository.getConsecutivePositiveCycles().first() ?: 0) + 1
                     repository.saveConsecutivePositiveCycles(consecutivePositiveCycles)
                     if (consecutivePositiveCycles >= 3) {
                         unlockAchievement("CYCLE_CHAMPION")
                     }
                 } else {
-                    // Pozitif seri bozuldu
                     repository.saveConsecutivePositiveCycles(0)
                 }
             }
 
-            // Tekrarlayan harcamaları oluştur
             val templates = repository.getRecurringTransactionTemplates().first()
             templates.forEach { template ->
                 val newTransaction = Transaction(
@@ -313,16 +277,29 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 repository.insertTransaction(newTransaction)
             }
             repository.saveLastProcessedCycleEndDate(result.cycleEndDate)
+
+            if (repository.isAutoBackupEnabled().first()) {
+                performAutoBackup()
+            }
         }
     }
 
-    /**
-     * Bir hedefe para eklendiğinde çağrılır ve ilgili başarımları kontrol eder.
-     * - "Kumbaracı" (SAVER_LV1)
-     * - "Yatırımcı" (SAVER_LV2)
-     * - "Tasarruf Gurusu" (SAVER_LV3)
-     * - "Hedef Avcısı" (GOAL_COMPLETED)
-     */
+    private fun performAutoBackup() {
+        viewModelScope.launch {
+            if (GoogleSignIn.getLastSignedInAccount(getApplication()) == null) return@launch
+
+            try {
+                val googleDriveManager = GoogleDriveManager(getApplication())
+                val backupData = repository.getAllDataForBackup()
+                val backupJson = Gson().toJson(backupData)
+                googleDriveManager.uploadFileContent(backupJson)
+                Log.d("AutoBackup", "Otomatik yedekleme başarıyla tamamlandı.")
+            } catch (e: Exception) {
+                Log.e("AutoBackup", "Otomatik yedekleme sırasında bir hata oluştu.", e)
+            }
+        }
+    }
+
     fun addFundsToGoal(goalId: String, amountToAdd: Double) = viewModelScope.launch {
         val currentState = _uiState.value ?: return@launch
         val currentGoals = repository.getGoals().first().toMutableList()
@@ -355,7 +332,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         )
         repository.insertTransaction(transaction)
 
-        // Başarım kontrolleri
         if (updatedGoal.savedAmount >= updatedGoal.targetAmount) {
             unlockAchievement("GOAL_COMPLETED")
         }
@@ -365,11 +341,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (totalSavedAmount >= 10000) unlockAchievement("SAVER_LV2")
         if (totalSavedAmount >= 50000) unlockAchievement("SAVER_LV3")
 
-
         loadData()
     }
 
-    // --- Raporlama İçin Fonksiyonlar ---
     fun loadDailySpending(startDate: Date, endDate: Date) {
         viewModelScope.launch {
             repository.getDailySpendingForChart(startDate, endDate).collect { dailySpendingList ->
@@ -397,32 +371,21 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-
     private fun formatCurrency(amount: Double): String {
         return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
     }
 
-    // --- Onboarding ve Ayarlar için Kaydetme Fonksiyonları ---
     fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
     fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
     fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch { repository.saveBiWeeklyReferenceDate(date) }
     fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
     fun saveMonthlySavings(amount: Long) = viewModelScope.launch { repository.saveMonthlySavings(amount) }
 
-    // ===================================================================
-    //                        BAŞARIM YARDIMCI METOTLARI
-    // ===================================================================
-
-    /**
-     * Verilen ID'ye sahip başarımın kilidini açar. Eğer başarım zaten açıksa hiçbir şey yapmaz.
-     * @param achievementId Kilidi açılacak başarımın `AchievementsManager`'daki ID'si.
-     */
     private fun unlockAchievement(achievementId: String) {
         viewModelScope.launch {
             val unlockedIds = repository.getUnlockedAchievementIds().first()
             if (!unlockedIds.contains(achievementId)) {
                 repository.unlockAchievement(achievementId)
-                // UI'da Snackbar göstermek için event tetikle
                 AchievementsManager.getAllAchievements().find { it.id == achievementId }?.let {
                     _newAchievementEvent.postValue(Event(it))
                 }
@@ -430,15 +393,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * "Kategori Uzmanı" başarımını kontrol eder.
-     * Kullanıcı 5 farklı harcama kategorisi kullandıysa başarımı açar.
-     */
     private fun checkCategoryExpertAchievement() {
         viewModelScope.launch {
             val allTransactions = repository.getAllTransactionsForAchievements().first()
             val distinctCategories = allTransactions
-                .filter { it.categoryId != ExpenseCategory.SAVINGS.ordinal } // Tasarruf kategorisi sayılmaz
+                .filter { it.categoryId != ExpenseCategory.SAVINGS.ordinal }
                 .map { it.categoryId }
                 .distinct()
 
@@ -448,9 +407,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * "Kara Kutu" (Koyu Tema) başarımını kontrol eder.
-     */
     private fun checkThemeAchievement() {
         viewModelScope.launch {
             val currentTheme = repository.getTheme().first()
@@ -460,10 +416,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Diğer activity'lerden (örn. MainActivity, OnboardingActivity) çağrılacak public bir metot.
-     * Bu, ViewModel'in iç mantığını dışarıya açmadan başarım kilidi açmayı sağlar.
-     */
     fun triggerSetupCompleteAchievement() {
         unlockAchievement("SETUP_COMPLETE")
     }

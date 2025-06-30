@@ -14,6 +14,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -35,7 +36,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private lateinit var repository: PaydayRepository
     private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
 
-    // GOOGLE İLE GİRİŞ İÇİN EKLENENLER
     private lateinit var googleSignInClient: GoogleSignInClient
     private var googleAccountPreference: Preference? = null
 
@@ -51,16 +51,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
             }
         }
     }
-    // ------
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
 
-        // GOOGLE İLE GİRİŞ İÇİN EKLENDİ
         setupGoogleClient()
         setupGoogleAccountPreference()
-        // ------
 
         findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
             val theme = newValue as String
@@ -79,6 +76,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupPaydayPreference()
         setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
         setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
+        setupAutoBackupPreference()
     }
 
     override fun onResume() {
@@ -87,7 +85,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         updateGoogleAccountPreference(GoogleSignIn.getLastSignedInAccount(requireContext()))
     }
 
-    // --- YENİ GOOGLE METOTLARI ---
     private fun setupGoogleClient() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
@@ -101,11 +98,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         googleAccountPreference?.setOnPreferenceClickListener {
             val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             if (account == null) {
-                // Giriş yapmamış, giriş ekranını başlat
                 val signInIntent: Intent = googleSignInClient.signInIntent
                 googleSignInLauncher.launch(signInIntent)
             } else {
-                // Giriş yapmış, çıkış yapma onayı göster
                 showSignOutDialog()
             }
             true
@@ -120,6 +115,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             googleAccountPreference?.summary = "Yedekleme ve senkronizasyon için giriş yapın"
             googleAccountPreference?.title = "Google ile Giriş Yap"
         }
+        setupAutoBackupPreference()
     }
 
     private fun showSignOutDialog() {
@@ -130,12 +126,41 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 googleSignInClient.signOut().addOnCompleteListener {
                     Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı.", Toast.LENGTH_SHORT).show()
                     updateGoogleAccountPreference(null)
+                    // Çıkış yapıldığında anahtarın durumunu anında güncelle
+                    lifecycleScope.launch { repository.setAutoBackupEnabled(false) }
                 }
             }
             .setNegativeButton("İptal", null)
             .show()
     }
-    // ------
+
+    // --- HATAYI DÜZELTEN GÜNCELLENMİŞ FONKSİYON ---
+    private fun setupAutoBackupPreference() {
+        val autoBackupPref = findPreference<SwitchPreferenceCompat>(PaydayRepository.KEY_AUTO_BACKUP_ENABLED.name)
+        val account = GoogleSignIn.getLastSignedInAccount(requireContext())
+
+        autoBackupPref?.isEnabled = (account != null)
+
+        if (account == null) {
+            autoBackupPref?.summary = "Bu özelliği kullanmak için Google ile giriş yapmalısınız."
+        } else {
+            autoBackupPref?.summary = "Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
+        }
+
+        // DEĞİŞİKLİK: Kaydedilmiş değeri oku ve anahtarın durumunu ayarla.
+        lifecycleScope.launch {
+            val isEnabled = repository.isAutoBackupEnabled().first()
+            autoBackupPref?.isChecked = isEnabled && (account != null)
+        }
+
+        autoBackupPref?.setOnPreferenceChangeListener { _, newValue ->
+            val isEnabled = newValue as Boolean
+            lifecycleScope.launch {
+                repository.setAutoBackupEnabled(isEnabled)
+            }
+            true
+        }
+    }
 
     private fun updateSummaries() {
         lifecycleScope.launch {

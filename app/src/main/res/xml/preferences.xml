@@ -40,6 +40,12 @@
             app:entryValues="@array/theme_values"
             app:defaultValue="System" />
 
+        <androidx.preference.SwitchPreferenceCompat
+            app:key="auto_backup_enabled"
+            app:title="Otomatik Yedekleme"
+            app:summary="Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
+            app:defaultValue="false" />
+
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory app:title="Hesap">

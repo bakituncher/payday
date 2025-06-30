@@ -37,9 +37,9 @@ class PaydayRepository(context: Context) {
         val KEY_LAST_PROCESSED_CYCLE_END_DATE = stringPreferencesKey("last_processed_cycle_end_date")
         val KEY_THEME = stringPreferencesKey("theme")
         val KEY_CONSECUTIVE_POSITIVE_CYCLES = intPreferencesKey("consecutive_positive_cycles")
-
-        // YENİ EKLENEN ANAHTAR
         val KEY_SHOW_SIGN_IN_PROMPT = booleanPreferencesKey("show_sign_in_prompt")
+        val KEY_SHOW_LOGIN_ON_START = booleanPreferencesKey("show_login_on_start")
+        val KEY_AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
     }
 
     // GETTERS
@@ -55,10 +55,9 @@ class PaydayRepository(context: Context) {
     fun getTheme(): Flow<String> = prefs.data.map { it[KEY_THEME] ?: "System" }
     fun getConsecutivePositiveCycles(): Flow<Int?> = prefs.data.map { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] }
     fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
-
-    // YENİ EKLENEN GETTER
     fun shouldShowSignInPrompt(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_SIGN_IN_PROMPT] ?: true }
-
+    fun shouldShowLoginOnStart(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_LOGIN_ON_START] ?: true }
+    fun isAutoBackupEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_BACKUP_ENABLED] ?: false }
 
     // SETTERS
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
@@ -72,9 +71,9 @@ class PaydayRepository(context: Context) {
     suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveLastProcessedCycleEndDate(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveConsecutivePositiveCycles(count: Int) = prefs.edit { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] = count }
-
-    // YENİ EKLENEN SETTER
     suspend fun setSignInPrompt(shouldShow: Boolean) = prefs.edit { it[KEY_SHOW_SIGN_IN_PROMPT] = shouldShow }
+    suspend fun setShowLoginOnStart(shouldShow: Boolean) { prefs.edit { it[KEY_SHOW_LOGIN_ON_START] = shouldShow } }
+    suspend fun setAutoBackupEnabled(isEnabled: Boolean) { prefs.edit { it[KEY_AUTO_BACKUP_ENABLED] = isEnabled } }
 
     suspend fun unlockAchievement(achievementId: String) {
         prefs.edit { preferences ->
@@ -85,7 +84,6 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    // (Diğer tüm metodlar aynı kalır)
     fun getGoals(): Flow<MutableList<SavingsGoal>> {
         return prefs.data.map { preferences ->
             val jsonGoals = preferences[KEY_SAVINGS_GOALS]
@@ -112,6 +110,7 @@ class PaydayRepository(context: Context) {
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
     suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
+
     suspend fun getAllDataForBackup(): BackupData = withContext(Dispatchers.IO) {
         val allTransactions = transactionDao.getAllTransactions()
         val goals = getGoals().first()
@@ -126,6 +125,7 @@ class PaydayRepository(context: Context) {
             settings = settingsMap
         )
     }
+
     suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
         transactionDao.deleteAllTransactions()
         backupData.transactions.forEach { transactionDao.insert(it) }
@@ -139,6 +139,8 @@ class PaydayRepository(context: Context) {
                         KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
                         KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_SHOW_LOGIN_ON_START.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: true
+                        KEY_AUTO_BACKUP_ENABLED.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_PAY_PERIOD.name,

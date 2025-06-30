@@ -1,5 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/LoginActivity.kt
-
 package com.codenzi.payday
 
 import android.content.Intent
@@ -22,8 +20,6 @@ import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
-    // DEĞİŞİKLİK: 'binding' değişkenini nullable yaparak ve geç başlatarak
-    // ekranı göstermeden karar vermemizi sağlıyoruz.
     private var binding: ActivityLoginBinding? = null
     private lateinit var googleDriveManager: GoogleDriveManager
     private lateinit var repository: PaydayRepository
@@ -44,27 +40,19 @@ class LoginActivity : AppCompatActivity() {
         googleDriveManager = GoogleDriveManager(this)
         repository = PaydayRepository(this)
 
-        // --- YENİ EKLENEN ANA MANTIK ---
-        // UI'ı (arayüzü) göstermeden önce bir kontrol yapıyoruz.
         lifecycleScope.launch {
             val lastSignedInAccount = GoogleSignIn.getLastSignedInAccount(this@LoginActivity)
-            // Kullanıcının "bir daha gösterme" tercihini repodan alıyoruz.
-            val shouldShowLoginScreen = repository.shouldShowSignInPrompt().first()
+            val shouldShowOnStart = repository.shouldShowLoginOnStart().first()
 
-            // Eğer kullanıcı daha önce giriş yapmışsa VEYA "bir daha gösterme"yi seçmişse,
-            // bu ekranı hiç göstermeden doğrudan bir sonraki ekrana geç.
-            if (lastSignedInAccount != null || !shouldShowLoginScreen) {
+            if (lastSignedInAccount != null || !shouldShowOnStart) {
                 navigateToNextScreen()
-                return@launch // Bu coroutine'i sonlandır, aşağıdaki kodlar çalışmasın.
+                return@launch
             }
 
-            // Yukarıdaki koşul sağlanmazsa, demek ki giriş ekranını göstermeliyiz.
-            // Bu yüzden arayüzü burada yüklüyoruz.
             setupUI()
         }
     }
 
-    // YENİ EKLENEN METOT: Arayüzü kuran kodları ayrı bir metoda taşıdık.
     private fun setupUI() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding!!.root)
@@ -76,9 +64,8 @@ class LoginActivity : AppCompatActivity() {
         }
 
         binding!!.skipButton.setOnClickListener {
-            // Kullanıcı "Atla" butonuna bastığında, bu tercihini kaydediyoruz.
             lifecycleScope.launch {
-                repository.setSignInPrompt(false) // Artık giriş ekranını gösterme.
+                repository.setShowLoginOnStart(false)
                 navigateToNextScreen()
             }
         }
@@ -89,12 +76,36 @@ class LoginActivity : AppCompatActivity() {
             val account = completedTask.getResult(ApiException::class.java)
             Log.d(TAG, "Giriş başarılı: ${account.displayName}")
             Toast.makeText(this, "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
-            checkForExistingBackup()
+
+            showAutoBackupPrompt {
+                checkForExistingBackup()
+            }
+
         } catch (e: ApiException) {
             showLoading(false)
             Log.w(TAG, "Giriş hatası, kod: " + e.statusCode)
             Toast.makeText(this, "Giriş sırasında bir hata oluştu.", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun showAutoBackupPrompt(onComplete: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Otomatik Yedekleme")
+            .setMessage("Verilerinizin düzenli olarak Google Drive'a otomatik yedeklenmesini ister misiniz? Bu ayarı daha sonra Ayarlar menüsünden değiştirebilirsiniz.")
+            .setCancelable(false)
+            .setPositiveButton("Evet, Aç") { _, _ ->
+                lifecycleScope.launch {
+                    repository.setAutoBackupEnabled(true)
+                    onComplete()
+                }
+            }
+            .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
+                lifecycleScope.launch {
+                    repository.setAutoBackupEnabled(false)
+                    onComplete()
+                }
+            }
+            .show()
     }
 
     private fun checkForExistingBackup() {
@@ -104,7 +115,6 @@ class LoginActivity : AppCompatActivity() {
                 showLoading(false)
                 showRestoreDialog()
             } else {
-                Log.d(TAG, "Yedek bulunamadı, normal akışa devam ediliyor.")
                 navigateToNextScreen()
             }
         }
@@ -115,12 +125,8 @@ class LoginActivity : AppCompatActivity() {
             .setTitle("Yedek Bulundu")
             .setMessage("Google Drive'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi?")
             .setCancelable(false)
-            .setPositiveButton("Evet, Geri Yükle") { _, _ ->
-                restoreBackup()
-            }
-            .setNegativeButton("Hayır, Yeni Başla") { _, _ ->
-                navigateToNextScreen()
-            }
+            .setPositiveButton("Evet, Geri Yükle") { _, _ -> restoreBackup() }
+            .setNegativeButton("Hayır, Yeni Başla") { _, _ -> navigateToNextScreen() }
             .show()
     }
 
@@ -148,18 +154,13 @@ class LoginActivity : AppCompatActivity() {
     private fun navigateToNextScreen() {
         lifecycleScope.launch {
             val isOnboardingComplete = repository.isOnboardingComplete().first()
-            val targetActivity = if (isOnboardingComplete) {
-                MainActivity::class.java
-            } else {
-                OnboardingActivity::class.java
-            }
+            val targetActivity = if (isOnboardingComplete) MainActivity::class.java else OnboardingActivity::class.java
             startActivity(Intent(this@LoginActivity, targetActivity))
-            finish() // Bu ekrana geri dönülmesini engelle
+            finish()
         }
     }
 
     private fun showLoading(isLoading: Boolean) {
-        // Binding null olabileceği için `?` ile güvenli çağrı yapıyoruz.
         binding?.loadingProgressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
         binding?.signInButton?.isEnabled = !isLoading
         binding?.skipButton?.isEnabled = !isLoading

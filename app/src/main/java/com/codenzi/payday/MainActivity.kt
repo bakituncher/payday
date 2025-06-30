@@ -1,5 +1,6 @@
 package com.codenzi.payday
 
+import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
@@ -23,9 +24,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.common.api.ApiException
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
@@ -33,7 +37,6 @@ import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.text.NumberFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.flow.first
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,20 +45,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
     private lateinit var transactionAdapter: TransactionAdapter
     private lateinit var repository: PaydayRepository
-    private lateinit var googleDriveManager: GoogleDriveManager
     private val gson = Gson()
-    private var pendingAction: (() -> Unit)? = null
     private val TAG = "PaydayBackup"
 
+    private lateinit var googleDriveManager: GoogleDriveManager
+
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            Log.d(TAG, "Giriş başarılı. Bekleyen işlem çalıştırılıyor.")
-            pendingAction?.invoke() // Giriş başarılı olunca bekleyen eylemi (örn. yedekleme) çalıştır
-        } else {
-            Log.w(TAG, "Giriş başarısız oldu veya kullanıcı tarafından iptal edildi.")
-            Toast.makeText(this, "Google ile giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                Toast.makeText(this, "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
+                showAutoBackupPrompt {
+                    checkForBackupAndProceed()
+                }
+            } catch (e: ApiException) {
+                Log.w(TAG, "Giriş başarısız, kod: " + e.statusCode)
+                Toast.makeText(this, "Google ile giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
+            }
         }
-        pendingAction = null // Her durumda bekleyen eylemi temizle
     }
 
     private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
@@ -84,55 +92,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun performActionWithSignIn(action: () -> Unit, featureName: String) {
-        // Eğer kullanıcı zaten giriş yapmışsa, işlemi direkt yap ve metottan çık.
-        if (GoogleSignIn.getLastSignedInAccount(this) != null) {
+    private fun performActionWithSignIn(action: () -> Unit) {
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        if (account != null) {
             action.invoke()
-            return
-        }
-
-        // Kullanıcı giriş yapmamışsa, "bir daha sorma" tercihini kontrol et
-        lifecycleScope.launch {
-            val shouldShowPrompt = repository.shouldShowSignInPrompt().first()
-
-            if (shouldShowPrompt) {
-                // Kullanıcı "bir daha sorma" dememiş, diyalog göster
-                pendingAction = action
-
-                // dialog_signin_prompt.xml dosyasını inflate et
-                val dialogView = LayoutInflater.from(this@MainActivity).inflate(R.layout.dialog_signin_prompt, null)
-                val dontShowAgainCheckbox = dialogView.findViewById<android.widget.CheckBox>(R.id.checkbox_dont_show_again)
-                val messageView = dialogView.findViewById<TextView>(R.id.dialog_message)
-
-                messageView.text = "'$featureName' özelliğini kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir."
-
-                MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("Google Hesabı Gerekli")
-                    .setView(dialogView)
-                    .setCancelable(false) // Kullanıcının bir seçim yapmasını sağla
-                    .setPositiveButton("Giriş Yap") { dialog, _ ->
-                        // "Bir daha sorma" seçeneğinin durumunu kaydet
-                        lifecycleScope.launch {
-                            repository.setSignInPrompt(!dontShowAgainCheckbox.isChecked)
-                        }
-                        // Giriş ekranını başlat
-                        googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this@MainActivity))
-                    }
-                    .setNegativeButton("İptal") { dialog, _ ->
-                        // Kullanıcı iptal etse bile "Bir daha sorma" tercihini kaydet
-                        lifecycleScope.launch {
-                            repository.setSignInPrompt(!dontShowAgainCheckbox.isChecked)
-                        }
-                    }
-                    .show()
-
-            } else {
-                // Kullanıcı daha önce "bir daha sorma" dediği için diyalog gösterilmiyor.
-                // Sadece kısa bir bilgi mesajı gösterilebilir.
-                Toast.makeText(this@MainActivity, "'$featureName' özelliği için Ayarlar'dan Google girişi yapabilirsiniz.", Toast.LENGTH_LONG).show()
-            }
+        } else {
+            googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
         }
     }
+
     private fun backupData() {
         lifecycleScope.launch {
             try {
@@ -169,15 +137,57 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- GÜNCELLENEN METOT ---
+    private fun showAutoBackupPrompt(onComplete: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Otomatik Yedekleme")
+            .setMessage("Verilerinizin düzenli olarak Google Drive'a otomatik yedeklenmesini ister misiniz? Bu ayarı daha sonra Ayarlar menüsünden değiştirebilirsiniz.")
+            .setCancelable(false)
+            .setPositiveButton("Evet, Aç") { _, _ ->
+                lifecycleScope.launch {
+                    repository.setAutoBackupEnabled(true)
+                    onComplete()
+                }
+            }
+            .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
+                lifecycleScope.launch {
+                    repository.setAutoBackupEnabled(false)
+                    onComplete()
+                }
+            }
+            .show()
+    }
+
+    private fun checkForBackupAndProceed() {
+        lifecycleScope.launch {
+            if (googleDriveManager.isBackupAvailable()) {
+                showRestoreDialog()
+            } else {
+                Toast.makeText(this@MainActivity, "Giriş başarılı. İlk verileriniz şimdi yedekleniyor...", Toast.LENGTH_LONG).show()
+                backupData()
+            }
+        }
+    }
+
+    private fun showRestoreDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Yedek Bulundu")
+            .setMessage("Google Drive'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi? (Mevcut verileriniz silinecektir)")
+            .setCancelable(false)
+            .setPositiveButton("Evet, Geri Yükle") { _, _ ->
+                restoreData()
+            }
+            .setNegativeButton("Hayır, Dokunma") { dialog, _ ->
+                dialog.dismiss()
+                Toast.makeText(this, "Mevcut verileriniz korundu.", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            // Eylemleri doğrudan çağırmak yerine, `performActionWithSignIn` üzerinden çağırıyoruz
-            R.id.action_backup -> performActionWithSignIn(::backupData, "Yedekleme")
-            R.id.action_restore -> performActionWithSignIn(::restoreData, "Geri Yükleme")
+            R.id.action_backup -> performActionWithSignIn(::backupData)
+            R.id.action_restore -> performActionWithSignIn(::restoreData)
             R.id.action_achievements -> {
-                // Başarımlar ekranı için giriş yapma zorunlu değil, sadece öneri olabilir.
-                // Şimdilik doğrudan açıyoruz. İstenirse buraya da bir diyalog eklenebilir.
                 startActivity(Intent(this, AchievementsActivity::class.java))
             }
             R.id.action_settings -> settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
@@ -187,7 +197,7 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    // --- (Diğer tüm metodlar aynı kalır) ---
+    // (Bu dosyadaki diğer tüm metotlar aynı kalır)
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true
