@@ -141,10 +141,22 @@ class PaydayRepository(context: Context) {
                                 preferences[stringPreferencesKey(key)] = value
                             }
                         }
+                        // DÜZENLENMİŞ KISIM: BAŞARIMLARI GERİ YÜKLEME
+                        KEY_UNLOCKED_ACHIEVEMENTS.name -> {
+                            if (value != null) {
+                                // Yedekten gelen "[ID1, ID2]" formatındaki string'i temizleyip Set'e çeviriyoruz.
+                                val unlockedSet = value.removeSurrounding("[", "]")
+                                    .split(", ")
+                                    .filter { it.isNotEmpty() }
+                                    .toSet()
+                                preferences[stringSetPreferencesKey(key)] = unlockedSet
+                            }
+                        }
                     }
                 }
             }
 
+            // Tasarruf hedeflerini geri yükle
             if (backupData.savingsGoals.isNotEmpty()) {
                 val goalsJson = gson.toJson(backupData.savingsGoals)
                 preferences[KEY_SAVINGS_GOALS] = goalsJson
