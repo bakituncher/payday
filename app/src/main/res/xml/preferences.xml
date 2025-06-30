@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -32,6 +31,15 @@
             app:key="weekend_adjustment"
             app:title="@string/weekend_adjustment_label"
             app:summary="@string/weekend_adjustment_summary"/>
+
+        <ListPreference
+            app:key="theme"
+            app:title="@string/theme_title"
+            app:summary="%s"
+            app:entries="@array/theme_entries"
+            app:entryValues="@array/theme_values"
+            app:defaultValue="System" />
+
     </androidx.preference.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>
