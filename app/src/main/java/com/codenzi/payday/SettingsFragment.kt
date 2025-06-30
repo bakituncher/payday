@@ -1,8 +1,12 @@
 package com.codenzi.payday
 
+import android.app.Activity
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
@@ -10,6 +14,12 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -25,20 +35,37 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private lateinit var repository: PaydayRepository
     private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
 
+    // GOOGLE İLE GİRİŞ İÇİN EKLENENLER
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private var googleAccountPreference: Preference? = null
+
+    private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            task.addOnSuccessListener { account ->
+                Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
+                updateGoogleAccountPreference(account)
+            }.addOnFailureListener {
+                Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
+                updateGoogleAccountPreference(null)
+            }
+        }
+    }
+    // ------
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
 
-        // ÖNCEKİ TÜM KARIŞIKLIĞI KALDIRIYORUZ.
-        // TEMA İÇİN ARTIK STANDART YÖNTEMİ KULLANACAĞIZ.
+        // GOOGLE İLE GİRİŞ İÇİN EKLENDİ
+        setupGoogleClient()
+        setupGoogleAccountPreference()
+        // ------
+
         findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
             val theme = newValue as String
-
             lifecycleScope.launch {
-                // Ayarı sadece DataStore'a kaydedeceğiz.
                 repository.saveTheme(theme)
-
-                // Temayı uygula
                 when (theme) {
                     "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
                     "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
@@ -48,7 +75,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
-        // Diğer ayarlar
         setupPayPeriodPreference()
         setupPaydayPreference()
         setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
@@ -57,24 +83,69 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     override fun onResume() {
         super.onResume()
-        // Ayarlar ekranı her açıldığında, değerleri DataStore'dan oku ve göster
         updateSummaries()
+        updateGoogleAccountPreference(GoogleSignIn.getLastSignedInAccount(requireContext()))
     }
+
+    // --- YENİ GOOGLE METOTLARI ---
+    private fun setupGoogleClient() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(requireContext(), gso)
+    }
+
+    private fun setupGoogleAccountPreference() {
+        googleAccountPreference = findPreference("google_account")
+        googleAccountPreference?.setOnPreferenceClickListener {
+            val account = GoogleSignIn.getLastSignedInAccount(requireContext())
+            if (account == null) {
+                // Giriş yapmamış, giriş ekranını başlat
+                val signInIntent: Intent = googleSignInClient.signInIntent
+                googleSignInLauncher.launch(signInIntent)
+            } else {
+                // Giriş yapmış, çıkış yapma onayı göster
+                showSignOutDialog()
+            }
+            true
+        }
+    }
+
+    private fun updateGoogleAccountPreference(account: GoogleSignInAccount?) {
+        if (account != null) {
+            googleAccountPreference?.summary = account.email
+            googleAccountPreference?.title = "Google Hesabı (Çıkış Yap)"
+        } else {
+            googleAccountPreference?.summary = "Yedekleme ve senkronizasyon için giriş yapın"
+            googleAccountPreference?.title = "Google ile Giriş Yap"
+        }
+    }
+
+    private fun showSignOutDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Çıkış Yap")
+            .setMessage("Google hesabınızdan çıkış yapmak istediğinize emin misiniz? Yedekleme ve senkronizasyon özellikleri devre dışı kalacaktır.")
+            .setPositiveButton("Evet, Çıkış Yap") { _, _ ->
+                googleSignInClient.signOut().addOnCompleteListener {
+                    Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı.", Toast.LENGTH_SHORT).show()
+                    updateGoogleAccountPreference(null)
+                }
+            }
+            .setNegativeButton("İptal", null)
+            .show()
+    }
+    // ------
 
     private fun updateSummaries() {
         lifecycleScope.launch {
-            // Kayıtlı temayı DataStore'dan oku ve ekranda onu seçili göster
             val themePreference = findPreference<ListPreference>("theme")
             themePreference?.value = repository.getTheme().first()
-
-            // Diğer ayarların özetlerini de güncelle
             updatePaydaySummary()
             updateCurrencySummary(PaydayRepository.KEY_SALARY.name, repository.getSalaryAmount().first())
             updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS.name, repository.getMonthlySavingsAmount().first())
         }
     }
-
-    // --- SINIFIN GERİ KALANI (Buralarda sorun yok) ---
 
     private fun setupPayPeriodPreference() {
         val payPeriodPref = findPreference<ListPreference>(PaydayRepository.KEY_PAY_PERIOD.name)

@@ -27,7 +27,6 @@ class PaydayRepository(context: Context) {
         val KEY_PAYDAY_VALUE = intPreferencesKey("payday")
         val KEY_WEEKEND_ADJUSTMENT = booleanPreferencesKey("weekend_adjustment")
         val KEY_SALARY = longPreferencesKey("salary")
-        val KEY_CONSECUTIVE_POSITIVE_CYCLES = intPreferencesKey("consecutive_positive_cycles")
         val KEY_PAY_PERIOD = stringPreferencesKey("pay_period")
         val KEY_BI_WEEKLY_REF_DATE = stringPreferencesKey("bi_weekly_ref_date")
         val KEY_SAVINGS_GOALS = stringPreferencesKey("savings_goals")
@@ -37,21 +36,56 @@ class PaydayRepository(context: Context) {
         val KEY_FIRST_LAUNCH_DATE = stringPreferencesKey("first_launch_date")
         val KEY_LAST_PROCESSED_CYCLE_END_DATE = stringPreferencesKey("last_processed_cycle_end_date")
         val KEY_THEME = stringPreferencesKey("theme")
+        val KEY_CONSECUTIVE_POSITIVE_CYCLES = intPreferencesKey("consecutive_positive_cycles")
+
+        // YENİ EKLENEN ANAHTAR
+        val KEY_SHOW_SIGN_IN_PROMPT = booleanPreferencesKey("show_sign_in_prompt")
     }
 
+    // GETTERS
     fun getPayPeriod(): Flow<PayPeriod> = prefs.data.map { PayPeriod.valueOf(it[KEY_PAY_PERIOD] ?: PayPeriod.MONTHLY.name) }
     fun getPaydayValue(): Flow<Int> = prefs.data.map { it[KEY_PAYDAY_VALUE] ?: -1 }
     fun getBiWeeklyRefDateString(): Flow<String?> = prefs.data.map { it[KEY_BI_WEEKLY_REF_DATE] }
     fun getSalaryAmount(): Flow<Long> = prefs.data.map { it[KEY_SALARY] ?: 0L }
-    fun getConsecutivePositiveCycles(): Flow<Int?> = prefs.data.map { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] }
-    fun getAllTransactionsForAchievements(): Flow<List<Transaction>> = transactionDao.getAllTransactionsFlow()
     fun isWeekendAdjustmentEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_WEEKEND_ADJUSTMENT] ?: false }
     fun getMonthlySavingsAmount(): Flow<Long> = prefs.data.map { it[KEY_MONTHLY_SAVINGS] ?: 0L }
     fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
     fun getFirstLaunchDate(): Flow<String?> = prefs.data.map { it[KEY_FIRST_LAUNCH_DATE] }
     fun getLastProcessedCycleEndDate(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] }
     fun getTheme(): Flow<String> = prefs.data.map { it[KEY_THEME] ?: "System" }
+    fun getConsecutivePositiveCycles(): Flow<Int?> = prefs.data.map { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] }
+    fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
 
+    // YENİ EKLENEN GETTER
+    fun shouldShowSignInPrompt(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_SIGN_IN_PROMPT] ?: true }
+
+
+    // SETTERS
+    suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
+    suspend fun saveTheme(theme: String) = prefs.edit { it[KEY_THEME] = theme }
+    suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
+    suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
+    suspend fun saveGoals(goals: List<SavingsGoal>) = prefs.edit { it[KEY_SAVINGS_GOALS] = gson.toJson(goals) }
+    suspend fun setOnboardingComplete(isComplete: Boolean) = prefs.edit { it[KEY_ONBOARDING_COMPLETE] = isComplete }
+    suspend fun saveBiWeeklyReferenceDate(date: LocalDate) = prefs.edit { it[KEY_BI_WEEKLY_REF_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    suspend fun saveMonthlySavings(amount: Long) = prefs.edit { it[KEY_MONTHLY_SAVINGS] = amount }
+    suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    suspend fun saveLastProcessedCycleEndDate(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    suspend fun saveConsecutivePositiveCycles(count: Int) = prefs.edit { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] = count }
+
+    // YENİ EKLENEN SETTER
+    suspend fun setSignInPrompt(shouldShow: Boolean) = prefs.edit { it[KEY_SHOW_SIGN_IN_PROMPT] = shouldShow }
+
+    suspend fun unlockAchievement(achievementId: String) {
+        prefs.edit { preferences ->
+            val unlocked = preferences[KEY_UNLOCKED_ACHIEVEMENTS]?.toMutableSet() ?: mutableSetOf()
+            if (unlocked.add(achievementId)) {
+                preferences[KEY_UNLOCKED_ACHIEVEMENTS] = unlocked
+            }
+        }
+    }
+
+    // (Diğer tüm metodlar aynı kalır)
     fun getGoals(): Flow<MutableList<SavingsGoal>> {
         return prefs.data.map { preferences ->
             val jsonGoals = preferences[KEY_SAVINGS_GOALS]
@@ -68,45 +102,16 @@ class PaydayRepository(context: Context) {
         }
     }
 
-    fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
-
-    suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
-    suspend fun saveTheme(theme: String) {
-        prefs.edit {
-            it[KEY_THEME] = theme
-        }
-    }
-
-    suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
-    suspend fun saveConsecutivePositiveCycles(count: Int) = prefs.edit { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] = count }
-    suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
-    suspend fun saveGoals(goals: List<SavingsGoal>) = prefs.edit { it[KEY_SAVINGS_GOALS] = gson.toJson(goals) }
-    suspend fun setOnboardingComplete(isComplete: Boolean) = prefs.edit { it[KEY_ONBOARDING_COMPLETE] = isComplete }
-    suspend fun saveBiWeeklyReferenceDate(date: LocalDate) = prefs.edit { it[KEY_BI_WEEKLY_REF_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-    suspend fun saveMonthlySavings(amount: Long) = prefs.edit { it[KEY_MONTHLY_SAVINGS] = amount }
-    suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-    suspend fun saveLastProcessedCycleEndDate(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-
-    suspend fun unlockAchievement(achievementId: String) {
-        prefs.edit { preferences ->
-            val unlocked = preferences[KEY_UNLOCKED_ACHIEVEMENTS]?.toMutableSet() ?: mutableSetOf()
-            if (unlocked.add(achievementId)) {
-                preferences[KEY_UNLOCKED_ACHIEVEMENTS] = unlocked
-            }
-        }
-    }
-
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
     fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate)
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate)
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>> = transactionDao.getRecurringTransactionTemplates()
     fun getDailySpendingForChart(startDate: Date, endDate: Date): Flow<List<DailySpending>> = transactionDao.getDailySpendingForChart(startDate, endDate)
     fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>> = transactionDao.getMonthlySpendingForCategory(categoryId)
-
+    fun getAllTransactionsForAchievements(): Flow<List<Transaction>> = transactionDao.getAllTransactionsFlow()
     suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
     suspend fun updateTransaction(transaction: Transaction) = transactionDao.update(transaction)
     suspend fun deleteTransaction(transaction: Transaction) = transactionDao.delete(transaction)
-
     suspend fun getAllDataForBackup(): BackupData = withContext(Dispatchers.IO) {
         val allTransactions = transactionDao.getAllTransactions()
         val goals = getGoals().first()
@@ -121,7 +126,6 @@ class PaydayRepository(context: Context) {
             settings = settingsMap
         )
     }
-
     suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
         transactionDao.deleteAllTransactions()
         backupData.transactions.forEach { transactionDao.insert(it) }
@@ -132,6 +136,7 @@ class PaydayRepository(context: Context) {
                 if (key != KEY_SAVINGS_GOALS.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
+                        KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
                         KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
@@ -145,10 +150,8 @@ class PaydayRepository(context: Context) {
                                 preferences[stringPreferencesKey(key)] = value
                             }
                         }
-                        // DÜZENLENMİŞ KISIM: BAŞARIMLARI GERİ YÜKLEME
                         KEY_UNLOCKED_ACHIEVEMENTS.name -> {
                             if (value != null) {
-                                // Yedekten gelen "[ID1, ID2]" formatındaki string'i temizleyip Set'e çeviriyoruz.
                                 val unlockedSet = value.removeSurrounding("[", "]")
                                     .split(", ")
                                     .filter { it.isNotEmpty() }
@@ -156,11 +159,10 @@ class PaydayRepository(context: Context) {
                                 preferences[stringSetPreferencesKey(key)] = unlockedSet
                             }
                         }
+                        KEY_SHOW_SIGN_IN_PROMPT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: true
                     }
                 }
             }
-
-            // Tasarruf hedeflerini geri yükle
             if (backupData.savingsGoals.isNotEmpty()) {
                 val goalsJson = gson.toJson(backupData.savingsGoals)
                 preferences[KEY_SAVINGS_GOALS] = goalsJson

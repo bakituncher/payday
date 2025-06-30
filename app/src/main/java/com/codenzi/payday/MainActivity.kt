@@ -49,13 +49,12 @@ class MainActivity : AppCompatActivity() {
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             Log.d(TAG, "Giriş başarılı. Bekleyen işlem çalıştırılıyor.")
-            pendingAction?.invoke()
-            pendingAction = null
+            pendingAction?.invoke() // Giriş başarılı olunca bekleyen eylemi (örn. yedekleme) çalıştır
         } else {
             Log.w(TAG, "Giriş başarısız oldu veya kullanıcı tarafından iptal edildi.")
             Toast.makeText(this, "Google ile giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
-            pendingAction = null
         }
+        pendingAction = null // Her durumda bekleyen eylemi temizle
     }
 
     private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
@@ -69,10 +68,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Tema yükleme kodları buradan tamamen kaldırılmıştır.
-        // Bu işlem artık PaydayApplication sınıfı tarafından yönetilmektedir.
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -82,73 +77,127 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerViews()
         setupListeners()
         setupObservers()
+
+        binding.emptyStateView.emptyStateButton.setOnClickListener {
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+        }
     }
 
-    private fun performActionWithSignIn(action: () -> Unit) {
+    // --- GÜNCELLENEN METOT ---
+    private fun performActionWithSignIn(action: () -> Unit, featureName: String) {
         if (GoogleSignIn.getLastSignedInAccount(this) == null) {
+            // Kullanıcı giriş yapmamış, diyalog göster
             pendingAction = action
-            googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Google Hesabı Gerekli")
+                .setMessage("'$featureName' özelliğini kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir.")
+                .setPositiveButton("Giriş Yap") { _, _ ->
+                    googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
+                }
+                .setNegativeButton("İptal", null)
+                .show()
         } else {
+            // Kullanıcı zaten giriş yapmış, eylemi direkt çalıştır
             action.invoke()
         }
     }
 
     private fun backupData() {
-        performActionWithSignIn {
-            lifecycleScope.launch {
-                try {
-                    Toast.makeText(this@MainActivity, "Yedekleme başlatıldı...", Toast.LENGTH_SHORT).show()
-                    val backupData = repository.getAllDataForBackup()
-                    val backupJson = gson.toJson(backupData)
-                    googleDriveManager.uploadFileContent(backupJson)
-                    viewModel.triggerBackupHeroAchievement() // Bu satırı ekleyin
-                    Toast.makeText(this@MainActivity, R.string.backup_success, Toast.LENGTH_LONG).show()
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
-                    Toast.makeText(this@MainActivity, R.string.backup_failed, Toast.LENGTH_LONG).show()
-                }
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(this@MainActivity, "Yedekleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                val backupData = repository.getAllDataForBackup()
+                val backupJson = gson.toJson(backupData)
+                googleDriveManager.uploadFileContent(backupJson)
+                viewModel.triggerBackupHeroAchievement()
+                Toast.makeText(this@MainActivity, R.string.backup_success, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
+                Toast.makeText(this@MainActivity, R.string.backup_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
 
     private fun restoreData() {
-        performActionWithSignIn {
-            lifecycleScope.launch {
-                try {
-                    Toast.makeText(this@MainActivity, "Geri yükleme başlatıldı...", Toast.LENGTH_SHORT).show()
-                    val backupJson = googleDriveManager.downloadFileContent()
-                    if (backupJson != null) {
-                        val backupData = gson.fromJson(backupJson, BackupData::class.java)
-                        repository.restoreDataFromBackup(backupData)
-                        viewModel.loadData()
-                        Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Geri yükleme işlemi sırasında HATA!", e)
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(this@MainActivity, "Geri yükleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                val backupJson = googleDriveManager.downloadFileContent()
+                if (backupJson != null) {
+                    val backupData = gson.fromJson(backupJson, BackupData::class.java)
+                    repository.restoreDataFromBackup(backupData)
+                    viewModel.loadData()
+                    Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
+                } else {
                     Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Geri yükleme işlemi sırasında HATA!", e)
+                Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
 
+    // --- GÜNCELLENEN METOT ---
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.action_backup -> backupData()
-            R.id.action_restore -> restoreData()
+            // Eylemleri doğrudan çağırmak yerine, `performActionWithSignIn` üzerinden çağırıyoruz
+            R.id.action_backup -> performActionWithSignIn(::backupData, "Yedekleme")
+            R.id.action_restore -> performActionWithSignIn(::restoreData, "Geri Yükleme")
+            R.id.action_achievements -> {
+                // Başarımlar ekranı için giriş yapma zorunlu değil, sadece öneri olabilir.
+                // Şimdilik doğrudan açıyoruz. İstenirse buraya da bir diyalog eklenebilir.
+                startActivity(Intent(this, AchievementsActivity::class.java))
+            }
             R.id.action_settings -> settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
             R.id.action_reports -> startActivity(Intent(this, ReportsActivity::class.java))
-            R.id.action_achievements -> startActivity(Intent(this, AchievementsActivity::class.java))
             else -> return super.onOptionsItemSelected(item)
         }
         return true
     }
 
+    // --- (Diğer tüm metodlar aynı kalır) ---
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true
+    }
+
+    private fun setupObservers() {
+        viewModel.uiState.observe(this) { state ->
+            val isSetupComplete = state.daysLeftText.isNotBlank() && state.daysLeftText != getString(R.string.day_not_set_placeholder)
+            binding.mainContentScrollView.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
+            binding.addTransactionFab.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
+            binding.emptyStateView.root.visibility = if (isSetupComplete) View.GONE else View.VISIBLE
+            if (isSetupComplete) {
+                updateUi(state)
+            }
+        }
+
+        viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
+        viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { achievement -> showAchievementSnackbar(achievement) } }
+        viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
+            transactionAdapter.submitList(transactions)
+            val areTransactionsEmpty = transactions.isNullOrEmpty()
+            binding.emptyTransactionsTextView.visibility = if (areTransactionsEmpty) View.VISIBLE else View.GONE
+            binding.transactionsRecyclerView.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
+            binding.transactionsTitle.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
+        }
+    }
+
+    private fun updateUi(state: PaydayUiState) {
+        binding.daysLeftTextView.text = state.daysLeftText
+        binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
+        binding.countdownTitleTextView.text = getString(R.string.next_payday_countdown)
+        binding.incomeTextView.text = state.incomeText
+        binding.expensesTextView.text = state.expensesText
+        binding.remainingTextView.text = state.remainingText
+        savingsGoalAdapter.submitList(state.savingsGoals)
+        binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
+        binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
+
+        if (state.isPayday) {
+            startConfettiEffect()
+        }
     }
 
     private fun setupListeners() {
@@ -220,18 +269,7 @@ class MainActivity : AppCompatActivity() {
         )
         binding.transactionsRecyclerView.adapter = transactionAdapter
     }
-    private fun setupObservers() {
-        viewModel.uiState.observe(this) { state -> updateUi(state) }
-        viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
-        viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { achievement -> showAchievementSnackbar(achievement) } }
-        viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
-            transactionAdapter.submitList(transactions)
-            val areTransactionsEmpty = transactions.isNullOrEmpty()
-            binding.emptyTransactionsTextView.visibility = if (areTransactionsEmpty) View.VISIBLE else View.GONE
-            binding.transactionsRecyclerView.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
-            binding.transactionsTitle.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
-        }
-    }
+
 
     private fun showAddFundsDialog(goal: SavingsGoal) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_funds, null)
@@ -270,21 +308,6 @@ class MainActivity : AppCompatActivity() {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
         }
         sendBroadcast(intent)
-    }
-
-    private fun updateUi(state: PaydayUiState) {
-        binding.daysLeftTextView.text = state.daysLeftText
-        binding.daysLeftSuffixTextView.text = state.daysLeftSuffix
-        binding.countdownTitleTextView.text = getString(R.string.next_payday_countdown)
-        binding.incomeTextView.text = state.incomeText
-        binding.expensesTextView.text = state.expensesText
-        binding.remainingTextView.text = state.remainingText
-        savingsGoalAdapter.submitList(state.savingsGoals)
-        binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-        binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
-        if (state.isPayday) {
-            startConfettiEffect()
-        }
     }
 
     private fun startConfettiEffect() {
