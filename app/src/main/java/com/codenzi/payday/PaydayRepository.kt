@@ -131,16 +131,22 @@ class PaydayRepository(context: Context) {
         backupData.transactions.forEach { transactionDao.insert(it) }
 
         prefs.edit { preferences ->
+            // Geri yükleme başlamadan önce mevcut otomatik yedekleme tercihini sakla.
+            val currentAutoBackupSetting = preferences[KEY_AUTO_BACKUP_ENABLED]
+
+            // Diğer tüm ayarları temizle.
             preferences.clear()
+
+            // Yedekten gelen ayarları geri yükle.
             backupData.settings.forEach { (key, value) ->
-                if (key != KEY_SAVINGS_GOALS.name) {
+                // Otomatik yedekleme ayarını yedekten geri YÜKLEME.
+                if (key != KEY_SAVINGS_GOALS.name && key != KEY_AUTO_BACKUP_ENABLED.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
                         KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
                         KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_SHOW_LOGIN_ON_START.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: true
-                        KEY_AUTO_BACKUP_ENABLED.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_PAY_PERIOD.name,
@@ -168,6 +174,11 @@ class PaydayRepository(context: Context) {
             if (backupData.savingsGoals.isNotEmpty()) {
                 val goalsJson = gson.toJson(backupData.savingsGoals)
                 preferences[KEY_SAVINGS_GOALS] = goalsJson
+            }
+
+            // Saklanan güncel otomatik yedekleme tercihini geri yaz.
+            if (currentAutoBackupSetting != null) {
+                preferences[KEY_AUTO_BACKUP_ENABLED] = currentAutoBackupSetting
             }
         }
     }

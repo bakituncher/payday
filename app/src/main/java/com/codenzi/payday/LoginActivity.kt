@@ -95,12 +95,14 @@ class LoginActivity : AppCompatActivity() {
             .setCancelable(false)
             .setPositiveButton("Evet, Aç") { _, _ ->
                 lifecycleScope.launch {
+                    // ÇÖZÜM: Kullanıcının seçimi anında kaydediliyor.
                     repository.setAutoBackupEnabled(true)
                     onComplete()
                 }
             }
             .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
                 lifecycleScope.launch {
+                    // ÇÖZÜM: Kullanıcının seçimi anında kaydediliyor.
                     repository.setAutoBackupEnabled(false)
                     onComplete()
                 }
