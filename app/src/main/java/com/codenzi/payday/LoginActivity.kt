@@ -1,5 +1,4 @@
 // Konum: app/src/main/java/com/codenzi/payday/LoginActivity.kt
-// Nihai ve Tam Sürüm
 
 package com.codenzi.payday
 
@@ -23,7 +22,9 @@ import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityLoginBinding
+    // DEĞİŞİKLİK: 'binding' değişkenini nullable yaparak ve geç başlatarak
+    // ekranı göstermeden karar vermemizi sağlıyoruz.
+    private var binding: ActivityLoginBinding? = null
     private lateinit var googleDriveManager: GoogleDriveManager
     private lateinit var repository: PaydayRepository
     private val TAG = "LoginActivity"
@@ -43,23 +44,43 @@ class LoginActivity : AppCompatActivity() {
         googleDriveManager = GoogleDriveManager(this)
         repository = PaydayRepository(this)
 
-        // Kullanıcı daha önce giriş yapmışsa, bu ekranı hiç gösterme
-        if (GoogleSignIn.getLastSignedInAccount(this) != null) {
-            navigateToNextScreen()
-            return
+        // --- YENİ EKLENEN ANA MANTIK ---
+        // UI'ı (arayüzü) göstermeden önce bir kontrol yapıyoruz.
+        lifecycleScope.launch {
+            val lastSignedInAccount = GoogleSignIn.getLastSignedInAccount(this@LoginActivity)
+            // Kullanıcının "bir daha gösterme" tercihini repodan alıyoruz.
+            val shouldShowLoginScreen = repository.shouldShowSignInPrompt().first()
+
+            // Eğer kullanıcı daha önce giriş yapmışsa VEYA "bir daha gösterme"yi seçmişse,
+            // bu ekranı hiç göstermeden doğrudan bir sonraki ekrana geç.
+            if (lastSignedInAccount != null || !shouldShowLoginScreen) {
+                navigateToNextScreen()
+                return@launch // Bu coroutine'i sonlandır, aşağıdaki kodlar çalışmasın.
+            }
+
+            // Yukarıdaki koşul sağlanmazsa, demek ki giriş ekranını göstermeliyiz.
+            // Bu yüzden arayüzü burada yüklüyoruz.
+            setupUI()
         }
+    }
 
+    // YENİ EKLENEN METOT: Arayüzü kuran kodları ayrı bir metoda taşıdık.
+    private fun setupUI() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(binding!!.root)
 
-        binding.signInButton.setOnClickListener {
+        binding!!.signInButton.setOnClickListener {
             showLoading(true)
             val signInIntent = GoogleDriveManager.getSignInIntent(this)
             googleSignInLauncher.launch(signInIntent)
         }
 
-        binding.skipButton.setOnClickListener {
-            navigateToNextScreen()
+        binding!!.skipButton.setOnClickListener {
+            // Kullanıcı "Atla" butonuna bastığında, bu tercihini kaydediyoruz.
+            lifecycleScope.launch {
+                repository.setSignInPrompt(false) // Artık giriş ekranını gösterme.
+                navigateToNextScreen()
+            }
         }
     }
 
@@ -126,7 +147,6 @@ class LoginActivity : AppCompatActivity() {
 
     private fun navigateToNextScreen() {
         lifecycleScope.launch {
-            // Kullanıcının onboarding'i tamamlayıp tamamlamadığını kontrol et
             val isOnboardingComplete = repository.isOnboardingComplete().first()
             val targetActivity = if (isOnboardingComplete) {
                 MainActivity::class.java
@@ -139,8 +159,9 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun showLoading(isLoading: Boolean) {
-        binding.loadingProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-        binding.signInButton.isEnabled = !isLoading
-        binding.skipButton.isEnabled = !isLoading
+        // Binding null olabileceği için `?` ile güvenli çağrı yapıyoruz.
+        binding?.loadingProgressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
+        binding?.signInButton?.isEnabled = !isLoading
+        binding?.skipButton?.isEnabled = !isLoading
     }
 }

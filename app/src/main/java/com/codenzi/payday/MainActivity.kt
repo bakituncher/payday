@@ -33,6 +33,7 @@ import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.text.NumberFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
 
 class MainActivity : AppCompatActivity() {
 
@@ -83,25 +84,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- GÜNCELLENEN METOT ---
     private fun performActionWithSignIn(action: () -> Unit, featureName: String) {
-        if (GoogleSignIn.getLastSignedInAccount(this) == null) {
-            // Kullanıcı giriş yapmamış, diyalog göster
-            pendingAction = action
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Google Hesabı Gerekli")
-                .setMessage("'$featureName' özelliğini kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir.")
-                .setPositiveButton("Giriş Yap") { _, _ ->
-                    googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this))
-                }
-                .setNegativeButton("İptal", null)
-                .show()
-        } else {
-            // Kullanıcı zaten giriş yapmış, eylemi direkt çalıştır
+        // Eğer kullanıcı zaten giriş yapmışsa, işlemi direkt yap ve metottan çık.
+        if (GoogleSignIn.getLastSignedInAccount(this) != null) {
             action.invoke()
+            return
+        }
+
+        // Kullanıcı giriş yapmamışsa, "bir daha sorma" tercihini kontrol et
+        lifecycleScope.launch {
+            val shouldShowPrompt = repository.shouldShowSignInPrompt().first()
+
+            if (shouldShowPrompt) {
+                // Kullanıcı "bir daha sorma" dememiş, diyalog göster
+                pendingAction = action
+
+                // dialog_signin_prompt.xml dosyasını inflate et
+                val dialogView = LayoutInflater.from(this@MainActivity).inflate(R.layout.dialog_signin_prompt, null)
+                val dontShowAgainCheckbox = dialogView.findViewById<android.widget.CheckBox>(R.id.checkbox_dont_show_again)
+                val messageView = dialogView.findViewById<TextView>(R.id.dialog_message)
+
+                messageView.text = "'$featureName' özelliğini kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir."
+
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Google Hesabı Gerekli")
+                    .setView(dialogView)
+                    .setCancelable(false) // Kullanıcının bir seçim yapmasını sağla
+                    .setPositiveButton("Giriş Yap") { dialog, _ ->
+                        // "Bir daha sorma" seçeneğinin durumunu kaydet
+                        lifecycleScope.launch {
+                            repository.setSignInPrompt(!dontShowAgainCheckbox.isChecked)
+                        }
+                        // Giriş ekranını başlat
+                        googleSignInLauncher.launch(GoogleDriveManager.getSignInIntent(this@MainActivity))
+                    }
+                    .setNegativeButton("İptal") { dialog, _ ->
+                        // Kullanıcı iptal etse bile "Bir daha sorma" tercihini kaydet
+                        lifecycleScope.launch {
+                            repository.setSignInPrompt(!dontShowAgainCheckbox.isChecked)
+                        }
+                    }
+                    .show()
+
+            } else {
+                // Kullanıcı daha önce "bir daha sorma" dediği için diyalog gösterilmiyor.
+                // Sadece kısa bir bilgi mesajı gösterilebilir.
+                Toast.makeText(this@MainActivity, "'$featureName' özelliği için Ayarlar'dan Google girişi yapabilirsiniz.", Toast.LENGTH_LONG).show()
+            }
         }
     }
-
     private fun backupData() {
         lifecycleScope.launch {
             try {
