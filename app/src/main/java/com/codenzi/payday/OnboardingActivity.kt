@@ -3,6 +3,7 @@ package com.codenzi.payday
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -27,6 +28,20 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repository = PaydayRepository(this)
+
+        // Telefonun geri tuşuna basıldığında ne olacağını yöneten kod
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val currentItem = binding.viewPager.currentItem
+                if (currentItem > 0) {
+                    // Eğer ilk sayfada değilse, bir önceki sayfaya git
+                    binding.viewPager.currentItem = currentItem - 1
+                } else {
+                    // Eğer ilk sayfadaysa, varsayılan geri tuşu işlevini çalıştır (uygulamadan çık)
+                    finish()
+                }
+            }
+        })
 
         lifecycleScope.launch {
             if (repository.isOnboardingComplete().first()) {
@@ -78,7 +93,8 @@ class OnboardingActivity : AppCompatActivity() {
         }
 
         binding.backButton.setOnClickListener {
-            binding.viewPager.currentItem = binding.viewPager.currentItem - 1
+            // Geri butonu, artık ViewPager'ı doğrudan kontrol ediyor
+            onBackPressedDispatcher.onBackPressed()
         }
     }
 
