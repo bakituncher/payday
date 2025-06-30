@@ -81,7 +81,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun onOnboardingFinished() {
-        // suspend fonksiyonu coroutine içinde çağır
+        viewModel.triggerSetupCompleteAchievement() // Bu satırı ekleyin
         lifecycleScope.launch {
             repository.setOnboardingComplete(true)
             navigateToMain()

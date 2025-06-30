@@ -27,6 +27,7 @@ class PaydayRepository(context: Context) {
         val KEY_PAYDAY_VALUE = intPreferencesKey("payday")
         val KEY_WEEKEND_ADJUSTMENT = booleanPreferencesKey("weekend_adjustment")
         val KEY_SALARY = longPreferencesKey("salary")
+        val KEY_CONSECUTIVE_POSITIVE_CYCLES = intPreferencesKey("consecutive_positive_cycles")
         val KEY_PAY_PERIOD = stringPreferencesKey("pay_period")
         val KEY_BI_WEEKLY_REF_DATE = stringPreferencesKey("bi_weekly_ref_date")
         val KEY_SAVINGS_GOALS = stringPreferencesKey("savings_goals")
@@ -42,6 +43,8 @@ class PaydayRepository(context: Context) {
     fun getPaydayValue(): Flow<Int> = prefs.data.map { it[KEY_PAYDAY_VALUE] ?: -1 }
     fun getBiWeeklyRefDateString(): Flow<String?> = prefs.data.map { it[KEY_BI_WEEKLY_REF_DATE] }
     fun getSalaryAmount(): Flow<Long> = prefs.data.map { it[KEY_SALARY] ?: 0L }
+    fun getConsecutivePositiveCycles(): Flow<Int?> = prefs.data.map { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] }
+    fun getAllTransactionsForAchievements(): Flow<List<Transaction>> = transactionDao.getAllTransactionsFlow()
     fun isWeekendAdjustmentEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_WEEKEND_ADJUSTMENT] ?: false }
     fun getMonthlySavingsAmount(): Flow<Long> = prefs.data.map { it[KEY_MONTHLY_SAVINGS] ?: 0L }
     fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
@@ -75,6 +78,7 @@ class PaydayRepository(context: Context) {
     }
 
     suspend fun savePayday(day: Int) = prefs.edit { it[KEY_PAYDAY_VALUE] = day; it.remove(KEY_BI_WEEKLY_REF_DATE) }
+    suspend fun saveConsecutivePositiveCycles(count: Int) = prefs.edit { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] = count }
     suspend fun saveSalary(salary: Long) = prefs.edit { it[KEY_SALARY] = salary }
     suspend fun saveGoals(goals: List<SavingsGoal>) = prefs.edit { it[KEY_SAVINGS_GOALS] = gson.toJson(goals) }
     suspend fun setOnboardingComplete(isComplete: Boolean) = prefs.edit { it[KEY_ONBOARDING_COMPLETE] = isComplete }

@@ -45,6 +45,10 @@ interface TransactionDao {
 
     @Query("SELECT strftime('%Y-%m', date / 1000, 'unixepoch') as month, SUM(amount) as totalAmount FROM transactions WHERE categoryId = :categoryId GROUP BY month ORDER BY month ASC")
     fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>>
+
+    // TransactionDao.kt içine ekleyin
+    @Query("SELECT * FROM transactions")
+    fun getAllTransactionsFlow(): Flow<List<Transaction>>
 }
 
 // --- YENİ EKLENEN VERİ SINIFLARI ---

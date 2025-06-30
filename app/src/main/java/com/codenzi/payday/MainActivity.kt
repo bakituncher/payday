@@ -101,7 +101,9 @@ class MainActivity : AppCompatActivity() {
                     val backupData = repository.getAllDataForBackup()
                     val backupJson = gson.toJson(backupData)
                     googleDriveManager.uploadFileContent(backupJson)
+                    viewModel.triggerBackupHeroAchievement() // Bu satırı ekleyin
                     Toast.makeText(this@MainActivity, R.string.backup_success, Toast.LENGTH_LONG).show()
+
                 } catch (e: Exception) {
                     Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
                     Toast.makeText(this@MainActivity, R.string.backup_failed, Toast.LENGTH_LONG).show()

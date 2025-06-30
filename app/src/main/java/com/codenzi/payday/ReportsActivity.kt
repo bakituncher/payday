@@ -1,11 +1,10 @@
 // Konum: app/src/main/java/com/codenzi/payday/ReportsActivity.kt
-// Grafik Metin Rengi Hatası Düzeltilmiş Nihai Sürüm
+// 'R' referans hatası ve renk sorunları düzeltilmiş nihai sürüm
 
 package com.codenzi.payday
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -20,23 +19,27 @@ import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.formatter.PercentFormatter
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
-import com.google.android.material.color.MaterialColors // <-- 1. YENİ IMPORT
+import com.google.android.material.color.MaterialColors
 import java.util.Calendar
 import java.util.Date
+import com.codenzi.payday.R // HATA İÇİN EKLENEN IMPORT
 
 class ReportsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityReportsBinding
     private val viewModel: PaydayViewModel by viewModels()
-    private var chartTextColor: Int = 0 // <-- 2. DİNAMİK RENK İÇİN DEĞİŞKEN
+    private var chartTextColor: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityReportsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 2. Mevcut temadan doğru metin rengini al
+        // Mevcut temadan doğru metin rengini al
         chartTextColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface, Color.BLACK)
+
+        // Başarım tetikleme
+        viewModel.triggerReportsViewedAchievement()
 
         setupToolbar()
         setupCharts()
@@ -64,9 +67,9 @@ class ReportsActivity : AppCompatActivity() {
             description.isEnabled = false
             isDrawHoleEnabled = true
             setHoleColor(Color.TRANSPARENT)
-            setCenterTextColor(chartTextColor) // <-- RENK GÜNCELLEMESİ
-            legend.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
-            setEntryLabelColor(chartTextColor) // <-- RENK GÜNCELLEMESİ
+            setCenterTextColor(chartTextColor)
+            legend.textColor = chartTextColor
+            setEntryLabelColor(chartTextColor)
             centerText = getString(R.string.spending_by_category)
             animateY(1400, Easing.EaseInOutQuad)
         }
@@ -74,8 +77,8 @@ class ReportsActivity : AppCompatActivity() {
         // BarChart Kurulumu
         binding.barChart.apply {
             description.isEnabled = false
-            xAxis.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
-            axisLeft.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
+            xAxis.textColor = chartTextColor
+            axisLeft.textColor = chartTextColor
             axisRight.isEnabled = false
             legend.isEnabled = false
             axisLeft.axisMinimum = 0f
@@ -87,10 +90,10 @@ class ReportsActivity : AppCompatActivity() {
         // LineChart Kurulumu
         binding.lineChart.apply {
             description.isEnabled = false
-            xAxis.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
-            axisLeft.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
+            xAxis.textColor = chartTextColor
+            axisLeft.textColor = chartTextColor
             axisRight.isEnabled = false
-            legend.textColor = chartTextColor // <-- RENK GÜNCELLEMESİ
+            legend.textColor = chartTextColor
             axisLeft.axisMinimum = 0f
             xAxis.position = XAxis.XAxisPosition.BOTTOM
             xAxis.setDrawGridLines(false)
@@ -114,17 +117,25 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun setupObservers() {
-        // ... (Bu bölümdeki kod aynı kalabilir) ...
         viewModel.uiState.observe(this) { state ->
             val hasPieData = state.categorySpendingData.any { it.y > 0 }
+            val hasBarData = binding.barChart.data != null && binding.barChart.data.entryCount > 0
+
             binding.pieChart.visibility = if (hasPieData) View.VISIBLE else View.GONE
+            binding.emptyChartTextView.visibility = if (!hasPieData && !hasBarData) View.VISIBLE else View.GONE
+
             if (hasPieData) {
                 setDataToPieChart(state.categorySpendingData)
             }
         }
         viewModel.dailySpendingData.observe(this) { (entries, labels) ->
-            binding.barChart.visibility = if (entries.isNotEmpty()) View.VISIBLE else View.GONE
-            if (entries.isNotEmpty()) {
+            val hasPieData = binding.pieChart.data != null && binding.pieChart.data.entryCount > 0
+            val hasBarData = entries.isNotEmpty()
+
+            binding.barChart.visibility = if (hasBarData) View.VISIBLE else View.GONE
+            binding.emptyChartTextView.visibility = if (!hasPieData && !hasBarData) View.VISIBLE else View.GONE
+
+            if (hasBarData) {
                 setDataToBarChart(entries, labels)
             }
         }
@@ -147,7 +158,7 @@ class ReportsActivity : AppCompatActivity() {
         val data = PieData(dataSet)
         data.setValueFormatter(PercentFormatter(binding.pieChart))
         data.setValueTextSize(12f)
-        data.setValueTextColor(chartTextColor) // <-- 3. RENK GÜNCELLEMESİ
+        data.setValueTextColor(Color.WHITE)
 
         binding.pieChart.data = data
         binding.pieChart.invalidate()
@@ -156,7 +167,7 @@ class ReportsActivity : AppCompatActivity() {
     private fun setDataToBarChart(entries: List<BarEntry>, labels: List<String>) {
         val dataSet = BarDataSet(entries, "Günlük Harcamalar")
         dataSet.color = ContextCompat.getColor(this, R.color.primary)
-        dataSet.valueTextColor = chartTextColor // <-- 3. RENK GÜNCELLEMESİ
+        dataSet.valueTextColor = chartTextColor
 
         val data = BarData(listOf<IBarDataSet>(dataSet))
         data.setValueTextSize(10f)
@@ -179,7 +190,7 @@ class ReportsActivity : AppCompatActivity() {
         dataSet.setCircleColor(ContextCompat.getColor(this, R.color.secondary))
         dataSet.lineWidth = 2f
         dataSet.circleRadius = 4f
-        dataSet.valueTextColor = chartTextColor // <-- 3. RENK GÜNCELLEMESİ
+        dataSet.valueTextColor = chartTextColor
         dataSet.setDrawCircleHole(false)
         dataSet.valueTextSize = 10f
         dataSet.setDrawFilled(true)
