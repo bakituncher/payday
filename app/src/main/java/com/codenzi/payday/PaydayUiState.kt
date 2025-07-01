@@ -12,6 +12,7 @@ data class PaydayUiState(
     val areTransactionsVisible: Boolean = false,
     val incomeText: String = "₺0,00",
     val expensesText: String = "₺0,00",
+    val savingsText: String = "₺0,00", // YENİ ALAN
     val remainingText: String = "₺0,00",
     val actualRemainingAmountForGoals: Double = 0.0,
     val categorySpendingData: List<PieEntry> = emptyList()

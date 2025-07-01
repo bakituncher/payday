@@ -1,5 +1,3 @@
-// Konum: app/src/main/java/com/example/payday/ExpenseCategory.kt
-
 package com.codenzi.payday
 
 enum class ExpenseCategory(val categoryName: String, val iconResId: Int) {
@@ -14,6 +12,11 @@ enum class ExpenseCategory(val categoryName: String, val iconResId: Int) {
     companion object {
         fun fromId(id: Int): ExpenseCategory {
             return entries.getOrNull(id) ?: OTHER
+        }
+
+        // YENİ: Tasarruf kategorisinin ID'sini döndüren yardımcı fonksiyon
+        fun getSavingsCategoryId(): Int {
+            return SAVINGS.ordinal
         }
     }
 }

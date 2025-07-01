@@ -23,6 +23,7 @@ import java.util.*
 @Suppress("DEPRECATION")
 class PaydayViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val TAG = "PaydayAutomation"
     private val repository = PaydayRepository(application)
     private val context = application.applicationContext
 
@@ -104,39 +105,35 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun loadData() {
         viewModelScope.launch {
-            // DÜZELTME: Otomatik birikim ayarını da ana veri akışına dahil ediyoruz.
             combine(
                 repository.getPayPeriod(),
                 repository.getPaydayValue(),
                 repository.getBiWeeklyRefDateString(),
                 repository.isWeekendAdjustmentEnabled(),
                 repository.getSalaryAmount(),
-                repository.getMonthlySavingsAmount(),
-                repository.getGoals(),
-                repository.isAutoSavingEnabled() // Bu ayar değiştiğinde tüm mantık yeniden çalışacak.
+                repository.getGoals()
             ) { values ->
                 val payPeriod = values[0] as PayPeriod
                 val paydayValue = values[1] as Int
                 val biWeeklyRefDate = values[2] as? String
                 val weekendAdjustment = values[3] as Boolean
                 val salaryAmount = values[4] as Long
-                val monthlySavings = values[5] as Long
                 @Suppress("UNCHECKED_CAST")
-                val goals = values[6] as MutableList<SavingsGoal>
-                val isAutoSavingEnabled = values[7] as Boolean // Ayarın en güncel halini alıyoruz.
+                val goals = values[5] as MutableList<SavingsGoal>
 
                 val result = PaydayCalculator.calculate(payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
                 if (result != null) {
                     currentPayCycle.value = Pair(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
-                    // DÜZELTME: Ayarın en güncel halini fonksiyona parametre olarak geçiyoruz.
-                    checkAndProcessNewCycle(result, isAutoSavingEnabled)
+                    checkAndProcessNewCycle(result)
 
+                    // DÜZELTME: Eksik olan veri akışları geri eklendi.
                     val totalExpensesFlow = repository.getTotalExpensesBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
+                    val totalSavingsFlow = repository.getTotalSavingsBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
                     val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
 
-                    combine(totalExpensesFlow, categorySpendingFlow) { totalExpenses, categorySpending ->
-                        updateUi(result, salaryAmount, monthlySavings, totalExpenses ?: 0.0, categorySpending, goals)
+                    combine(totalExpensesFlow, totalSavingsFlow, categorySpendingFlow) { totalExpenses, totalSavings, categorySpending ->
+                        updateUi(result, salaryAmount, totalExpenses ?: 0.0, totalSavings ?: 0.0, goals, categorySpending)
                         generateFinancialInsights(totalExpenses ?: 0.0, categorySpending)
                     }.collect()
                 } else {
@@ -152,9 +149,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        val topCategorySpending = categorySpending
-            .filter { ExpenseCategory.fromId(it.categoryId) != ExpenseCategory.SAVINGS }
-            .maxByOrNull { it.totalAmount }
+        val topCategorySpending = categorySpending.maxByOrNull { it.totalAmount }
 
         if (topCategorySpending != null && topCategorySpending.totalAmount > totalExpenses * 0.4) {
             val topCategory = ExpenseCategory.fromId(topCategorySpending.categoryId)
@@ -168,56 +163,56 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val cycleStart = cycle.first.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
         val cycleEnd = cycle.second.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
         val totalDaysInCycle = ChronoUnit.DAYS.between(cycleStart, cycleEnd)
-        val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
-        val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
 
-        val salary = uiState.value?.incomeText?.filter { it.isDigit() }?.toLongOrNull() ?: 0L
-        if (salary > 0) {
-            val spendingProgress = totalExpenses / salary
-            if (cycleProgress > 0.5 && spendingProgress < 0.3) {
-                _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress)))
-                return
+        if (totalDaysInCycle > 0) {
+            val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
+            val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
+            val salary = uiState.value?.incomeText?.filter { it.isDigit() }?.toLongOrNull() ?: 0L
+            if (salary > 0) {
+                val spendingProgress = totalExpenses / salary
+                if (cycleProgress > 0.5 && spendingProgress < 0.3) {
+                    _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress)))
+                    return
+                }
             }
         }
 
         _financialInsight.postValue(Event(null))
     }
 
+    // DÜZELTME: Fonksiyon imzası güncellendi.
     private fun updateUi(
         paydayResult: PaydayResult,
         salaryAmount: Long,
-        monthlySavingsAmount: Long,
         totalExpenses: Double,
-        categorySpending: List<CategorySpending>,
-        goals: List<SavingsGoal>
+        totalSavings: Double,
+        goals: List<SavingsGoal>,
+        categorySpending: List<CategorySpending>
     ) {
-        viewModelScope.launch {
-            val remainingAmount = salaryAmount.toDouble() - totalExpenses
+        val remainingAmount = salaryAmount - totalExpenses - totalSavings
 
-            val pieEntries = categorySpending
-                .filter { it.categoryId != ExpenseCategory.SAVINGS.ordinal }
-                .map { spending ->
-                    val category = ExpenseCategory.fromId(spending.categoryId)
-                    PieEntry(spending.totalAmount.toFloat(), category.categoryName)
-                }
-
-            val transactionsList = transactionsForCurrentCycle.value ?: emptyList()
-            val newState = PaydayUiState(
-                daysLeftText = if (paydayResult.isPayday) "🎉" else paydayResult.daysLeft.toString(),
-                daysLeftSuffix = if (paydayResult.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
-                isPayday = paydayResult.isPayday,
-                savingsGoals = goals,
-                areGoalsVisible = goals.isNotEmpty(),
-                areTransactionsVisible = transactionsList.isNotEmpty(),
-                incomeText = formatCurrency(salaryAmount.toDouble()),
-                expensesText = "- ${formatCurrency(totalExpenses)}",
-                remainingText = formatCurrency(remainingAmount),
-                actualRemainingAmountForGoals = remainingAmount,
-                categorySpendingData = pieEntries
-            )
-            _uiState.postValue(newState)
-            _widgetUpdateEvent.postValue(Event(Unit))
+        val pieEntries = categorySpending.map { spending ->
+            val category = ExpenseCategory.fromId(spending.categoryId)
+            PieEntry(spending.totalAmount.toFloat(), category.categoryName)
         }
+
+        val transactionsList = transactionsForCurrentCycle.value ?: emptyList()
+        val newState = PaydayUiState(
+            daysLeftText = if (paydayResult.isPayday) "🎉" else paydayResult.daysLeft.toString(),
+            daysLeftSuffix = if (paydayResult.isPayday) context.getString(R.string.payday_is_today) else context.getString(R.string.days_left_suffix),
+            isPayday = paydayResult.isPayday,
+            savingsGoals = goals,
+            areGoalsVisible = goals.isNotEmpty(),
+            areTransactionsVisible = transactionsList.isNotEmpty(),
+            incomeText = formatCurrency(salaryAmount.toDouble()),
+            expensesText = formatCurrency(totalExpenses, "- "),
+            savingsText = formatCurrency(totalSavings),
+            remainingText = formatCurrency(remainingAmount),
+            actualRemainingAmountForGoals = remainingAmount,
+            categorySpendingData = pieEntries
+        )
+        _uiState.postValue(newState)
+        _widgetUpdateEvent.postValue(Event(Unit))
     }
 
     fun insertTransaction(name: String, amount: Double, categoryId: Int, isRecurring: Boolean) = viewModelScope.launch {
@@ -289,8 +284,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
-    // DÜZELTME: Fonksiyon artık ayarın en güncel halini parametre olarak alıyor.
-    private suspend fun checkAndProcessNewCycle(result: PaydayResult, isAutoSavingEnabled: Boolean) {
+    private suspend fun checkAndProcessNewCycle(result: PaydayResult) {
         if (!result.isPayday) return
 
         val currentPaydayDate = result.cycleEndDate.plusDays(1)
@@ -300,6 +294,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (lastProcessedDate != null && lastProcessedDate >= currentPaydayDate) {
             return
         }
+
+        val isAutoSavingEnabled = repository.isAutoSavingEnabled().first()
+        val isAutoBackupEnabled = repository.isAutoBackupEnabled().first()
 
         unlockAchievement("PAYDAY_HYPE")
 
@@ -318,7 +315,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             repository.saveConsecutivePositiveCycles(0)
         }
 
-        // DÜZELTME: Parametreden gelen en güncel ayar değeri kullanılıyor.
         if (isAutoSavingEnabled) {
             val monthlySavings = repository.getMonthlySavingsAmount().first()
             if (monthlySavings > 0) {
@@ -338,7 +334,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             repository.insertTransaction(newTransaction)
         }
 
-        if (repository.isAutoBackupEnabled().first()) {
+        if (isAutoBackupEnabled) {
             performAutoBackup()
         }
 
@@ -469,8 +465,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun formatCurrency(amount: Double): String {
-        return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
+    private fun formatCurrency(amount: Double, prefix: String = ""): String {
+        return prefix + NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
     }
 
     fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
@@ -495,7 +491,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val allTransactions = repository.getAllTransactionsForAchievements().first()
             val distinctCategories = allTransactions
-                .filter { it.categoryId != ExpenseCategory.SAVINGS.ordinal }
+                .filter { it.categoryId != ExpenseCategory.getSavingsCategoryId() }
                 .map { it.categoryId }
                 .distinct()
 

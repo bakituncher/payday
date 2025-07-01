@@ -94,6 +94,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- YENİDEN TASARLANMIŞ FİNANSAL ÖZET KARTI -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/summaryCardView"
                 android:layout_width="0dp"
@@ -112,7 +113,6 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:baselineAligned="false"
                     android:orientation="vertical"
                     android:padding="20dp">
 
@@ -124,6 +124,7 @@
                         android:textSize="22sp"
                         android:textStyle="bold" />
 
+                    <!-- Üst Satır: Gelir ve Gider -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -137,13 +138,11 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical">
-
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/income"
                                 android:textColor="@color/text_secondary" />
-
                             <TextView
                                 android:id="@+id/incomeTextView"
                                 android:layout_width="wrap_content"
@@ -160,13 +159,11 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical">
-
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/expenses"
                                 android:textColor="@color/text_secondary" />
-
                             <TextView
                                 android:id="@+id/expensesTextView"
                                 android:layout_width="wrap_content"
@@ -176,6 +173,23 @@
                                 android:textStyle="bold"
                                 tools:text="- ₺1.250" />
                         </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Ayırıcı Çizgi -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="?android:attr/listDivider"
+                        android:alpha="0.1" />
+
+                    <!-- Alt Satır: Birikimler ve Kalan -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -183,27 +197,45 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/savings"
+                                android:textColor="@color/text_secondary" />
+                            <TextView
+                                android:id="@+id/savingsTextView"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/green_500"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                tools:text="₺2.000" />
+                        </LinearLayout>
 
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical">
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/remaining"
                                 android:textColor="@color/text_secondary" />
-
                             <TextView
                                 android:id="@+id/remainingTextView"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/primary"
+                                android:textColor="?attr/colorPrimary"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
-                                tools:text="₺33.750" />
+                                tools:text="₺31.750" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- YENİ EKLENEN AKILLI ÖNERİ KARTI -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/suggestionCardView"
                 android:layout_width="0dp"
@@ -232,7 +264,8 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:src="@drawable/ic_lightbulb"
-                        app:tint="@color/white" />
+                        app:tint="@color/white"
+                        android:contentDescription="@string/suggestion_title" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -254,8 +287,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:textColor="@color/white"
                             android:alpha="0.9"
+                            android:textColor="@color/white"
                             tools:text="Bu ay Yemek harcamaların geçen aya göre %25 artmış görünüyor." />
                     </LinearLayout>
                 </LinearLayout>

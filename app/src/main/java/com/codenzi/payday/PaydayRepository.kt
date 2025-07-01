@@ -94,8 +94,6 @@ class PaydayRepository(private val context: Context) {
     suspend fun setShowLoginOnStart(shouldShow: Boolean) { prefs.edit { it[KEY_SHOW_LOGIN_ON_START] = shouldShow } }
     suspend fun setAutoBackupEnabled(isEnabled: Boolean) { prefs.edit { it[KEY_AUTO_BACKUP_ENABLED] = isEnabled } }
     suspend fun saveLastProcessedPayday(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_PAYDAY] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-
-    // YENİ EKLENEN FONKSİYON
     suspend fun saveAutoSavingEnabled(isEnabled: Boolean) = prefs.edit { it[KEY_AUTO_SAVING_ENABLED] = isEnabled }
 
 
@@ -147,8 +145,12 @@ class PaydayRepository(private val context: Context) {
     }
 
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
-    fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate)
-    fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate)
+
+    // YENİ: DAO'dan gelen yeni fonksiyonları kullanan metodlar
+    fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
+    fun getTotalSavingsBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalSavingsBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
+    fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
+
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>> = transactionDao.getRecurringTransactionTemplates()
     fun getDailySpendingForChart(startDate: Date, endDate: Date): Flow<List<DailySpending>> = transactionDao.getDailySpendingForChart(startDate, endDate)
     fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>> = transactionDao.getMonthlySpendingForCategory(categoryId)

@@ -5,6 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
@@ -50,6 +52,10 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "PaydayBackup"
 
     private lateinit var googleDriveManager: GoogleDriveManager
+
+    // YENİ: Akıllı öneri kartının zamanlayıcısı için
+    private val suggestionHandler = Handler(Looper.getMainLooper())
+    private var suggestionRunnable: Runnable? = null
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -214,12 +220,32 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // YENİ: Akıllı öneri Observer'ı
+        // YENİ: Akıllı öneri için animasyonlu ve zamanlayıcılı Observer
         viewModel.financialInsight.observe(this) { event ->
             event.getContentIfNotHandled()?.let { insight ->
+                suggestionRunnable?.let { suggestionHandler.removeCallbacks(it) }
+
                 if (insight != null) {
                     binding.suggestionTextView.text = insight
+
+                    val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in_suggestion)
+                    binding.suggestionCardView.startAnimation(fadeIn)
                     binding.suggestionCardView.visibility = View.VISIBLE
+
+                    suggestionRunnable = Runnable {
+                        val fadeOut = AnimationUtils.loadAnimation(this, R.anim.fade_out_suggestion)
+                        fadeOut.setAnimationListener(object : Animation.AnimationListener {
+                            override fun onAnimationStart(animation: Animation?) {}
+                            override fun onAnimationEnd(animation: Animation?) {
+                                binding.suggestionCardView.visibility = View.GONE
+                            }
+                            override fun onAnimationRepeat(animation: Animation?) {}
+                        })
+                        binding.suggestionCardView.startAnimation(fadeOut)
+                    }
+
+                    suggestionHandler.postDelayed(suggestionRunnable!!, 8000)
+
                 } else {
                     binding.suggestionCardView.visibility = View.GONE
                 }
@@ -243,6 +269,7 @@ class MainActivity : AppCompatActivity() {
         binding.countdownTitleTextView.text = getString(R.string.next_payday_countdown)
         binding.incomeTextView.text = state.incomeText
         binding.expensesTextView.text = state.expensesText
+        binding.savingsTextView.text = state.savingsText
         binding.remainingTextView.text = state.remainingText
         savingsGoalAdapter.submitList(state.savingsGoals)
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
