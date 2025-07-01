@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class PaydayApplication : Application() {
 
@@ -26,13 +25,17 @@ class PaydayApplication : Application() {
         // Uygulamanın yaşam döngüsünü dinlemeye başla
         ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver())
 
-        // Tema ayarlarını yükle
-        runBlocking {
+        // --- DÜZELTME: Tema ayarlarını ana iş parçacığını bloklamadan yükle ---
+        // runBlocking kaldırıldı, yerine asenkron bir coroutine başlatıldı.
+        applicationScope.launch {
             val theme = repository.getTheme().firstOrNull() ?: "System"
-            when (theme) {
-                "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-                "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-                "System" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            // Tema değişikliğini ana iş parçacığına geri gönder
+            launch(Dispatchers.Main) {
+                when (theme) {
+                    "Light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                    "Dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                    "System" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                }
             }
         }
     }

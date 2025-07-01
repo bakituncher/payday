@@ -35,22 +35,20 @@ class OnboardingPaydayFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // UI kurulumunu bir coroutine içinde başlat
         viewLifecycleOwner.lifecycleScope.launch {
             setupUIForPayPeriod()
         }
     }
 
-    // Fonksiyonu 'suspend' olarak işaretle
     private suspend fun setupUIForPayPeriod() {
-        // repository'den gelen Flow'dan .first() ile ilk değeri al
         val payPeriod = repository.getPayPeriod().first()
 
         when (payPeriod) {
             PayPeriod.MONTHLY -> {
                 binding.subtitleTextView.text = getString(R.string.onboarding_payday_subtitle_monthly)
                 binding.viewFlipper.displayedChild = 0
-                binding.calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+                // DÜZELTME: Kullanılmayan parametreler '_' ile değiştirildi.
+                binding.calendarView.setOnDateChangeListener { _, _, _, dayOfMonth ->
                     viewModel.savePayday(dayOfMonth)
                 }
             }
@@ -81,9 +79,9 @@ class OnboardingPaydayFragment : Fragment() {
             binding.daysOfWeekChipGroup.addView(chip)
         }
 
-        // Deprecated olan listener'ı yenisiyle değiştiriyoruz
-        binding.daysOfWeekChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
-            // listede seçili ID varsa onu kullan
+        // DÜZELTME: Deprecated listener modern versiyonu ile değiştirildi ve
+        // kullanılmayan 'group' parametresi '_' olarak adlandırıldı.
+        binding.daysOfWeekChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isNotEmpty()) {
                 viewModel.savePayday(checkedIds.first())
             }

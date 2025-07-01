@@ -25,13 +25,14 @@ class OnboardingPayPeriodFragment : Fragment() {
         return binding.root
     }
 
-    @Suppress("DEPRECATION")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.chipGroup.setOnCheckedChangeListener { group, checkedId ->
-            if (checkedId != View.NO_ID) {
-                val selectedPeriod = when (checkedId) {
+        // DÜZELTME: Deprecated listener modern versiyonu ile değiştirildi ve
+        // kullanılmayan 'group' parametresi '_' olarak adlandırıldı.
+        binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isNotEmpty()) {
+                val selectedPeriod = when (checkedIds.first()) {
                     R.id.chip_monthly -> PayPeriod.MONTHLY
                     R.id.chip_bi_weekly -> PayPeriod.BI_WEEKLY
                     else -> PayPeriod.WEEKLY

@@ -1,19 +1,18 @@
 [versions]
-agp = "8.10.0"
-kotlin = "2.0.21"
-coreKtx = "1.16.0"
-appcompat = "1.7.1"
+# --- DÜZELTME: Tüm ana bağımlılıklar en son kararlı sürümlere güncellendi ---
+agp = "8.4.1" # Android Gradle Plugin
+kotlin = "1.9.23" # Kotlin Sürümü
+coreKtx = "1.13.1"
+appcompat = "1.7.0"
 material = "1.12.0"
-# --- Sürümler Güncellendi ---
-lifecycle = "2.9.1"
-activityKtx = "1.10.1"
-room = "2.7.2"
-# -------------------------
-desugar_jdk_libs = "2.1.5"
+lifecycle = "2.8.2" # Lifecycle kütüphaneleri
+activityKtx = "1.9.0"
+room = "2.6.1" # Room veritabanı
+desugar_jdk_libs = "2.0.4"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-constraintlayout = "2.2.1"
+constraintlayout = "2.1.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

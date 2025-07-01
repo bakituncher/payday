@@ -18,6 +18,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.*
+import kotlin.math.min
 
 @SuppressLint("StaticFieldLeak")
 @Suppress("DEPRECATION")
@@ -45,6 +46,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private val _monthlyCategorySpendingData = MutableLiveData<Pair<List<Entry>, List<String>>>()
     val monthlyCategorySpendingData: LiveData<Pair<List<Entry>, List<String>>> = _monthlyCategorySpendingData
 
+    // YENİ: Geri yükleme uyarısı için LiveData Event
+    private val _showRestoreWarningEvent = MutableLiveData<Event<Unit>>()
+    val showRestoreWarningEvent: LiveData<Event<Unit>> = _showRestoreWarningEvent
+
     private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -60,6 +65,16 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     init {
         checkUsageStreakAchievements()
         loadData()
+        checkForRestoreValidation()
+    }
+
+    private fun checkForRestoreValidation() {
+        viewModelScope.launch {
+            if (repository.isRestoreValidationNeeded().first()) {
+                _showRestoreWarningEvent.postValue(Event(Unit))
+                repository.clearRestoreValidationFlag()
+            }
+        }
     }
 
     fun deleteAccount() {
@@ -166,7 +181,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (totalDaysInCycle > 0) {
             val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
             val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
-            val salary = uiState.value?.incomeText?.filter { it.isDigit() }?.toLongOrNull() ?: 0L
+            val salary = uiState.value?.incomeText?.replace(Regex("[^\\d]"), "")?.toLongOrNull() ?: 0L
             if (salary > 0) {
                 val spendingProgress = totalExpenses / salary
                 if (cycleProgress > 0.5 && spendingProgress < 0.3) {
@@ -354,17 +369,29 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun distributeSavingsToGoals(totalSavingsAmount: Double) {
-        val goals = repository.getGoals().first().filter { it.savedAmount < it.targetAmount }.toMutableList()
-        if (goals.isEmpty()) return
+        val goals = repository.getGoals().first()
+            .filter { it.savedAmount < it.targetAmount }
+            .sortedBy { (it.targetAmount - it.savedAmount) } // En az ihtiyacı olandan başla
+            .toMutableList()
 
-        val amountPerGoal = totalSavingsAmount / goals.size
-        val updatedGoals = mutableListOf<SavingsGoal>()
+        if (goals.isEmpty()) return
+        var remainingSavings = totalSavingsAmount
 
         for (goal in goals) {
-            val amountToAdd = minOf(amountPerGoal, goal.targetAmount - goal.savedAmount)
+            if (remainingSavings <= 0) break
+
+            val neededForThisGoal = goal.targetAmount - goal.savedAmount
+            val amountToAdd = min(remainingSavings, neededForThisGoal)
+
             if (amountToAdd > 0) {
                 val updatedGoal = goal.copy(savedAmount = goal.savedAmount + amountToAdd)
-                updatedGoals.add(updatedGoal)
+
+                val allGoals = repository.getGoals().first().toMutableList()
+                val index = allGoals.indexOfFirst { it.id == updatedGoal.id }
+                if (index != -1) {
+                    allGoals[index] = updatedGoal
+                    repository.saveGoals(allGoals)
+                }
 
                 val transaction = Transaction(
                     name = context.getString(R.string.auto_savings_transaction_name, goal.name),
@@ -374,18 +401,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     isRecurringTemplate = false
                 )
                 repository.insertTransaction(transaction)
+                remainingSavings -= amountToAdd
             }
-        }
-
-        if (updatedGoals.isNotEmpty()) {
-            val allGoals = repository.getGoals().first().toMutableList()
-            updatedGoals.forEach { updated ->
-                val index = allGoals.indexOfFirst { it.id == updated.id }
-                if (index != -1) {
-                    allGoals[index] = updated
-                }
-            }
-            repository.saveGoals(allGoals)
         }
     }
 
@@ -412,23 +429,22 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (goalIndex == -1) return@launch
 
         val goal = currentGoals[goalIndex]
+        val availableFunds = currentState.actualRemainingAmountForGoals
 
-        if (amountToAdd > currentState.actualRemainingAmountForGoals) {
+        // --- DÜZELTME: Eklenecek nihai tutar, 3 kritere göre belirleniyor ---
+        val neededAmount = goal.targetAmount - goal.savedAmount
+        val finalAmountToAdd = minOf(amountToAdd, neededAmount, availableFunds)
+
+        if (finalAmountToAdd <= 0) {
             return@launch
         }
 
-        val neededAmount = goal.targetAmount - goal.savedAmount
-        val finalAmountToAdd = minOf(amountToAdd, neededAmount)
-
-        if (finalAmountToAdd <= 0) return@launch
-
         val updatedGoal = goal.copy(savedAmount = goal.savedAmount + finalAmountToAdd)
         currentGoals[goalIndex] = updatedGoal
-
         repository.saveGoals(currentGoals)
 
         val transaction = Transaction(
-            name = "'${goal.name}' hedefine aktarıldı",
+            name = context.getString(R.string.add_funds_to_goal_transaction_name, goal.name),
             amount = finalAmountToAdd,
             date = Date(),
             categoryId = ExpenseCategory.SAVINGS.ordinal,
@@ -447,6 +463,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         loadData()
     }
+
 
     fun loadDailySpending(startDate: Date, endDate: Date) {
         viewModelScope.launch {

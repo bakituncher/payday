@@ -10,7 +10,8 @@ data class Transaction(
     val id: Int = 0,
     val name: String,
     val amount: Double,
-    var date: Date, // DÜZELTME: val -> var olarak değiştirildi.
+    // --- DÜZELTME: 'var' -> 'val' olarak değiştirilerek veri bütünlüğü korundu ---
+    val date: Date,
     val categoryId: Int,
     val isRecurringTemplate: Boolean = false
 )

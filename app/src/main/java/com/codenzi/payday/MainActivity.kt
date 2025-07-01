@@ -19,6 +19,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -61,13 +62,13 @@ class MainActivity : AppCompatActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                Toast.makeText(this, "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
+                showSnackbar(getString(R.string.welcome_message_user, account.displayName))
                 showAutoBackupPrompt {
                     checkForBackupAndProceed()
                 }
             } catch (e: ApiException) {
                 Log.w(TAG, "Giriş başarısız, kod: " + e.statusCode)
-                Toast.makeText(this, "Google ile giriş başarısız oldu.", Toast.LENGTH_SHORT).show()
+                showSnackbar(getString(R.string.google_sign_in_failed), isError = true)
             }
         }
     }
@@ -77,6 +78,17 @@ class MainActivity : AppCompatActivity() {
     private val fromBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_open) }
     private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
     private var isFabMenuOpen = false
+
+    private val backPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (isFabMenuOpen) {
+                toggleFabMenu()
+            } else {
+                finish()
+            }
+        }
+    }
+
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onSettingsResult()
     }
@@ -85,6 +97,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        onBackPressedDispatcher.addCallback(this, backPressedCallback)
 
         repository = PaydayRepository(this)
         googleDriveManager = GoogleDriveManager(this)
@@ -110,15 +124,15 @@ class MainActivity : AppCompatActivity() {
     private fun backupData() {
         lifecycleScope.launch {
             try {
-                Toast.makeText(this@MainActivity, "Yedekleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                showSnackbar(getString(R.string.backup_started))
                 val backupData = repository.getAllDataForBackup()
                 val backupJson = gson.toJson(backupData)
                 googleDriveManager.uploadFileContent(backupJson)
                 viewModel.triggerBackupHeroAchievement()
-                Toast.makeText(this@MainActivity, R.string.backup_success, Toast.LENGTH_LONG).show()
+                showSnackbar(getString(R.string.backup_success))
             } catch (e: Exception) {
                 Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
-                Toast.makeText(this@MainActivity, R.string.backup_failed, Toast.LENGTH_LONG).show()
+                showSnackbar(getString(R.string.backup_failed), isError = true)
             }
         }
     }
@@ -126,35 +140,35 @@ class MainActivity : AppCompatActivity() {
     private fun restoreData() {
         lifecycleScope.launch {
             try {
-                Toast.makeText(this@MainActivity, "Geri yükleme başlatıldı...", Toast.LENGTH_SHORT).show()
+                showSnackbar(getString(R.string.restore_started))
                 val backupJson = googleDriveManager.downloadFileContent()
                 if (backupJson != null) {
                     val backupData = gson.fromJson(backupJson, BackupData::class.java)
                     repository.restoreDataFromBackup(backupData)
-                    viewModel.loadData()
-                    Toast.makeText(this@MainActivity, R.string.restore_success, Toast.LENGTH_LONG).show()
+                    viewModel.loadData() // Veri yüklemesini yeniden tetikle
+                    showSnackbar(getString(R.string.restore_success))
                 } else {
-                    Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
+                    showSnackbar(getString(R.string.restore_failed), isError = true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Geri yükleme işlemi sırasında HATA!", e)
-                Toast.makeText(this@MainActivity, R.string.restore_failed, Toast.LENGTH_LONG).show()
+                showSnackbar(getString(R.string.restore_failed), isError = true)
             }
         }
     }
 
     private fun showAutoBackupPrompt(onComplete: () -> Unit) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Otomatik Yedekleme")
-            .setMessage("Verilerinizin düzenli olarak Google Drive'a otomatik yedeklenmesini ister misiniz? Bu ayarı daha sonra Ayarlar menüsünden değiştirebilirsiniz.")
+            .setTitle(R.string.auto_backup_title)
+            .setMessage(R.string.auto_backup_prompt_message)
             .setCancelable(false)
-            .setPositiveButton("Evet, Aç") { _, _ ->
+            .setPositiveButton(R.string.yes_turn_on) { _, _ ->
                 lifecycleScope.launch {
                     repository.setAutoBackupEnabled(true)
                     onComplete()
                 }
             }
-            .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
+            .setNegativeButton(R.string.no_thanks) { _, _ ->
                 lifecycleScope.launch {
                     repository.setAutoBackupEnabled(false)
                     onComplete()
@@ -168,7 +182,7 @@ class MainActivity : AppCompatActivity() {
             if (googleDriveManager.isBackupAvailable()) {
                 showRestoreDialog()
             } else {
-                Toast.makeText(this@MainActivity, "Giriş başarılı. İlk verileriniz şimdi yedekleniyor...", Toast.LENGTH_LONG).show()
+                showSnackbar(getString(R.string.sign_in_success_and_initial_backup))
                 backupData()
             }
         }
@@ -176,15 +190,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRestoreDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Yedek Bulundu")
-            .setMessage("Google Drive'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi? (Mevcut verileriniz silinecektir)")
+            .setTitle(R.string.backup_found_title)
+            .setMessage(R.string.restore_confirmation_message_main)
             .setCancelable(false)
-            .setPositiveButton("Evet, Geri Yükle") { _, _ ->
+            .setPositiveButton(R.string.yes_restore) { _, _ ->
                 restoreData()
             }
-            .setNegativeButton("Hayır, Dokunma") { dialog, _ ->
+            .setNegativeButton(R.string.no_dont_touch) { dialog, _ ->
                 dialog.dismiss()
-                Toast.makeText(this, "Mevcut verileriniz korundu.", Toast.LENGTH_SHORT).show()
+                showSnackbar(getString(R.string.existing_data_preserved))
             }
             .show()
     }
@@ -210,6 +224,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupObservers() {
         viewModel.uiState.observe(this) { state ->
+            binding.mainProgressBar.visibility = View.GONE
             val isSetupComplete = state.daysLeftText.isNotBlank() && state.daysLeftText != getString(R.string.day_not_set_placeholder)
             binding.mainContentScrollView.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
             binding.addTransactionFab.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
@@ -225,7 +240,6 @@ class MainActivity : AppCompatActivity() {
 
                 if (insight != null) {
                     binding.suggestionTextView.text = insight
-
                     val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in_suggestion)
                     binding.suggestionCardView.startAnimation(fadeIn)
                     binding.suggestionCardView.visibility = View.VISIBLE
@@ -241,9 +255,7 @@ class MainActivity : AppCompatActivity() {
                         })
                         binding.suggestionCardView.startAnimation(fadeOut)
                     }
-
                     suggestionHandler.postDelayed(suggestionRunnable!!, 8000)
-
                 } else {
                     binding.suggestionCardView.visibility = View.GONE
                 }
@@ -251,7 +263,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
-        viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { achievement -> showAchievementSnackbar(achievement) } }
+        viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { showAchievementSnackbar(it) } }
+
+        viewModel.showRestoreWarningEvent.observe(this) { event ->
+            event.getContentIfNotHandled()?.let {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.restore_warning_title)
+                    .setMessage(R.string.restore_warning_message)
+                    .setPositiveButton(R.string.go_to_settings) { _, _ ->
+                        settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+                    }
+                    .setNegativeButton(R.string.ok, null)
+                    .show()
+            }
+        }
+
         viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
             transactionAdapter.submitList(transactions)
             val areTransactionsEmpty = transactions.isNullOrEmpty()
@@ -323,7 +349,7 @@ class MainActivity : AppCompatActivity() {
         savingsGoalAdapter = SavingsGoalAdapter(
             onAddFundsClicked = { goal -> showAddFundsDialog(goal) },
             onEditClicked = { goal -> SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG) },
-            onDeleteClicked = { goal -> handleDeleteGoal(goal) } // DÜZELTME: Doğrudan silmek yerine yeni fonksiyona yönlendiriyoruz.
+            onDeleteClicked = { goal -> handleDeleteGoal(goal) }
         )
         binding.savingsGoalsRecyclerView.adapter = savingsGoalAdapter
 
@@ -341,21 +367,18 @@ class MainActivity : AppCompatActivity() {
         binding.transactionsRecyclerView.adapter = transactionAdapter
     }
 
-    // YENİ: Hedef silme işlemini yöneten akıllı fonksiyon
     private fun handleDeleteGoal(goal: SavingsGoal) {
         if (goal.savedAmount > 0) {
-            // Eğer hedefte para varsa, kullanıcıya ne yapacağını sor.
             MaterialAlertDialogBuilder(this)
                 .setTitle(getString(R.string.release_funds_title))
                 .setMessage(getString(R.string.release_funds_message, goal.name, formatCurrency(goal.savedAmount)))
                 .setNeutralButton(R.string.cancel, null)
                 .setPositiveButton(R.string.release_funds_button) { _, _ ->
                     viewModel.releaseFundsFromGoal(goal)
-                    Toast.makeText(this, "Para serbest bırakıldı ve hedef silindi.", Toast.LENGTH_SHORT).show()
+                    showSnackbar(getString(R.string.funds_released_and_goal_deleted))
                 }
                 .show()
         } else {
-            // Eğer hedef boşsa, direkt sil.
             MaterialAlertDialogBuilder(this)
                 .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
                 .setMessage(R.string.delete_goal_confirmation_message)
@@ -378,24 +401,20 @@ class MainActivity : AppCompatActivity() {
         val currentRemainingAmount = viewModel.uiState.value?.actualRemainingAmountForGoals ?: 0.0
         val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
 
-        titleTextView.text = "'${goal.name}' hedefine para ekle"
-        availableFundsTextView.text = "Kullanılabilir Bakiye: ${currencyFormatter.format(currentRemainingAmount)}"
+        titleTextView.text = getString(R.string.add_funds_to_goal_title, goal.name)
+        availableFundsTextView.text = getString(R.string.available_funds_label, currencyFormatter.format(currentRemainingAmount))
 
         MaterialAlertDialogBuilder(this)
             .setView(dialogView)
-            .setPositiveButton("Ekle") { _, _ ->
+            .setPositiveButton(R.string.add_funds) { _, _ ->
                 val amount = amountEditText.text.toString().toDoubleOrNull()
                 if (amount != null && amount > 0) {
-                    if (amount > currentRemainingAmount) {
-                        Toast.makeText(this, "Yetersiz bakiye!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        viewModel.addFundsToGoal(goal.id, amount)
-                    }
+                    viewModel.addFundsToGoal(goal.id, amount)
                 } else {
-                    Toast.makeText(this, "Lütfen geçerli bir tutar girin.", Toast.LENGTH_SHORT).show()
+                    showSnackbar(getString(R.string.please_enter_valid_amount), isError = true)
                 }
             }
-            .setNegativeButton("İptal", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -428,6 +447,14 @@ class MainActivity : AppCompatActivity() {
         customView.findViewById<ImageView>(R.id.toast_icon).setImageResource(achievement.iconResId)
         customView.findViewById<TextView>(R.id.toast_achievement_name).text = achievement.title
         snackbarLayout.addView(customView, 0)
+        snackbar.show()
+    }
+
+    private fun showSnackbar(message: String, isError: Boolean = false) {
+        val snackbar = Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
+        if (isError) {
+            snackbar.setBackgroundTint(ContextCompat.getColor(this, R.color.red_500))
+        }
         snackbar.show()
     }
 }

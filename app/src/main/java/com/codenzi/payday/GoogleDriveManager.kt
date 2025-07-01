@@ -1,5 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/GoogleDriveManager.kt
-
 package com.codenzi.payday
 
 import android.content.Context
@@ -18,6 +16,7 @@ import com.google.api.services.drive.model.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 
 @Suppress("DEPRECATION")
@@ -25,6 +24,7 @@ class GoogleDriveManager(private val context: Context) {
 
     private val backupFileName = "payday_backup.json"
     private var cachedFileId: String? = null
+    private val TAG = "GoogleDriveManager"
 
     private fun getDriveService(): Drive? {
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
@@ -49,8 +49,11 @@ class GoogleDriveManager(private val context: Context) {
                 .setQ("name='$backupFileName' and trashed=false")
                 .execute()
                 .files.firstOrNull()?.id?.also { cachedFileId = it }
+        } catch (e: IOException) {
+            Log.e(TAG, "Dosya ID'si alınırken ağ hatası oluştu.", e)
+            null
         } catch (e: Exception) {
-            Log.e("GoogleDriveManager", "Dosya ID'si alınırken hata oluştu.", e)
+            Log.e(TAG, "Dosya ID'si alınırken genel bir hata oluştu.", e)
             null
         }
     }
@@ -58,39 +61,49 @@ class GoogleDriveManager(private val context: Context) {
     suspend fun isBackupAvailable(): Boolean = withContext(Dispatchers.IO) {
         val drive = getDriveService() ?: return@withContext false
         try {
-            val fileId = getBackupFileId(drive)
-            return@withContext fileId != null
+            getBackupFileId(drive) != null
         } catch (e: Exception) {
-            Log.e("GoogleDriveManager", "Yedek kontrolü sırasında hata", e)
-            return@withContext false
+            Log.e(TAG, "Yedek kontrolü sırasında hata", e)
+            false
         }
     }
 
     suspend fun uploadFileContent(content: String) = withContext(Dispatchers.IO) {
-        val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
-        val fileId = getBackupFileId(drive)
-        val mediaContent = ByteArrayContent.fromString("application/json", content)
-        if (fileId == null) {
-            val fileMetadata = File().apply {
-                name = backupFileName
-                parents = listOf("appDataFolder")
+        try {
+            val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
+            val fileId = getBackupFileId(drive)
+            val mediaContent = ByteArrayContent.fromString("application/json", content)
+            if (fileId == null) {
+                val fileMetadata = File().apply {
+                    name = backupFileName
+                    parents = listOf("appDataFolder")
+                }
+                val createdFile = drive.files().create(fileMetadata, mediaContent).setFields("id").execute()
+                cachedFileId = createdFile.id
+            } else {
+                drive.files().update(fileId, null, mediaContent).execute()
             }
-            val createdFile = drive.files().create(fileMetadata, mediaContent).setFields("id").execute()
-            cachedFileId = createdFile.id
-        } else {
-            drive.files().update(fileId, null, mediaContent).execute()
+        } catch (e: IOException) {
+            Log.e(TAG, "Dosya yüklenirken ağ hatası oluştu.", e)
+            throw e // Hatanın üst katmanlara bildirilmesi için yeniden fırlatılabilir
+        } catch (e: Exception) {
+            Log.e(TAG, "Dosya yüklenirken genel bir hata oluştu.", e)
+            throw e
         }
     }
 
     suspend fun downloadFileContent(): String? = withContext(Dispatchers.IO) {
-        val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
-        val fileId = getBackupFileId(drive) ?: return@withContext null
         try {
+            val drive = getDriveService() ?: throw IllegalStateException("Kullanıcı giriş yapmamış.")
+            val fileId = getBackupFileId(drive) ?: return@withContext null
             val inputStream = drive.files().get(fileId).executeMediaAsInputStream()
-            return@withContext BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
+            BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
+        } catch (e: IOException) {
+            Log.e(TAG, "Dosya indirilirken ağ hatası.", e)
+            null
         } catch (e: Exception) {
-            Log.e("GoogleDriveManager", "Dosya indirme hatası", e)
-            throw e
+            Log.e(TAG, "Dosya indirme sırasında genel bir hata.", e)
+            null
         }
     }
 
@@ -101,10 +114,12 @@ class GoogleDriveManager(private val context: Context) {
             if (fileId != null) {
                 drive.files().delete(fileId).execute()
                 cachedFileId = null
-                Log.d("GoogleDriveManager", "Google Drive'daki yedek dosyası başarıyla silindi.")
+                Log.d(TAG, "Google Drive'daki yedek dosyası başarıyla silindi.")
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "Google Drive yedeği silinirken ağ hatası.", e)
         } catch (e: Exception) {
-            Log.e("GoogleDriveManager", "Google Drive yedek dosyası silinirken hata oluştu.", e)
+            Log.e(TAG, "Google Drive yedek dosyası silinirken genel bir hata oluştu.", e)
         }
     }
 

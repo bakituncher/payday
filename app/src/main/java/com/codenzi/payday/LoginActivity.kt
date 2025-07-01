@@ -4,9 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityLoginBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -14,6 +14,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -76,31 +77,34 @@ class LoginActivity : AppCompatActivity() {
         try {
             val account = completedTask.getResult(ApiException::class.java)
             Log.d(TAG, "Giriş başarılı: ${account.displayName}")
-            Toast.makeText(this, "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
-
+            showSnackbar(getString(R.string.welcome_message_user, account.displayName))
             showAutoBackupPrompt {
                 checkForExistingBackup()
             }
-
         } catch (e: ApiException) {
             showLoading(false)
             Log.w(TAG, "Giriş hatası, kod: " + e.statusCode)
-            Toast.makeText(this, "Giriş sırasında bir hata oluştu.", Toast.LENGTH_LONG).show()
+            val errorMessage = if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.NETWORK_ERROR) {
+                getString(R.string.network_error_please_check_connection)
+            } else {
+                getString(R.string.login_error_occurred)
+            }
+            showSnackbar(errorMessage, isError = true)
         }
     }
 
     private fun showAutoBackupPrompt(onComplete: () -> Unit) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Otomatik Yedekleme")
-            .setMessage("Verilerinizin düzenli olarak Google Drive'a otomatik yedeklenmesini ister misiniz? Bu ayarı daha sonra Ayarlar menüsünden değiştirebilirsiniz.")
+            .setTitle(R.string.auto_backup_title)
+            .setMessage(R.string.auto_backup_prompt_message)
             .setCancelable(false)
-            .setPositiveButton("Evet, Aç") { _, _ ->
+            .setPositiveButton(R.string.yes_turn_on) { _, _ ->
                 lifecycleScope.launch {
                     repository.setAutoBackupEnabled(true)
                     onComplete()
                 }
             }
-            .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
+            .setNegativeButton(R.string.no_thanks) { _, _ ->
                 lifecycleScope.launch {
                     repository.setAutoBackupEnabled(false)
                     onComplete()
@@ -123,11 +127,11 @@ class LoginActivity : AppCompatActivity() {
 
     private fun showRestoreDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Yedek Bulundu")
-            .setMessage("Google Drive'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi?")
+            .setTitle(R.string.backup_found_title)
+            .setMessage(R.string.restore_confirmation_message_login)
             .setCancelable(false)
-            .setPositiveButton("Evet, Geri Yükle") { _, _ -> restoreBackup() }
-            .setNegativeButton("Hayır, Yeni Başla") { _, _ -> navigateToNextScreen() }
+            .setPositiveButton(R.string.yes_restore) { _, _ -> restoreBackup() }
+            .setNegativeButton(R.string.no_start_new) { _, _ -> navigateToNextScreen() }
             .show()
     }
 
@@ -139,13 +143,13 @@ class LoginActivity : AppCompatActivity() {
                 if (backupJson != null) {
                     val backupData = Gson().fromJson(backupJson, BackupData::class.java)
                     repository.restoreDataFromBackup(backupData)
-                    Toast.makeText(this@LoginActivity, "Verileriniz başarıyla geri yüklendi.", Toast.LENGTH_LONG).show()
+                    showSnackbar(getString(R.string.restore_success_login))
                 } else {
-                    Toast.makeText(this@LoginActivity, "Yedek indirilemedi, yeni profil oluşturuluyor.", Toast.LENGTH_LONG).show()
+                    showSnackbar(getString(R.string.backup_download_failed_creating_new_profile), isError = true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Geri yükleme sırasında kritik hata", e)
-                Toast.makeText(this@LoginActivity, "Geri yükleme başarısız oldu.", Toast.LENGTH_LONG).show()
+                showSnackbar(getString(R.string.restore_failed_login), isError = true)
             } finally {
                 navigateToNextScreen()
             }
@@ -165,5 +169,15 @@ class LoginActivity : AppCompatActivity() {
         binding?.loadingProgressBar?.visibility = if (isLoading) View.VISIBLE else View.GONE
         binding?.signInButton?.isEnabled = !isLoading
         binding?.skipButton?.isEnabled = !isLoading
+    }
+
+    private fun showSnackbar(message: String, isError: Boolean = false) {
+        binding?.let {
+            val snackbar = Snackbar.make(it.root, message, Snackbar.LENGTH_LONG)
+            if (isError) {
+                snackbar.setBackgroundTint(ContextCompat.getColor(this, R.color.red_500))
+            }
+            snackbar.show()
+        }
     }
 }

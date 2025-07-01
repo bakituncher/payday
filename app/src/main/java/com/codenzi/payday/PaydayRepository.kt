@@ -22,8 +22,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Suppress("DEPRECATION")
 class PaydayRepository(private val context: Context) {
 
+    val prefs = context.dataStore
     private val gson = Gson()
-    private val prefs = context.dataStore
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
     private val googleDriveManager = GoogleDriveManager(context)
 
@@ -46,6 +46,8 @@ class PaydayRepository(private val context: Context) {
         val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
         val KEY_AUTO_SAVING_ENABLED = booleanPreferencesKey("auto_saving_enabled")
         val KEY_LAST_PROCESSED_PAYDAY = stringPreferencesKey("last_processed_payday")
+        // YENİ: Geri yükleme sonrası kontrol için anahtar
+        val KEY_RESTORE_VALIDATION_NEEDED = booleanPreferencesKey("restore_validation_needed")
     }
 
     suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
@@ -78,6 +80,8 @@ class PaydayRepository(private val context: Context) {
     fun getLastBackupTimestamp(): Flow<Long> = prefs.data.map { it[KEY_LAST_BACKUP_TIMESTAMP] ?: 0L }
     fun isAutoSavingEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_SAVING_ENABLED] ?: false }
     fun getLastProcessedPayday(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_PAYDAY] }
+    fun isRestoreValidationNeeded(): Flow<Boolean> = prefs.data.map { it[KEY_RESTORE_VALIDATION_NEEDED] ?: false }
+
 
     // SETTERS
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
@@ -95,6 +99,7 @@ class PaydayRepository(private val context: Context) {
     suspend fun setAutoBackupEnabled(isEnabled: Boolean) { prefs.edit { it[KEY_AUTO_BACKUP_ENABLED] = isEnabled } }
     suspend fun saveLastProcessedPayday(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_PAYDAY] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveAutoSavingEnabled(isEnabled: Boolean) = prefs.edit { it[KEY_AUTO_SAVING_ENABLED] = isEnabled }
+    suspend fun clearRestoreValidationFlag() = prefs.edit { it.remove(KEY_RESTORE_VALIDATION_NEEDED) }
 
 
     private suspend fun saveLastBackupTimestamp(timestamp: Long) {
@@ -146,7 +151,6 @@ class PaydayRepository(private val context: Context) {
 
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
 
-    // YENİ: DAO'dan gelen yeni fonksiyonları kullanan metodlar
     fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
     fun getTotalSavingsBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalSavingsBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
@@ -177,6 +181,8 @@ class PaydayRepository(private val context: Context) {
     suspend fun restoreDataFromBackup(backupData: BackupData) = withContext(Dispatchers.IO) {
         transactionDao.deleteAllTransactions()
         backupData.transactions.forEach { transactionDao.insert(it) }
+
+        var isRestorePotentiallyCorrupt = false
 
         prefs.edit { preferences ->
             val currentAutoBackupSetting = preferences[KEY_AUTO_BACKUP_ENABLED]
@@ -210,6 +216,18 @@ class PaydayRepository(private val context: Context) {
             if (currentAutoBackupSetting != null) {
                 preferences[KEY_AUTO_BACKUP_ENABLED] = currentAutoBackupSetting
             }
+
+            // --- DÜZELTME: Veri doğrulama mantığı ---
+            val restoredSalary = preferences[KEY_SALARY] ?: 0L
+            val restoredPayPeriod = preferences[KEY_PAY_PERIOD]
+
+            if (restoredSalary <= 0 || restoredPayPeriod == null) {
+                isRestorePotentiallyCorrupt = true
+            }
+        }
+
+        if (isRestorePotentiallyCorrupt) {
+            prefs.edit { it[KEY_RESTORE_VALIDATION_NEEDED] = true }
         }
     }
 }
