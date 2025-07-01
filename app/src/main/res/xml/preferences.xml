@@ -48,12 +48,21 @@
 
     </androidx.preference.PreferenceCategory>
 
-    <androidx.preference.PreferenceCategory app:title="Hesap">
+    <!-- Hesap Yönetimi Kategorisi -->
+    <androidx.preference.PreferenceCategory
+        app:key="account_category"
+        app:title="@string/account_category_title">
         <Preference
             app:key="google_account"
-            app:title="Google Hesabı"
-            app:summary="Giriş yapılmadı"
+            app:title="@string/google_sign_in_title"
+            app:summary="@string/google_sign_in_summary"
             app:icon="@drawable/ic_google_logo"/>
+        <Preference
+            app:key="delete_account"
+            app:title="@string/delete_account_title"
+            app:summary="@string/delete_account_summary"
+            app:icon="@drawable/ic_delete_forever"
+            android:visible="false" /> <!-- DÜZELTME: app:isVisible -> android:visible olarak değiştirildi -->
     </androidx.preference.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

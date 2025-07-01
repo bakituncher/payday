@@ -53,6 +53,18 @@
     <string name="payday_not_set">Henüz ayarlanmadı</string>
     <string name="select_payday_dialog_title">Maaş Günü Seçin</string>
 
+    <!-- Profil ve Hesap Ayarları -->
+    <string name="account_category_title">Hesap</string>
+    <string name="profile_title">Profil</string>
+    <string name="google_sign_in_title">Google ile Giriş Yap</string>
+    <string name="google_sign_in_summary">Yedekleme ve senkronizasyon için giriş yapın.</string>
+    <string name="google_sign_out_title">Google Hesabı (Çıkış Yap)</string>
+    <string name="google_sign_out_confirmation_message">Google hesabınızdan çıkış yapmak istediğinize emin misiniz? Yedekleme ve senkronizasyon özellikleri devre dışı kalacaktır.</string>
+    <string name="action_sign_out">Evet, Çıkış Yap</string>
+    <string name="delete_account_title">Hesabı ve Verileri Sil</string>
+    <string name="delete_account_summary">Tüm uygulama ve Google Drive verilerinizi kalıcı olarak silin.</string>
+    <string name="delete_account_confirmation_message">Bu işlem geri alınamaz. Tüm yerel verileriniz, ayarlarınız ve Google Drive\'daki uygulama yedeğiniz kalıcı olarak silinecektir. Devam etmek istediğinize emin misiniz?</string>
+
     <!-- Tasarruf Hedefleri -->
     <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
     <string name="dialog_edit_goal_title">Hedefi Düzenle</string>

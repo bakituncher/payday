@@ -18,6 +18,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@Suppress("DEPRECATION")
 class LoginActivity : AppCompatActivity() {
 
     private var binding: ActivityLoginBinding? = null
@@ -95,14 +96,12 @@ class LoginActivity : AppCompatActivity() {
             .setCancelable(false)
             .setPositiveButton("Evet, Aç") { _, _ ->
                 lifecycleScope.launch {
-                    // ÇÖZÜM: Kullanıcının seçimi anında kaydediliyor.
                     repository.setAutoBackupEnabled(true)
                     onComplete()
                 }
             }
             .setNegativeButton("Hayır, Teşekkürler") { _, _ ->
                 lifecycleScope.launch {
-                    // ÇÖZÜM: Kullanıcının seçimi anında kaydediliyor.
                     repository.setAutoBackupEnabled(false)
                     onComplete()
                 }

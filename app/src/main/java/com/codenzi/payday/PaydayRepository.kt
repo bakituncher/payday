@@ -46,6 +46,14 @@ class PaydayRepository(private val context: Context) {
         val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
     }
 
+    suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
+        googleDriveManager.deleteBackupFile()
+        transactionDao.deleteAllTransactions()
+        prefs.edit { preferences ->
+            preferences.clear()
+        }
+    }
+
     // GETTERS
     fun getPayPeriod(): Flow<PayPeriod> = prefs.data.map { PayPeriod.valueOf(it[KEY_PAY_PERIOD] ?: PayPeriod.MONTHLY.name) }
     fun getPaydayValue(): Flow<Int> = prefs.data.map { it[KEY_PAYDAY_VALUE] ?: -1 }
@@ -93,9 +101,7 @@ class PaydayRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Otomatik yedekleme ayarlarını kontrol eder ve gerekirse yedeklemeyi başlatır.
-     */
+    @Suppress("DEPRECATION")
     suspend fun performSmartBackup() {
         if (isAutoBackupEnabled().first() && GoogleSignIn.getLastSignedInAccount(context) != null) {
             val lastBackupTimestamp = getLastBackupTimestamp().first()
@@ -109,7 +115,6 @@ class PaydayRepository(private val context: Context) {
                     saveLastBackupTimestamp(System.currentTimeMillis())
                 } catch (e: Exception) {
                     // Hata durumunda bir sonraki denemeyi engellememek için sessiz kal.
-                    // Gerçek bir uygulamada bu hata bir loglama servisine gönderilebilir.
                 }
             }
         }
@@ -168,21 +173,11 @@ class PaydayRepository(private val context: Context) {
             backupData.settings.forEach { (key, value) ->
                 if (key != KEY_SAVINGS_GOALS.name && key != KEY_AUTO_BACKUP_ENABLED.name) {
                     when (key) {
-                        KEY_PAYDAY_VALUE.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: -1
-                        KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
-                        KEY_WEEKEND_ADJUSTMENT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                        KEY_ONBOARDING_COMPLETE.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                        KEY_SHOW_LOGIN_ON_START.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: true
-                        KEY_SALARY.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
-                        KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
-                        KEY_PAY_PERIOD.name,
-                        KEY_BI_WEEKLY_REF_DATE.name,
-                        KEY_FIRST_LAUNCH_DATE.name,
-                        KEY_LAST_PROCESSED_CYCLE_END_DATE.name,
-                        KEY_THEME.name -> {
-                            if (value != null) {
-                                preferences[stringPreferencesKey(key)] = value
-                            }
+                        KEY_PAYDAY_VALUE.name, KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
+                        KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
+                        KEY_PAY_PERIOD.name, KEY_BI_WEEKLY_REF_DATE.name, KEY_FIRST_LAUNCH_DATE.name, KEY_LAST_PROCESSED_CYCLE_END_DATE.name, KEY_THEME.name -> {
+                            if (value != null) preferences[stringPreferencesKey(key)] = value
                         }
                         KEY_UNLOCKED_ACHIEVEMENTS.name -> {
                             if (value != null) {
@@ -193,7 +188,6 @@ class PaydayRepository(private val context: Context) {
                                 preferences[stringSetPreferencesKey(key)] = unlockedSet
                             }
                         }
-                        KEY_SHOW_SIGN_IN_PROMPT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: true
                     }
                 }
             }

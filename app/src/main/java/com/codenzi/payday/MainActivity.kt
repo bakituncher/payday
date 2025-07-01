@@ -38,6 +38,7 @@ import java.text.NumberFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -197,7 +198,6 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    // (Bu dosyadaki diğer tüm metotlar aynı kalır)
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true

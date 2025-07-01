@@ -9,12 +9,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.EditTextPreference
-import androidx.preference.ListPreference
-import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SwitchPreferenceCompat
+import androidx.preference.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -31,23 +28,28 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.*
 
+@Suppress("DEPRECATION")
 class SettingsFragment : PreferenceFragmentCompat() {
 
     private lateinit var repository: PaydayRepository
     private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+    private val viewModel: PaydayViewModel by activityViewModels()
 
     private lateinit var googleSignInClient: GoogleSignInClient
+    private var accountCategory: PreferenceCategory? = null
     private var googleAccountPreference: Preference? = null
+    private var deleteAccountPreference: Preference? = null
+
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             task.addOnSuccessListener { account ->
                 Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
-                updateGoogleAccountPreference(account)
+                updateAccountSection(account)
             }.addOnFailureListener {
                 Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
-                updateGoogleAccountPreference(null)
+                updateAccountSection(null)
             }
         }
     }
@@ -57,7 +59,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         repository = PaydayRepository(requireContext())
 
         setupGoogleClient()
-        setupGoogleAccountPreference()
+        setupAccountPreferences()
 
         findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
             val theme = newValue as String
@@ -82,7 +84,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     override fun onResume() {
         super.onResume()
         updateSummaries()
-        updateGoogleAccountPreference(GoogleSignIn.getLastSignedInAccount(requireContext()))
+        updateAccountSection(GoogleSignIn.getLastSignedInAccount(requireContext()))
     }
 
     private fun setupGoogleClient() {
@@ -93,48 +95,85 @@ class SettingsFragment : PreferenceFragmentCompat() {
         googleSignInClient = GoogleSignIn.getClient(requireContext(), gso)
     }
 
-    private fun setupGoogleAccountPreference() {
+    private fun setupAccountPreferences() {
+        accountCategory = findPreference("account_category")
         googleAccountPreference = findPreference("google_account")
+        deleteAccountPreference = findPreference("delete_account")
+
         googleAccountPreference?.setOnPreferenceClickListener {
             val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             if (account == null) {
+                // Giriş yap
                 val signInIntent: Intent = googleSignInClient.signInIntent
                 googleSignInLauncher.launch(signInIntent)
             } else {
+                // Çıkış yap
                 showSignOutDialog()
             }
             true
         }
+
+        deleteAccountPreference?.setOnPreferenceClickListener {
+            showDeleteAccountConfirmationDialog()
+            true
+        }
     }
 
-    private fun updateGoogleAccountPreference(account: GoogleSignInAccount?) {
+    /**
+     * Bu fonksiyon, kullanıcının oturum durumuna göre tüm hesap bölümünü günceller.
+     * Artık kategoriyi gizlemek yerine içeriğini değiştirir.
+     */
+    private fun updateAccountSection(account: GoogleSignInAccount?) {
         if (account != null) {
+            // Kullanıcı GİRİŞ YAPMIŞ ise
+            accountCategory?.title = getString(R.string.profile_title)
+            googleAccountPreference?.title = getString(R.string.google_sign_out_title)
             googleAccountPreference?.summary = account.email
-            googleAccountPreference?.title = "Google Hesabı (Çıkış Yap)"
+            deleteAccountPreference?.isVisible = true
         } else {
-            googleAccountPreference?.summary = "Yedekleme ve senkronizasyon için giriş yapın"
-            googleAccountPreference?.title = "Google ile Giriş Yap"
+            // Kullanıcı GİRİŞ YAPMAMIŞ ise
+            accountCategory?.title = getString(R.string.account_category_title)
+            googleAccountPreference?.title = getString(R.string.google_sign_in_title)
+            googleAccountPreference?.summary = getString(R.string.google_sign_in_summary)
+            deleteAccountPreference?.isVisible = false
         }
         setupAutoBackupPreference()
     }
 
     private fun showSignOutDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Çıkış Yap")
-            .setMessage("Google hesabınızdan çıkış yapmak istediğinize emin misiniz? Yedekleme ve senkronizasyon özellikleri devre dışı kalacaktır.")
-            .setPositiveButton("Evet, Çıkış Yap") { _, _ ->
+            .setTitle(getString(R.string.google_sign_out_title))
+            .setMessage(getString(R.string.google_sign_out_confirmation_message))
+            .setPositiveButton(R.string.action_sign_out) { _, _ ->
                 googleSignInClient.signOut().addOnCompleteListener {
                     Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı.", Toast.LENGTH_SHORT).show()
-                    updateGoogleAccountPreference(null)
-                    // Çıkış yapıldığında anahtarın durumunu anında güncelle
+                    updateAccountSection(null)
                     lifecycleScope.launch { repository.setAutoBackupEnabled(false) }
                 }
             }
-            .setNegativeButton("İptal", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
-    // --- HATAYI DÜZELTEN GÜNCELLENMİŞ FONKSİYON ---
+    private fun showDeleteAccountConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.delete_account_title))
+            .setMessage(getString(R.string.delete_account_confirmation_message))
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setPositiveButton(R.string.delete_button_text) { _, _ ->
+                viewModel.deleteAccount()
+                googleSignInClient.signOut().addOnCompleteListener {
+                    Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
+                    val intent = Intent(requireActivity(), LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                    requireActivity().finish()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun setupAutoBackupPreference() {
         val autoBackupPref = findPreference<SwitchPreferenceCompat>(PaydayRepository.KEY_AUTO_BACKUP_ENABLED.name)
         val account = GoogleSignIn.getLastSignedInAccount(requireContext())
@@ -147,7 +186,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             autoBackupPref?.summary = "Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
         }
 
-        // DEĞİŞİKLİK: Kaydedilmiş değeri oku ve anahtarın durumunu ayarla.
         lifecycleScope.launch {
             val isEnabled = repository.isAutoBackupEnabled().first()
             autoBackupPref?.isChecked = isEnabled && (account != null)

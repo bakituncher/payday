@@ -56,6 +56,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
+    fun deleteAccount() {
+        viewModelScope.launch {
+            repository.deleteAllUserData()
+        }
+    }
+
     private fun checkUsageStreakAchievements() {
         viewModelScope.launch {
             val today = LocalDate.now()
@@ -102,6 +108,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val weekendAdjustment = values[3] as Boolean
                 val salaryAmount = values[4] as Long
                 val monthlySavings = values[5] as Long
+                @Suppress("UNCHECKED_CAST")
                 val goals = values[6] as MutableList<SavingsGoal>
                 val result = PaydayCalculator.calculate(payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
@@ -284,6 +291,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun performAutoBackup() {
         viewModelScope.launch {
             if (GoogleSignIn.getLastSignedInAccount(getApplication()) == null) return@launch

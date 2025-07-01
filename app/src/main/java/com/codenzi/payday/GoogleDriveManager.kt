@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+@Suppress("DEPRECATION")
 class GoogleDriveManager(private val context: Context) {
 
     private val backupFileName = "payday_backup.json"
@@ -41,16 +42,19 @@ class GoogleDriveManager(private val context: Context) {
 
     private suspend fun getBackupFileId(drive: Drive): String? {
         if (cachedFileId != null) return cachedFileId
-        return drive.files().list()
-            .setSpaces("appDataFolder")
-            .setFields("files(id)")
-            .setQ("name='$backupFileName' and trashed=false")
-            .execute()
-            .files.firstOrNull()?.id?.also { cachedFileId = it }
+        return try {
+            drive.files().list()
+                .setSpaces("appDataFolder")
+                .setFields("files(id)")
+                .setQ("name='$backupFileName' and trashed=false")
+                .execute()
+                .files.firstOrNull()?.id?.also { cachedFileId = it }
+        } catch (e: Exception) {
+            Log.e("GoogleDriveManager", "Dosya ID'si alınırken hata oluştu.", e)
+            null
+        }
     }
 
-    // *** YENİ EKLENEN FONKSİYON ***
-    // Bir yedeğin var olup olmadığını hızlıca kontrol eder.
     suspend fun isBackupAvailable(): Boolean = withContext(Dispatchers.IO) {
         val drive = getDriveService() ?: return@withContext false
         try {
@@ -90,6 +94,20 @@ class GoogleDriveManager(private val context: Context) {
         }
     }
 
+    suspend fun deleteBackupFile() = withContext(Dispatchers.IO) {
+        try {
+            val drive = getDriveService() ?: return@withContext
+            val fileId = getBackupFileId(drive)
+            if (fileId != null) {
+                drive.files().delete(fileId).execute()
+                cachedFileId = null
+                Log.d("GoogleDriveManager", "Google Drive'daki yedek dosyası başarıyla silindi.")
+            }
+        } catch (e: Exception) {
+            Log.e("GoogleDriveManager", "Google Drive yedek dosyası silinirken hata oluştu.", e)
+        }
+    }
+
     companion object {
         fun getSignInIntent(context: Context): Intent {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -97,7 +115,6 @@ class GoogleDriveManager(private val context: Context) {
                 .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
                 .build()
             val client = GoogleSignIn.getClient(context, gso)
-            client.signOut()
             return client.signInIntent
         }
     }
