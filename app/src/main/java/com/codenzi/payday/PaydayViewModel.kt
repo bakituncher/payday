@@ -127,7 +127,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     currentPayCycle.value = Pair(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
                     checkAndProcessNewCycle(result)
 
-                    // DÜZELTME: Eksik olan veri akışları geri eklendi.
                     val totalExpensesFlow = repository.getTotalExpensesBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
                     val totalSavingsFlow = repository.getTotalSavingsBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
                     val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(result.cycleStartDate.toDate(), result.cycleEndDate.toDate())
@@ -180,7 +179,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         _financialInsight.postValue(Event(null))
     }
 
-    // DÜZELTME: Fonksiyon imzası güncellendi.
     private fun updateUi(
         paydayResult: PaydayResult,
         salaryAmount: Long,
@@ -277,6 +275,18 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         currentGoals.remove(goal)
         repository.saveGoals(currentGoals)
         loadData()
+    }
+
+    fun releaseFundsFromGoal(goal: SavingsGoal) = viewModelScope.launch {
+        val refundTransaction = Transaction(
+            name = context.getString(R.string.goal_refund_transaction_name, goal.name),
+            amount = -goal.savedAmount,
+            date = Date(),
+            categoryId = ExpenseCategory.getSavingsCategoryId(),
+            isRecurringTemplate = false
+        )
+        repository.insertTransaction(refundTransaction)
+        deleteGoal(goal)
     }
 
     fun onSettingsResult() {

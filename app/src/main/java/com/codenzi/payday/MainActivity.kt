@@ -53,7 +53,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var googleDriveManager: GoogleDriveManager
 
-    // YENİ: Akıllı öneri kartının zamanlayıcısı için
     private val suggestionHandler = Handler(Looper.getMainLooper())
     private var suggestionRunnable: Runnable? = null
 
@@ -220,7 +219,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // YENİ: Akıllı öneri için animasyonlu ve zamanlayıcılı Observer
         viewModel.financialInsight.observe(this) { event ->
             event.getContentIfNotHandled()?.let { insight ->
                 suggestionRunnable?.let { suggestionHandler.removeCallbacks(it) }
@@ -325,14 +323,7 @@ class MainActivity : AppCompatActivity() {
         savingsGoalAdapter = SavingsGoalAdapter(
             onAddFundsClicked = { goal -> showAddFundsDialog(goal) },
             onEditClicked = { goal -> SavingsGoalDialogFragment.newInstance(goal.id).show(supportFragmentManager, SavingsGoalDialogFragment.TAG) },
-            onDeleteClicked = { goal ->
-                MaterialAlertDialogBuilder(this)
-                    .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
-                    .setMessage(R.string.delete_goal_confirmation_message)
-                    .setNegativeButton(getString(R.string.cancel), null)
-                    .setPositiveButton(getString(R.string.delete)) { _, _ -> viewModel.deleteGoal(goal) }
-                    .show()
-            }
+            onDeleteClicked = { goal -> handleDeleteGoal(goal) } // DÜZELTME: Doğrudan silmek yerine yeni fonksiyona yönlendiriyoruz.
         )
         binding.savingsGoalsRecyclerView.adapter = savingsGoalAdapter
 
@@ -350,6 +341,33 @@ class MainActivity : AppCompatActivity() {
         binding.transactionsRecyclerView.adapter = transactionAdapter
     }
 
+    // YENİ: Hedef silme işlemini yöneten akıllı fonksiyon
+    private fun handleDeleteGoal(goal: SavingsGoal) {
+        if (goal.savedAmount > 0) {
+            // Eğer hedefte para varsa, kullanıcıya ne yapacağını sor.
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.release_funds_title))
+                .setMessage(getString(R.string.release_funds_message, goal.name, formatCurrency(goal.savedAmount)))
+                .setNeutralButton(R.string.cancel, null)
+                .setPositiveButton(R.string.release_funds_button) { _, _ ->
+                    viewModel.releaseFundsFromGoal(goal)
+                    Toast.makeText(this, "Para serbest bırakıldı ve hedef silindi.", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        } else {
+            // Eğer hedef boşsa, direkt sil.
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.delete_goal_confirmation_title, goal.name))
+                .setMessage(R.string.delete_goal_confirmation_message)
+                .setNegativeButton(getString(R.string.cancel), null)
+                .setPositiveButton(getString(R.string.delete)) { _, _ -> viewModel.deleteGoal(goal) }
+                .show()
+        }
+    }
+
+    private fun formatCurrency(amount: Double): String {
+        return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
+    }
 
     private fun showAddFundsDialog(goal: SavingsGoal) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_funds, null)
