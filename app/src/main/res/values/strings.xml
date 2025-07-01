@@ -119,6 +119,9 @@
     <string name="restore_success">Veriler başarıyla geri yüklendi. Uygulamayı yeniden başlatın.</string>
     <string name="restore_failed">Geri yükleme başarısız oldu veya yedek bulunamadı.</string>
     <string name="google_sign_in_failed">Google ile giriş yapılamadı.</string>
+    <string name="suggestion_title">Akıllı Öneri</string>
+    <string name="suggestion_high_spending">Bu dönemde en çok harcamayı <b>%1$s</b> kategorisinde yapmışsın. Gözden geçirmek isteyebilirsin.</string>
+    <string name="suggestion_good_progress">Harika gidiyorsun! Bütçenin oldukça altındasın. Bu parayı hedeflerine aktarmaya ne dersin?</string>
 
     <string name="theme_title">Uygulama Teması</string>
     <string-array name="theme_entries">

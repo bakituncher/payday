@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -27,6 +28,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _uiState = MutableLiveData<PaydayUiState>()
     val uiState: LiveData<PaydayUiState> = _uiState
+
+    // YENİ: Akıllı öneri için LiveData
+    private val _financialInsight = MutableLiveData<Event<String?>>()
+    val financialInsight: LiveData<Event<String?>> = _financialInsight
 
     private val _widgetUpdateEvent = MutableLiveData<Event<Unit>>()
     val widgetUpdateEvent: LiveData<Event<Unit>> = _widgetUpdateEvent
@@ -57,14 +62,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
-    // Hem yerel hem de bulut verilerini siler
     fun deleteAccount() {
         viewModelScope.launch {
             repository.deleteAllUserData()
         }
     }
 
-    // YALNIZCA yerel verileri siler (çıkış yapma senaryosu için)
     fun clearLocalData() {
         viewModelScope.launch {
             repository.clearLocalData()
@@ -129,12 +132,54 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
                     combine(totalExpensesFlow, categorySpendingFlow) { totalExpenses, categorySpending ->
                         updateUi(result, salaryAmount, monthlySavings, totalExpenses ?: 0.0, categorySpending, goals)
+                        generateFinancialInsights(totalExpenses ?: 0.0, categorySpending) // Öneri üretme fonksiyonunu çağır
                     }.collect()
                 } else {
                     _uiState.postValue(PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message)))
                 }
             }.collect()
         }
+    }
+
+    // YENİ: Akıllı öneri üreten fonksiyon
+    private fun generateFinancialInsights(totalExpenses: Double, categorySpending: List<CategorySpending>) {
+        if (categorySpending.isEmpty()) {
+            _financialInsight.postValue(Event(null)) // Harcama yoksa öneri de yok
+            return
+        }
+
+        // En çok harcama yapılan kategoriyi bul
+        val topCategorySpending = categorySpending
+            .filter { ExpenseCategory.fromId(it.categoryId) != ExpenseCategory.SAVINGS }
+            .maxByOrNull { it.totalAmount }
+
+        if (topCategorySpending != null && topCategorySpending.totalAmount > totalExpenses * 0.4) { // Toplam harcamanın %40'ından fazlaysa
+            val topCategory = ExpenseCategory.fromId(topCategorySpending.categoryId)
+            val insight = context.getString(R.string.suggestion_high_spending, topCategory.categoryName)
+            _financialInsight.postValue(Event(insight))
+            return
+        }
+
+        // Başka bir fikir: Bütçenin durumu
+        val cycle = currentPayCycle.value ?: return
+        val today = LocalDate.now()
+        val cycleStart = cycle.first.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+        val cycleEnd = cycle.second.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+        val totalDaysInCycle = ChronoUnit.DAYS.between(cycleStart, cycleEnd)
+        val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
+        val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
+
+        val salary = uiState.value?.incomeText?.filter { it.isDigit() }?.toLongOrNull() ?: 0L
+        if (salary > 0) {
+            val spendingProgress = totalExpenses / salary
+            if (cycleProgress > 0.5 && spendingProgress < 0.3) { // Döngünün yarısı geçmiş ama %30'dan az harcanmışsa
+                _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress)))
+                return
+            }
+        }
+
+        // Hiçbir koşul karşılanmazsa öneri gösterme
+        _financialInsight.postValue(Event(null))
     }
 
     private fun updateUi(

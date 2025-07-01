@@ -214,6 +214,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // YENİ: Akıllı öneri Observer'ı
+        viewModel.financialInsight.observe(this) { event ->
+            event.getContentIfNotHandled()?.let { insight ->
+                if (insight != null) {
+                    binding.suggestionTextView.text = insight
+                    binding.suggestionCardView.visibility = View.VISIBLE
+                } else {
+                    binding.suggestionCardView.visibility = View.GONE
+                }
+            }
+        }
+
         viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
         viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { achievement -> showAchievementSnackbar(achievement) } }
         viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
