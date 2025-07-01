@@ -11,6 +11,7 @@ import androidx.fragment.app.activityViewModels
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import java.util.Date
 
 class TransactionDialogFragment : DialogFragment() {
 
@@ -21,7 +22,9 @@ class TransactionDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
         val transactionId = arguments?.getInt(ARG_TRANSACTION_ID, -1) ?: -1
         if (transactionId != -1) {
-            existingTransaction = viewModel.transactionsForCurrentCycle.value?.find { it.id == transactionId }        }
+            // Canlı veriden işlem aranıyor
+            existingTransaction = viewModel.transactionsForCurrentCycle.value?.find { it.id == transactionId }
+        }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -68,7 +71,15 @@ class TransactionDialogFragment : DialogFragment() {
                     if (existingTransaction == null) {
                         viewModel.insertTransaction(name, amount, selectedCategoryId, isRecurring)
                     } else {
-                        viewModel.updateTransaction(existingTransaction!!.id, name, amount, selectedCategoryId, isRecurring)
+                        // DÜZELTME: Mevcut işlemi yeni değerlerle güncelliyoruz, tarih korunuyor.
+                        val updatedTransaction = existingTransaction!!.copy(
+                            name = name,
+                            amount = amount,
+                            categoryId = selectedCategoryId,
+                            isRecurringTemplate = isRecurring
+                            // 'date' alanı kopyalandığı için orijinal kalıyor.
+                        )
+                        viewModel.updateTransaction(updatedTransaction)
                     }
                 } else {
                     Toast.makeText(requireContext(), "Lütfen geçerli bir ad ve tutar girin.", Toast.LENGTH_SHORT).show()

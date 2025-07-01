@@ -32,6 +32,13 @@
             app:title="@string/weekend_adjustment_label"
             app:summary="@string/weekend_adjustment_summary"/>
 
+        <!-- YENİ: Otomatik Hedef Birikimi Ayarı -->
+        <androidx.preference.SwitchPreferenceCompat
+            app:key="auto_saving_enabled"
+            app:title="@string/auto_saving_title"
+            app:summary="@string/auto_saving_summary"
+            app:defaultValue="false" />
+
         <ListPreference
             app:key="theme"
             app:title="@string/theme_title"
@@ -48,7 +55,6 @@
 
     </androidx.preference.PreferenceCategory>
 
-    <!-- Hesap Yönetimi Kategorisi -->
     <androidx.preference.PreferenceCategory
         app:key="account_category"
         app:title="@string/account_category_title">
@@ -62,7 +68,7 @@
             app:title="@string/delete_account_title"
             app:summary="@string/delete_account_summary"
             app:icon="@drawable/ic_delete_forever"
-            android:visible="false" /> <!-- DÜZELTME: app:isVisible -> android:visible olarak değiştirildi -->
+            android:visible="false" />
     </androidx.preference.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

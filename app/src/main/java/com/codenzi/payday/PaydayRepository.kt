@@ -38,22 +38,21 @@ class PaydayRepository(private val context: Context) {
         val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val KEY_UNLOCKED_ACHIEVEMENTS = stringSetPreferencesKey("unlocked_achievements")
         val KEY_FIRST_LAUNCH_DATE = stringPreferencesKey("first_launch_date")
-        val KEY_LAST_PROCESSED_CYCLE_END_DATE = stringPreferencesKey("last_processed_cycle_end_date")
         val KEY_THEME = stringPreferencesKey("theme")
         val KEY_CONSECUTIVE_POSITIVE_CYCLES = intPreferencesKey("consecutive_positive_cycles")
         val KEY_SHOW_SIGN_IN_PROMPT = booleanPreferencesKey("show_sign_in_prompt")
         val KEY_SHOW_LOGIN_ON_START = booleanPreferencesKey("show_login_on_start")
         val KEY_AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
         val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
+        val KEY_AUTO_SAVING_ENABLED = booleanPreferencesKey("auto_saving_enabled")
+        val KEY_LAST_PROCESSED_PAYDAY = stringPreferencesKey("last_processed_payday")
     }
 
-    // Hem yerel hem de bulut verilerini siler (Hesabı Sil)
     suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
         googleDriveManager.deleteBackupFile()
         clearLocalData()
     }
 
-    // Sadece yerel verileri siler (Çıkış Yap)
     suspend fun clearLocalData() = withContext(Dispatchers.IO) {
         transactionDao.deleteAllTransactions()
         prefs.edit { preferences ->
@@ -70,7 +69,6 @@ class PaydayRepository(private val context: Context) {
     fun getMonthlySavingsAmount(): Flow<Long> = prefs.data.map { it[KEY_MONTHLY_SAVINGS] ?: 0L }
     fun isOnboardingComplete(): Flow<Boolean> = prefs.data.map { it[KEY_ONBOARDING_COMPLETE] ?: false }
     fun getFirstLaunchDate(): Flow<String?> = prefs.data.map { it[KEY_FIRST_LAUNCH_DATE] }
-    fun getLastProcessedCycleEndDate(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] }
     fun getTheme(): Flow<String> = prefs.data.map { it[KEY_THEME] ?: "System" }
     fun getConsecutivePositiveCycles(): Flow<Int?> = prefs.data.map { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] }
     fun getUnlockedAchievementIds(): Flow<Set<String>> = prefs.data.map { it[KEY_UNLOCKED_ACHIEVEMENTS] ?: emptySet() }
@@ -78,6 +76,8 @@ class PaydayRepository(private val context: Context) {
     fun shouldShowLoginOnStart(): Flow<Boolean> = prefs.data.map { it[KEY_SHOW_LOGIN_ON_START] ?: true }
     fun isAutoBackupEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_BACKUP_ENABLED] ?: false }
     fun getLastBackupTimestamp(): Flow<Long> = prefs.data.map { it[KEY_LAST_BACKUP_TIMESTAMP] ?: 0L }
+    fun isAutoSavingEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_SAVING_ENABLED] ?: false }
+    fun getLastProcessedPayday(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_PAYDAY] }
 
     // SETTERS
     suspend fun savePayPeriod(payPeriod: PayPeriod) = prefs.edit { it[KEY_PAY_PERIOD] = payPeriod.name }
@@ -89,11 +89,15 @@ class PaydayRepository(private val context: Context) {
     suspend fun saveBiWeeklyReferenceDate(date: LocalDate) = prefs.edit { it[KEY_BI_WEEKLY_REF_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveMonthlySavings(amount: Long) = prefs.edit { it[KEY_MONTHLY_SAVINGS] = amount }
     suspend fun setFirstLaunchDate(date: LocalDate) = prefs.edit { it[KEY_FIRST_LAUNCH_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-    suspend fun saveLastProcessedCycleEndDate(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_CYCLE_END_DATE] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveConsecutivePositiveCycles(count: Int) = prefs.edit { it[KEY_CONSECUTIVE_POSITIVE_CYCLES] = count }
     suspend fun setSignInPrompt(shouldShow: Boolean) = prefs.edit { it[KEY_SHOW_SIGN_IN_PROMPT] = shouldShow }
     suspend fun setShowLoginOnStart(shouldShow: Boolean) { prefs.edit { it[KEY_SHOW_LOGIN_ON_START] = shouldShow } }
     suspend fun setAutoBackupEnabled(isEnabled: Boolean) { prefs.edit { it[KEY_AUTO_BACKUP_ENABLED] = isEnabled } }
+    suspend fun saveLastProcessedPayday(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_PAYDAY] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
+
+    // YENİ EKLENEN FONKSİYON
+    suspend fun saveAutoSavingEnabled(isEnabled: Boolean) = prefs.edit { it[KEY_AUTO_SAVING_ENABLED] = isEnabled }
+
 
     private suspend fun saveLastBackupTimestamp(timestamp: Long) {
         prefs.edit { it[KEY_LAST_BACKUP_TIMESTAMP] = timestamp }
@@ -180,9 +184,9 @@ class PaydayRepository(private val context: Context) {
                 if (key != KEY_SAVINGS_GOALS.name && key != KEY_AUTO_BACKUP_ENABLED.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name, KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
-                        KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name, KEY_AUTO_SAVING_ENABLED.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
                         KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
-                        KEY_PAY_PERIOD.name, KEY_BI_WEEKLY_REF_DATE.name, KEY_FIRST_LAUNCH_DATE.name, KEY_LAST_PROCESSED_CYCLE_END_DATE.name, KEY_THEME.name -> {
+                        KEY_PAY_PERIOD.name, KEY_BI_WEEKLY_REF_DATE.name, KEY_FIRST_LAUNCH_DATE.name, KEY_LAST_PROCESSED_PAYDAY.name, KEY_THEME.name -> {
                             if (value != null) preferences[stringPreferencesKey(key)] = value
                         }
                         KEY_UNLOCKED_ACHIEVEMENTS.name -> {

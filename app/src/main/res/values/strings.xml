@@ -122,6 +122,10 @@
     <string name="suggestion_title">Akıllı Öneri</string>
     <string name="suggestion_high_spending">Bu dönemde en çok harcamayı <b>%1$s</b> kategorisinde yapmışsın. Gözden geçirmek isteyebilirsin.</string>
     <string name="suggestion_good_progress">Harika gidiyorsun! Bütçenin oldukça altındasın. Bu parayı hedeflerine aktarmaya ne dersin?</string>
+    <string name="auto_saving_title">Otomatik Hedef Birikimi</string>
+    <string name="auto_saving_summary">Her maaş döneminde, aylık tasarruf hedefini hedeflerine otomatik dağıt.</string>
+    <string name="auto_savings_transaction_name">\'%1$s\' hedefine otomatik aktarıldı</string>
+
 
     <string name="theme_title">Uygulama Teması</string>
     <string-array name="theme_entries">

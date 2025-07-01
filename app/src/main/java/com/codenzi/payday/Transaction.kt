@@ -10,9 +10,7 @@ data class Transaction(
     val id: Int = 0,
     val name: String,
     val amount: Double,
-    val date: Date,
+    var date: Date, // DÜZELTME: val -> var olarak değiştirildi.
     val categoryId: Int,
-    // *** YENİ ALAN BURADA EKLENDİ ***
-    // Bu harcamanın her ayın başında eklenecek bir şablon olup olmadığını belirtir.
     val isRecurringTemplate: Boolean = false
 )

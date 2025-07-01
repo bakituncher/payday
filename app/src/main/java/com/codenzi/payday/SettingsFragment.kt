@@ -45,13 +45,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             task.addOnSuccessListener { account ->
-                // Giriş başarılı olduğunda, verileri temizleyip ana ekrana dönmek yerine
-                // doğrudan ayarlar ekranını güncelliyoruz.
                 Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
                 updateAccountSection(account)
-                // Yeni giriş yapıldığında yedek kontrolü LoginActivity'de yapıldığı için burada tekrar yapmaya gerek yok.
-                // Sadece UI'ı güncelliyoruz.
-                requireActivity().recreate() // Ayarların tam olarak yenilenmesi için
+                requireActivity().recreate()
             }.addOnFailureListener {
                 Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
                 updateAccountSection(null)
@@ -84,12 +80,31 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
         setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
         setupAutoBackupPreference()
+        setupAutoSavingPreference() // EKSİK OLAN FONKSİYON ÇAĞRISI EKLENDİ
     }
 
     override fun onResume() {
         super.onResume()
         updateSummaries()
         updateAccountSection(GoogleSignIn.getLastSignedInAccount(requireContext()))
+    }
+
+    // YENİ EKLENEN FONKSİYON
+    private fun setupAutoSavingPreference() {
+        val autoSavingPref = findPreference<SwitchPreferenceCompat>(PaydayRepository.KEY_AUTO_SAVING_ENABLED.name)
+
+        // Anahtarın mevcut durumunu hafızadan okuyup UI'a yansıt
+        lifecycleScope.launch {
+            autoSavingPref?.isChecked = repository.isAutoSavingEnabled().first()
+        }
+
+        // Anahtarın durumu değiştiğinde bunu hafızaya kaydet
+        autoSavingPref?.setOnPreferenceChangeListener { _, newValue ->
+            lifecycleScope.launch {
+                repository.saveAutoSavingEnabled(newValue as Boolean)
+            }
+            true
+        }
     }
 
     private fun setupGoogleClient() {
@@ -142,12 +157,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setTitle(getString(R.string.google_sign_out_title))
             .setMessage(getString(R.string.google_sign_out_confirmation_message))
             .setPositiveButton(R.string.action_sign_out) { _, _ ->
-                // Önce ViewModel üzerinden yerel verileri temizle
                 viewModel.clearLocalData()
-                // Sonra Google hesabından çıkış yap
                 googleSignInClient.signOut().addOnCompleteListener {
                     Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı ve yerel veriler temizlendi.", Toast.LENGTH_LONG).show()
-                    // Kullanıcıyı temiz bir başlangıç için LoginActivity'e yönlendir
                     val intent = Intent(requireActivity(), LoginActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
@@ -164,7 +176,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setMessage(getString(R.string.delete_account_confirmation_message))
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setPositiveButton(R.string.delete_button_text) { _, _ ->
-                viewModel.deleteAccount() // Bu fonksiyon hem yerel hem de bulut verilerini siler
+                viewModel.deleteAccount()
                 googleSignInClient.signOut().addOnCompleteListener {
                     Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
                     val intent = Intent(requireActivity(), LoginActivity::class.java)
@@ -195,9 +207,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         autoBackupPref?.setOnPreferenceChangeListener { _, newValue ->
-            val isEnabled = newValue as Boolean
             lifecycleScope.launch {
-                repository.setAutoBackupEnabled(isEnabled)
+                repository.setAutoBackupEnabled(newValue as Boolean)
             }
             true
         }
