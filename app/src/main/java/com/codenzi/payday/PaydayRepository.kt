@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "PaydayPrefs")
 
+@Suppress("DEPRECATION")
 class PaydayRepository(private val context: Context) {
 
     private val gson = Gson()
@@ -46,8 +47,14 @@ class PaydayRepository(private val context: Context) {
         val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
     }
 
+    // Hem yerel hem de bulut verilerini siler (Hesabı Sil)
     suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
         googleDriveManager.deleteBackupFile()
+        clearLocalData()
+    }
+
+    // Sadece yerel verileri siler (Çıkış Yap)
+    suspend fun clearLocalData() = withContext(Dispatchers.IO) {
         transactionDao.deleteAllTransactions()
         prefs.edit { preferences ->
             preferences.clear()
@@ -101,7 +108,6 @@ class PaydayRepository(private val context: Context) {
         }
     }
 
-    @Suppress("DEPRECATION")
     suspend fun performSmartBackup() {
         if (isAutoBackupEnabled().first() && GoogleSignIn.getLastSignedInAccount(context) != null) {
             val lastBackupTimestamp = getLastBackupTimestamp().first()

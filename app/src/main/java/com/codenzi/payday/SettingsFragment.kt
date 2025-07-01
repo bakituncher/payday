@@ -45,8 +45,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             task.addOnSuccessListener { account ->
+                // Giriş başarılı olduğunda, verileri temizleyip ana ekrana dönmek yerine
+                // doğrudan ayarlar ekranını güncelliyoruz.
                 Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
                 updateAccountSection(account)
+                // Yeni giriş yapıldığında yedek kontrolü LoginActivity'de yapıldığı için burada tekrar yapmaya gerek yok.
+                // Sadece UI'ı güncelliyoruz.
+                requireActivity().recreate() // Ayarların tam olarak yenilenmesi için
             }.addOnFailureListener {
                 Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
                 updateAccountSection(null)
@@ -103,11 +108,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         googleAccountPreference?.setOnPreferenceClickListener {
             val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             if (account == null) {
-                // Giriş yap
                 val signInIntent: Intent = googleSignInClient.signInIntent
                 googleSignInLauncher.launch(signInIntent)
             } else {
-                // Çıkış yap
                 showSignOutDialog()
             }
             true
@@ -119,19 +122,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    /**
-     * Bu fonksiyon, kullanıcının oturum durumuna göre tüm hesap bölümünü günceller.
-     * Artık kategoriyi gizlemek yerine içeriğini değiştirir.
-     */
     private fun updateAccountSection(account: GoogleSignInAccount?) {
         if (account != null) {
-            // Kullanıcı GİRİŞ YAPMIŞ ise
             accountCategory?.title = getString(R.string.profile_title)
             googleAccountPreference?.title = getString(R.string.google_sign_out_title)
             googleAccountPreference?.summary = account.email
             deleteAccountPreference?.isVisible = true
         } else {
-            // Kullanıcı GİRİŞ YAPMAMIŞ ise
             accountCategory?.title = getString(R.string.account_category_title)
             googleAccountPreference?.title = getString(R.string.google_sign_in_title)
             googleAccountPreference?.summary = getString(R.string.google_sign_in_summary)
@@ -145,10 +142,16 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setTitle(getString(R.string.google_sign_out_title))
             .setMessage(getString(R.string.google_sign_out_confirmation_message))
             .setPositiveButton(R.string.action_sign_out) { _, _ ->
+                // Önce ViewModel üzerinden yerel verileri temizle
+                viewModel.clearLocalData()
+                // Sonra Google hesabından çıkış yap
                 googleSignInClient.signOut().addOnCompleteListener {
-                    Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı.", Toast.LENGTH_SHORT).show()
-                    updateAccountSection(null)
-                    lifecycleScope.launch { repository.setAutoBackupEnabled(false) }
+                    Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı ve yerel veriler temizlendi.", Toast.LENGTH_LONG).show()
+                    // Kullanıcıyı temiz bir başlangıç için LoginActivity'e yönlendir
+                    val intent = Intent(requireActivity(), LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                    requireActivity().finish()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -161,7 +164,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setMessage(getString(R.string.delete_account_confirmation_message))
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setPositiveButton(R.string.delete_button_text) { _, _ ->
-                viewModel.deleteAccount()
+                viewModel.deleteAccount() // Bu fonksiyon hem yerel hem de bulut verilerini siler
                 googleSignInClient.signOut().addOnCompleteListener {
                     Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
                     val intent = Intent(requireActivity(), LoginActivity::class.java)

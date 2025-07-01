@@ -19,6 +19,7 @@ import java.time.temporal.ChronoUnit
 import java.util.*
 
 @SuppressLint("StaticFieldLeak")
+@Suppress("DEPRECATION")
 class PaydayViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PaydayRepository(application)
@@ -56,9 +57,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
+    // Hem yerel hem de bulut verilerini siler
     fun deleteAccount() {
         viewModelScope.launch {
             repository.deleteAllUserData()
+        }
+    }
+
+    // YALNIZCA yerel verileri siler (çıkış yapma senaryosu için)
+    fun clearLocalData() {
+        viewModelScope.launch {
+            repository.clearLocalData()
         }
     }
 
@@ -291,7 +300,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun performAutoBackup() {
         viewModelScope.launch {
             if (GoogleSignIn.getLastSignedInAccount(getApplication()) == null) return@launch
