@@ -201,8 +201,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun runCycleEndTasks(paydayResult: PaydayResult) {
         unlockAchievement("PAYDAY_HYPE")
 
-        val previousCycleStartDate = paydayResult.cycleStartDate.minusDays(paydayResult.totalDaysInCycle).toStartOfDayDate()
-        val previousCycleEndDate = paydayResult.cycleStartDate.minusDays(1).toEndOfDayDate()
+        // *** DÜZELTME BAŞLANGICI ***
+        // Sorunlu olan ve yanlış döngüyü hesaplayan kod satırları kaldırıldı.
+        // Artık 'paydayResult' içerisinden gelen doğru tarihler kullanılıyor.
+        val previousCycleStartDate = paydayResult.cycleStartDate.toStartOfDayDate()
+        val previousCycleEndDate = paydayResult.cycleEndDate.toEndOfDayDate()
+        // *** DÜZELTME SONU ***
 
         val summary = repository.getPreviousCycleSummary(previousCycleStartDate, previousCycleEndDate)
         val expenses = summary.totalExpenses
@@ -251,6 +255,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         repository.saveLastProcessedPayday(LocalDate.now().minusDays(1))
     }
+
 
     private fun generateFinancialInsights(totalExpenses: Double, categorySpending: List<CategorySpending>) {
         if (categorySpending.isEmpty()) {
