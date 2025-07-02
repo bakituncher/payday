@@ -83,6 +83,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupCurrencyPreference("monthly_savings")
         setupAutoBackupPreference()
         setupAutoSavingPreference()
+
+        // *** YENİ: Tekrarlayan harcamalar ekranını açan listener. ***
+        findPreference<Preference>("recurring_transactions")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), RecurringTransactionsActivity::class.java))
+            true
+        }
     }
 
     private fun setupObservers() {

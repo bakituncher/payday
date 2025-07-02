@@ -40,6 +40,7 @@ import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.text.NumberFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
@@ -276,7 +277,7 @@ class MainActivity : AppCompatActivity() {
             event.getContentIfNotHandled()?.let {
                 MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.restore_warning_title)
-                    .setMessage(R.string.restore_warning_message)
+                    .setMessage(R.string.restore_warning_message) // This string is now more descriptive
                     .setPositiveButton(R.string.go_to_settings) { _, _ ->
                         settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
                     }
@@ -328,9 +329,19 @@ class MainActivity : AppCompatActivity() {
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
 
-        if (state.carryOverAmount > 0) {
+        // *** DÜZELTME: Negatif bakiye (borç) UI yönetimi ***
+        if (state.carryOverAmount != 0L) {
             binding.carryOverContainer.visibility = View.VISIBLE
-            binding.carryOverTextView.text = formatCurrency(state.carryOverAmount.toDouble())
+            if (state.carryOverAmount > 0) {
+                binding.carryOverTitleTextView.text = getString(R.string.carry_over)
+                binding.carryOverTextView.text = formatCurrency(state.carryOverAmount.toDouble())
+                binding.carryOverTextView.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+            } else {
+                binding.carryOverTitleTextView.text = getString(R.string.carry_over_debt)
+                // Negatif değeri pozitif göster ama rengi kırmızı yap
+                binding.carryOverTextView.text = formatCurrency(abs(state.carryOverAmount).toDouble())
+                binding.carryOverTextView.setTextColor(ContextCompat.getColor(this, R.color.red_500))
+            }
         } else {
             binding.carryOverContainer.visibility = View.GONE
         }

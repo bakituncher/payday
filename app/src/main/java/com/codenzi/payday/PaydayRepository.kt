@@ -19,10 +19,16 @@ import java.util.concurrent.TimeUnit
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "PaydayPrefs")
 
+// *** YENİ: Döngü sonu özet verilerini tutmak için data class ***
+data class PreviousCycleSummary(
+    val totalExpenses: Double,
+    val totalSavings: Double
+)
+
 @Suppress("DEPRECATION")
 class PaydayRepository(private val context: Context) {
 
-    val prefs = context.dataStore
+    private val prefs = context.dataStore
     private val gson = Gson()
     private val transactionDao = AppDatabase.getDatabase(context.applicationContext).transactionDao()
     private val googleDriveManager = GoogleDriveManager(context)
@@ -156,11 +162,21 @@ class PaydayRepository(private val context: Context) {
 
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>> = transactionDao.getTransactionsBetweenDates(startDate, endDate)
 
-    fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalExpensesBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
-    fun getTotalSavingsBetweenDates(startDate: Date, endDate: Date): Flow<Double?> = transactionDao.getTotalSavingsBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
+    // *** YENİ: Güvenilir döngü sonu hesaplaması için anlık veri çeken fonksiyon ***
+    suspend fun getPreviousCycleSummary(startDate: Date, endDate: Date): PreviousCycleSummary = withContext(Dispatchers.IO) {
+        val savingsCategoryId = ExpenseCategory.getSavingsCategoryId()
+        val expenses = transactionDao.getTotalExpensesBetweenDatesSuspend(startDate, endDate, savingsCategoryId) ?: 0.0
+        val savings = transactionDao.getTotalSavingsBetweenDatesSuspend(startDate, endDate, savingsCategoryId) ?: 0.0
+        PreviousCycleSummary(totalExpenses = expenses, totalSavings = savings)
+    }
+
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date): Flow<List<CategorySpending>> = transactionDao.getSpendingByCategoryBetweenDates(startDate, endDate, ExpenseCategory.getSavingsCategoryId())
 
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>> = transactionDao.getRecurringTransactionTemplates()
+
+    // *** YENİ: ID ile tek bir işlem getiren fonksiyon ***
+    fun getTransactionById(id: Int): Flow<Transaction?> = transactionDao.getTransactionById(id)
+
     fun getDailySpendingForChart(startDate: Date, endDate: Date): Flow<List<DailySpending>> = transactionDao.getDailySpendingForChart(startDate, endDate)
     fun getMonthlySpendingForCategory(categoryId: Int): Flow<List<MonthlyCategorySpending>> = transactionDao.getMonthlySpendingForCategory(categoryId)
     fun getAllTransactionsForAchievements(): Flow<List<Transaction>> = transactionDao.getAllTransactionsFlow()
@@ -222,7 +238,6 @@ class PaydayRepository(private val context: Context) {
                 preferences[KEY_AUTO_BACKUP_ENABLED] = currentAutoBackupSetting
             }
 
-            // --- DÜZELTME: Veri doğrulama mantığı ---
             val restoredSalary = preferences[KEY_SALARY] ?: 0L
             val restoredPayPeriod = preferences[KEY_PAY_PERIOD]
 

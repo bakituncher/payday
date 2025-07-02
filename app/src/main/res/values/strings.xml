@@ -30,6 +30,8 @@
     <string name="title_savings_goals">Tasarruf Hedefleri</string>
     <string name="recent_transactions">Son Harcamalar</string>
     <string name="no_transactions_yet">Henüz hiç harcama eklemediniz.</string>
+    <string name="carry_over">Devreden</string>
+    <string name="carry_over_debt">Devreden Borç</string>
 
     <!-- =================================================================== -->
     <!-- Kurulum Sihirbazı (Onboarding) -->
@@ -113,7 +115,7 @@
     <string name="sign_out_success_local_data_cleared">Başarıyla çıkış yapıldı ve yerel veriler temizlendi.</string>
     <string name="dont_show_again">Bir daha sorma</string>
     <string name="restore_warning_title">Veri Kontrolü Gerekli</string>
-    <string name="restore_warning_message">Verileriniz geri yüklendi ancak bazı temel ayarlar (maaş veya ödeme periyodu gibi) eksik veya bozuk görünüyor. Lütfen ayarlarınızı kontrol edip güncelleyin.</string>
+    <string name="restore_warning_message">Verileriniz geri yüklendi ancak maaş veya ödeme periyodu gibi bazı temel ayarlar eksik görünüyor. Uygulamanın doğru çalışması için lütfen Ayarlar ekranından bu bilgileri kontrol edip güncelleyin.</string>
     <string name="go_to_settings">Ayarlara Git</string>
     <string name="backup_started">Yedekleme başlatıldı...</string>
     <string name="restore_started">Geri yükleme başlatıldı...</string>
@@ -137,6 +139,7 @@
     <string name="select_date_button">Tarih Seç</string>
     <string name="goal_date_info">Hedef: %1$s (%2$d gün kaldı)</string>
     <string name="auto_savings_transaction_name">\'%1$s\' hedefine otomatik aktarıldı</string>
+    <string name="auto_savings_general">Genel Otomatik Birikim</string>
     <string name="release_funds_title">Birikim Bulundu</string>
     <string name="release_funds_message">\'%1$s\' hedefinde %2$s birikmiş. Hedefi silmek için önce bu paranın harcanabilir bakiyenize geri eklenmesi gerekir.</string>
     <string name="release_funds_button">Parayı Serbest Bırak ve Sil</string>
@@ -166,6 +169,11 @@
     <string name="transaction_name_hint">Harcama Adı (örn: Kahve)</string>
     <string name="transaction_amount_hint">Tutar (örn: 95.50)</string>
     <string name="recurring_transaction_label">Bu harcamayı her ay tekrarla</string>
+    <string name="recurring_transactions_title">Tekrarlayan Harcamalar</string>
+    <string name="recurring_transactions_summary">Aylık sabit harcamalarınızı yönetin.</string>
+    <string name="no_recurring_transactions_yet">Henüz tekrarlayan harcama yok.</string>
+    <string name="delete_recurring_transaction_title">Şablon Silinsin mi?</string>
+    <string name="delete_recurring_transaction_message">\'%s\' adlı tekrarlayan harcama şablonu silinecek. Bu işlem geri alınamaz.</string>
 
     <!-- =================================================================== -->
     <!-- Raporlar -->
@@ -212,7 +220,6 @@
     <string name="your_reports_are_empty">Raporlarınız Henüz Boş</string>
     <string name="start_adding_expenses_for_charts">Harcamalarınızı eklemeye başlayın, sizin için grafikler ve özetler oluşturalım.</string>
     <string name="add_your_first_expense">İlk Harcamanı Ekle</string>
-    <string name="carry_over">Devreden</string>
 
     <!-- =================================================================== -->
     <!-- DİZİLER (ARRAYS) -->

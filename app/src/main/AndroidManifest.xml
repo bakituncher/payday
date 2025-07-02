@@ -47,6 +47,11 @@
             android:label="@string/achievements_title" />
 
         <activity
+            android:name=".RecurringTransactionsActivity"
+            android:exported="false"
+            android:label="@string/recurring_transactions_title"/>
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/settings_title"/>

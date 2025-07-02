@@ -9,7 +9,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.Date
 
-// *** DEĞİŞİKLİK: Versiyon 3'e yükseltildi ***
 @Database(entities = [Transaction::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -17,19 +16,15 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 
     companion object {
-        // Eski migrasyon planı (v1 -> v2)
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE transactions ADD COLUMN categoryId INTEGER NOT NULL DEFAULT ${ExpenseCategory.OTHER.ordinal}")
+            override fun migrate(db: SupportSQLiteDatabase) { // Düzeltme: 'database' -> 'db'
+                db.execSQL("ALTER TABLE transactions ADD COLUMN categoryId INTEGER NOT NULL DEFAULT ${ExpenseCategory.OTHER.ordinal}")
             }
         }
 
-        // *** YENİ MİGRASYON PLANI BURADA EKLENDİ (v2 -> v3) ***
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                // 'transactions' tablosuna 'isRecurringTemplate' adında yeni bir sütun ekle.
-                // Bu sütun boolean (1 veya 0) değer alacak ve varsayılan değeri 0 (false) olacak.
-                database.execSQL("ALTER TABLE transactions ADD COLUMN isRecurringTemplate INTEGER NOT NULL DEFAULT 0")
+            override fun migrate(db: SupportSQLiteDatabase) { // Düzeltme: 'database' -> 'db'
+                db.execSQL("ALTER TABLE transactions ADD COLUMN isRecurringTemplate INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -43,7 +38,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "payday_database"
                 )
-                    // *** DEĞİŞİKLİK: Yeni migrasyon planı eklendi ***
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance

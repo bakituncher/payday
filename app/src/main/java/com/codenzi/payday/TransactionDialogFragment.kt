@@ -1,6 +1,7 @@
 package com.codenzi.payday
 
 import android.app.Dialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.Toast
@@ -22,8 +23,8 @@ class TransactionDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
         val transactionId = arguments?.getInt(ARG_TRANSACTION_ID, -1) ?: -1
         if (transactionId != -1) {
-            // Canlı veriden işlem aranıyor
-            existingTransaction = viewModel.transactionsForCurrentCycle.value?.find { it.id == transactionId }
+            // *** DÜZELTME: Düzenlenecek işlemi ViewModel'den yüklemesini iste ***
+            viewModel.loadTransactionToEdit(transactionId)
         }
     }
 
@@ -33,14 +34,29 @@ class TransactionDialogFragment : DialogFragment() {
         val amountEditText = dialogView.findViewById<EditText>(R.id.transactionAmountEditText)
         val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.categoryChipGroup)
         val recurringSwitch = dialogView.findViewById<SwitchCompat>(R.id.recurringSwitch)
-        var selectedCategoryId = existingTransaction?.categoryId ?: ExpenseCategory.OTHER.ordinal
+        var selectedCategoryId = ExpenseCategory.OTHER.ordinal
+
+        // *** DÜZELTME: ViewModel'deki anlık veriyi gözlemle ve UI'ı doldur ***
+        viewModel.transactionToEdit.observe(this) { transaction ->
+            existingTransaction = transaction
+            if (transaction != null) {
+                nameEditText.setText(transaction.name)
+                amountEditText.setText(transaction.amount.toString())
+                recurringSwitch.isChecked = transaction.isRecurringTemplate
+                selectedCategoryId = transaction.categoryId
+                // Chip'lerin durumunu güncelle
+                for (i in 0 until categoryChipGroup.childCount) {
+                    val chip = categoryChipGroup.getChildAt(i) as Chip
+                    chip.isChecked = (chip.id == selectedCategoryId)
+                }
+            }
+        }
 
         ExpenseCategory.entries.forEach { category ->
             val chip = Chip(requireContext()).apply {
                 text = category.categoryName
                 id = category.ordinal
                 isCheckable = true
-                isChecked = (id == selectedCategoryId)
             }
             categoryChipGroup.addView(chip)
         }
@@ -51,13 +67,11 @@ class TransactionDialogFragment : DialogFragment() {
             }
         }
 
-        existingTransaction?.let {
-            nameEditText.setText(it.name)
-            amountEditText.setText(it.amount.toString())
-            recurringSwitch.isChecked = it.isRecurringTemplate
+        val dialogTitleRes = if (arguments?.getInt(ARG_TRANSACTION_ID, -1) == -1) {
+            R.string.add_transaction
+        } else {
+            R.string.edit_transaction_title
         }
-
-        val dialogTitleRes = if (existingTransaction == null) R.string.add_transaction else R.string.edit_transaction_title
 
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(dialogTitleRes)
@@ -71,13 +85,11 @@ class TransactionDialogFragment : DialogFragment() {
                     if (existingTransaction == null) {
                         viewModel.insertTransaction(name, amount, selectedCategoryId, isRecurring)
                     } else {
-                        // DÜZELTME: Mevcut işlemi yeni değerlerle güncelliyoruz, tarih korunuyor.
                         val updatedTransaction = existingTransaction!!.copy(
                             name = name,
                             amount = amount,
                             categoryId = selectedCategoryId,
                             isRecurringTemplate = isRecurring
-                            // 'date' alanı kopyalandığı için orijinal kalıyor.
                         )
                         viewModel.updateTransaction(updatedTransaction)
                     }
@@ -87,6 +99,12 @@ class TransactionDialogFragment : DialogFragment() {
             }
             .setNegativeButton(R.string.cancel, null)
             .create()
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        // *** YENİ: Dialog kapandığında ViewModel'i temizle ***
+        viewModel.onDialogDismissed()
     }
 
     companion object {

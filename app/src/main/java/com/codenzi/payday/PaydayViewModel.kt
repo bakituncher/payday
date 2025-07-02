@@ -10,6 +10,7 @@ import com.github.mikephil.charting.data.PieEntry
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.gson.Gson
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -66,6 +67,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _accountDeletionResult = MutableLiveData<Event<Boolean>>()
     val accountDeletionResult: LiveData<Event<Boolean>> = _accountDeletionResult
+
+    private val _transactionToEdit = MutableLiveData<Transaction?>()
+    val transactionToEdit: LiveData<Transaction?> = _transactionToEdit
+    private var transactionObserverJob: Job? = null
 
 
     private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
@@ -136,68 +141,59 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     fun loadData() {
         viewModelScope.launch {
-            combine(
-                repository.getPayPeriod(),
-                repository.getPaydayValue(),
-                repository.getBiWeeklyRefDateString(),
-                repository.isWeekendAdjustmentEnabled(),
-                repository.getSalaryAmount(),
-                repository.getGoals(),
-                repository.getCarryOverAmount()
-            ) { values ->
-                val payPeriod = values[0] as PayPeriod
-                val paydayValue = values[1] as Int
-                val biWeeklyRefDate = values[2] as? String
-                val weekendAdjustment = values[3] as Boolean
-                val salaryAmount = values[4] as Long
-                @Suppress("UNCHECKED_CAST")
-                val goals = values[5] as MutableList<SavingsGoal>
-                val carryOverAmount = values[6] as Long
+            // 1. Gerekliyse, önce döngü sonu görevlerini çalıştır ve bitmesini bekle.
+            checkAndProcessPostPaydayTasks()
 
-                val result = PaydayCalculator.calculate(LocalDate.now(), payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
-
-                if (result != null) {
-                    val cycleStartDate = result.cycleStartDate.toStartOfDayDate()
-                    val cycleEndDate = result.cycleEndDate.toEndOfDayDate()
-
-                    currentPayCycle.value = Pair(cycleStartDate, cycleEndDate)
-
-                    checkAndProcessPostPaydayTasks()
-
-                    val totalExpensesFlow = repository.getTotalExpensesBetweenDates(cycleStartDate, cycleEndDate)
-                    val totalSavingsFlow = repository.getTotalSavingsBetweenDates(cycleStartDate, cycleEndDate)
-                    val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(cycleStartDate, cycleEndDate)
-
-                    combine(totalExpensesFlow, totalSavingsFlow, categorySpendingFlow) { totalExpenses, totalSavings, categorySpending ->
-                        updateUi(result, salaryAmount, totalExpenses ?: 0.0, totalSavings ?: 0.0, goals, categorySpending, carryOverAmount)
-                        generateFinancialInsights(totalExpenses ?: 0.0, categorySpending)
-                    }.collect()
-                } else {
-                    _uiState.postValue(PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message)))
-                }
-            }.collect()
-        }
-    }
-
-    private fun checkAndProcessPostPaydayTasks() {
-        viewModelScope.launch {
-            val yesterday = LocalDate.now().minusDays(1)
-
+            // 2. Döngü sonu görevleri bittikten sonra, güncel verilerle UI'ı yükle.
             val payPeriod = repository.getPayPeriod().first()
             val paydayValue = repository.getPaydayValue().first()
             val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
             val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
+            val salaryAmount = repository.getSalaryAmount().first()
+            val goals = repository.getGoals().first()
+            val carryOverAmount = repository.getCarryOverAmount().first()
 
-            val resultForYesterday = PaydayCalculator.calculate(yesterday, payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
+            val result = PaydayCalculator.calculate(LocalDate.now(), payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
-            if (resultForYesterday != null && resultForYesterday.isPayday) {
-                val lastProcessedDateStr = repository.getLastProcessedPayday().first()
-                if (lastProcessedDateStr == null || !LocalDate.parse(lastProcessedDateStr).isEqual(yesterday)) {
-                    runCycleEndTasks(resultForYesterday)
+            if (result != null) {
+                val cycleStartDate = result.cycleStartDate.toStartOfDayDate()
+                val cycleEndDate = result.cycleEndDate.toEndOfDayDate()
+                currentPayCycle.value = Pair(cycleStartDate, cycleEndDate)
+
+                repository.getSpendingByCategoryBetweenDates(cycleStartDate, cycleEndDate).collectLatest { categorySpending ->
+                    val allTransactionsInCycle = repository.getTransactionsBetweenDates(cycleStartDate, cycleEndDate).first()
+                    val totalExpenses = allTransactionsInCycle
+                        .filter { it.categoryId != ExpenseCategory.getSavingsCategoryId() }
+                        .sumOf { it.amount }
+                    val totalSavings = allTransactionsInCycle
+                        .filter { it.categoryId == ExpenseCategory.getSavingsCategoryId() }
+                        .sumOf { it.amount }
+
+                    updateUi(result, salaryAmount, totalExpenses, totalSavings, goals, categorySpending, carryOverAmount)
+                    generateFinancialInsights(totalExpenses, categorySpending)
                 }
+            } else {
+                _uiState.postValue(PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message)))
+            }
+        }
+    }
+
+    private suspend fun checkAndProcessPostPaydayTasks() {
+        val yesterday = LocalDate.now().minusDays(1)
+
+        val payPeriod = repository.getPayPeriod().first()
+        val paydayValue = repository.getPaydayValue().first()
+        val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
+        val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
+
+        val resultForYesterday = PaydayCalculator.calculate(yesterday, payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
+
+        if (resultForYesterday != null && resultForYesterday.isPayday) {
+            val lastProcessedDateStr = repository.getLastProcessedPayday().first()
+            if (lastProcessedDateStr == null || !LocalDate.parse(lastProcessedDateStr).isEqual(yesterday)) {
+                runCycleEndTasks(resultForYesterday)
             }
         }
     }
@@ -207,17 +203,16 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         val previousCycleStartDate = paydayResult.cycleStartDate.minusDays(paydayResult.totalDaysInCycle).toStartOfDayDate()
         val previousCycleEndDate = paydayResult.cycleStartDate.minusDays(1).toEndOfDayDate()
+
+        val summary = repository.getPreviousCycleSummary(previousCycleStartDate, previousCycleEndDate)
+        val expenses = summary.totalExpenses
+        val totalSavings = summary.totalSavings
+
         val salary = repository.getSalaryAmount().first()
-        val expenses = repository.getTotalExpensesBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
-        val totalSavings = repository.getTotalSavingsBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
         val carryOver = repository.getCarryOverAmount().first()
 
         val remainingFromPreviousCycle = (salary + carryOver) - expenses - totalSavings
-        if (remainingFromPreviousCycle > 0) {
-            repository.saveCarryOverAmount(remainingFromPreviousCycle.toLong())
-        } else {
-            repository.saveCarryOverAmount(0L)
-        }
+        repository.saveCarryOverAmount(remainingFromPreviousCycle.toLong())
 
 
         if (salary > expenses) {
@@ -366,6 +361,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
+    fun deleteRecurringTemplate(transaction: Transaction) = viewModelScope.launch {
+        if(transaction.isRecurringTemplate){
+            repository.deleteTransaction(transaction)
+        }
+    }
+
     fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int, portion: Int) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val oldGoals = repository.getGoals().first()
@@ -415,21 +416,31 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun distributeSavingsToGoals(totalSavingsAmount: Double) {
         val oldGoals = repository.getGoals().first()
-        if (oldGoals.none { !it.isComplete }) return
-
         val activeGoals = oldGoals.filter { !it.isComplete }
-        val totalPortion = activeGoals.sumOf { it.portion }
-        if (totalPortion <= 0) return
+
+        if (activeGoals.isEmpty()) {
+            if (totalSavingsAmount > 0) {
+                val transaction = Transaction(
+                    name = context.getString(R.string.auto_savings_general),
+                    amount = totalSavingsAmount,
+                    date = Date(),
+                    categoryId = ExpenseCategory.SAVINGS.ordinal
+                )
+                repository.insertTransaction(transaction)
+            }
+            return
+        }
 
         val newGoals = oldGoals.toMutableList()
+        var distributedAmount = 0.0
 
         activeGoals.forEach { goal ->
             val goalIndex = newGoals.indexOfFirst { it.id == goal.id }
             if (goalIndex != -1) {
                 val currentGoal = newGoals[goalIndex]
-                val goalShare = (currentGoal.portion.toDouble() / totalPortion) * totalSavingsAmount
+                val amountToDistribute = totalSavingsAmount * (currentGoal.portion / 100.0)
                 val neededForGoal = currentGoal.targetAmount - currentGoal.savedAmount
-                val amountToAdd = min(goalShare, neededForGoal)
+                val amountToAdd = min(amountToDistribute, neededForGoal)
 
                 if (amountToAdd > 0) {
                     newGoals[goalIndex] = currentGoal.copy(savedAmount = currentGoal.savedAmount + amountToAdd)
@@ -440,12 +451,24 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                         categoryId = ExpenseCategory.SAVINGS.ordinal
                     )
                     repository.insertTransaction(transaction)
+                    distributedAmount += amountToAdd
                 }
             }
         }
+
+        val remainingSavings = totalSavingsAmount - distributedAmount
+        if (remainingSavings > 0.01) {
+            val transaction = Transaction(
+                name = context.getString(R.string.auto_savings_general),
+                amount = remainingSavings,
+                date = Date(),
+                categoryId = ExpenseCategory.SAVINGS.ordinal
+            )
+            repository.insertTransaction(transaction)
+        }
+
         repository.saveGoals(newGoals)
         checkAndNotifyForCompletedGoals(oldGoals, newGoals)
-        loadData()
     }
 
 
@@ -512,6 +535,20 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 unlockAchievement("GOAL_COMPLETED")
             }
         }
+    }
+
+    fun loadTransactionToEdit(id: Int) {
+        transactionObserverJob?.cancel()
+        transactionObserverJob = viewModelScope.launch {
+            repository.getTransactionById(id).collect { transaction ->
+                _transactionToEdit.postValue(transaction)
+            }
+        }
+    }
+
+    fun onDialogDismissed() {
+        _transactionToEdit.postValue(null)
+        transactionObserverJob?.cancel()
     }
 
 

@@ -22,20 +22,27 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     fun getTransactionsBetweenDates(startDate: Date, endDate: Date): Flow<List<Transaction>>
 
-    // DÜZELTME: Bu sorgu artık tasarrufları hariç tutuyor.
+    // DÜZELTME: Bu fonksiyonlar artık kullanılmıyor, yerlerine suspend versiyonları geldi.
+    // fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date, savingsCategoryId: Int): Flow<Double?>
+    // fun getTotalSavingsBetweenDates(startDate: Date, endDate: Date, savingsCategoryId: Int): Flow<Double?>
+
+    // *** YENİ: Maaş döngüsü sonu hesaplamaları için anlık veri çeken suspend fonksiyonlar ***
     @Query("SELECT SUM(amount) FROM transactions WHERE date BETWEEN :startDate AND :endDate AND categoryId != :savingsCategoryId")
-    fun getTotalExpensesBetweenDates(startDate: Date, endDate: Date, savingsCategoryId: Int): Flow<Double?>
+    suspend fun getTotalExpensesBetweenDatesSuspend(startDate: Date, endDate: Date, savingsCategoryId: Int): Double?
 
-    // YENİ: Sadece tasarruf toplamını getiren sorgu.
     @Query("SELECT SUM(amount) FROM transactions WHERE date BETWEEN :startDate AND :endDate AND categoryId = :savingsCategoryId")
-    fun getTotalSavingsBetweenDates(startDate: Date, endDate: Date, savingsCategoryId: Int): Flow<Double?>
+    suspend fun getTotalSavingsBetweenDatesSuspend(startDate: Date, endDate: Date, savingsCategoryId: Int): Double?
 
-    // DÜZELTME: Bu sorgu artık tasarrufları hariç tutuyor.
+
     @Query("SELECT categoryId, SUM(amount) as totalAmount FROM transactions WHERE date BETWEEN :startDate AND :endDate AND categoryId != :savingsCategoryId GROUP BY categoryId")
     fun getSpendingByCategoryBetweenDates(startDate: Date, endDate: Date, savingsCategoryId: Int): Flow<List<CategorySpending>>
 
-    @Query("SELECT * FROM transactions WHERE isRecurringTemplate = 1")
+    @Query("SELECT * FROM transactions WHERE isRecurringTemplate = 1 ORDER BY name ASC")
     fun getRecurringTransactionTemplates(): Flow<List<Transaction>>
+
+    // *** YENİ: ID ile tek bir işlemi (normal veya şablon) getiren fonksiyon ***
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    fun getTransactionById(id: Int): Flow<Transaction?>
 
     @Query("SELECT * FROM transactions")
     suspend fun getAllTransactions(): List<Transaction>

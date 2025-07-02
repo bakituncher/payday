@@ -32,12 +32,17 @@
             app:title="@string/weekend_adjustment_label"
             app:summary="@string/weekend_adjustment_summary"/>
 
-        <!-- YENİ: Otomatik Hedef Birikimi Ayarı -->
         <androidx.preference.SwitchPreferenceCompat
             app:key="auto_saving_enabled"
             app:title="@string/auto_saving_title"
             app:summary="@string/auto_saving_summary"
             app:defaultValue="false" />
+
+        <Preference
+            app:key="recurring_transactions"
+            app:title="@string/recurring_transactions_title"
+            app:summary="@string/recurring_transactions_summary"
+            app:icon="@drawable/autorenew"/>
 
         <ListPreference
             app:key="theme"
