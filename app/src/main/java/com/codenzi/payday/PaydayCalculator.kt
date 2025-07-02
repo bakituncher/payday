@@ -31,19 +31,17 @@ object PaydayCalculator {
             when (payPeriod) {
                 PayPeriod.MONTHLY -> {
                     if (paydayValue < 1) return null
-
-                    // Bu ayın maaş gününü hesapla
                     val dayInCurrentMonth = minOf(paydayValue, today.month.length(today.isLeapYear))
-                    val thisMonthPayday = today.withDayOfMonth(dayInCurrentMonth)
+                    var thisMonthPayday = today.withDayOfMonth(dayInCurrentMonth)
 
-                    if (today.isAfter(thisMonthPayday)) {
-                        // Eğer bu ayın maaş günü geçtiyse, bir sonraki ayınkini hesapla
+                    // DÜZELTME: Maaş günü hatasını gidermek için mantık değişikliği.
+                    // Eğer bugün maaş günü veya sonrasıysa, bir sonraki maaş günü gelecek ayınkidir.
+                    if (today.isAfter(thisMonthPayday) || today.isEqual(thisMonthPayday)) {
                         val nextMonthDate = today.plusMonths(1)
                         val dayInNextMonth = minOf(paydayValue, nextMonthDate.lengthOfMonth())
                         nextPayday = nextMonthDate.withDayOfMonth(dayInNextMonth)
                         previousPayday = thisMonthPayday
                     } else {
-                        // Eğer maaş günü bugün veya bu ayın ilerisindeyse, bu ayınkini kullan
                         nextPayday = thisMonthPayday
                         val prevMonthDate = today.minusMonths(1)
                         val dayInPrevMonth = minOf(paydayValue, prevMonthDate.lengthOfMonth())
@@ -53,45 +51,54 @@ object PaydayCalculator {
                 PayPeriod.WEEKLY -> {
                     if (paydayValue < 1) return null
                     val payDayOfWeek = DayOfWeek.of(paydayValue)
-                    // nextOrSame metodu, eğer bugün maaş günüyse bugünü, değilse bir sonraki tarihi verir.
-                    nextPayday = today.with(TemporalAdjusters.nextOrSame(payDayOfWeek))
+                    // DÜZELTME: nextOrSame, eğer bugün maaş günüyse bugünü verir, bu da döngüyü bozar.
+                    // Bu yüzden 'next' kullanarak her zaman bir sonraki günü hedefliyoruz.
+                    nextPayday = today.with(TemporalAdjusters.next(payDayOfWeek))
+                    // Eğer bugün maaş günüyse, bir sonraki maaş günü 7 gün sonradır.
+                    if(today.dayOfWeek == payDayOfWeek) {
+                        nextPayday = today.plusWeeks(1)
+                    }
                     previousPayday = nextPayday.minusWeeks(1)
                 }
                 PayPeriod.BI_WEEKLY -> {
                     val referenceDate = LocalDate.parse(biWeeklyRefDateString) ?: return null
                     var tempPayday = referenceDate
-                    // Maaş gününü bugüne veya bugünden sonrasına denk getirene kadar ileri sar
-                    while (tempPayday.isBefore(today)) {
+                    while (tempPayday.isBefore(today) || tempPayday.isEqual(today)) {
                         tempPayday = tempPayday.plusDays(14)
                     }
-                    // bulunan tarih bir sonraki maaş günüdür.
                     nextPayday = tempPayday
                     previousPayday = nextPayday.minusDays(14)
                 }
             }
 
-            // Döngünün gerçek bitiş tarihini (hafta sonu ayarı olmadan) sakla
             val originalNextPayday = nextPayday
+            var adjustedNextPayday = nextPayday
 
-            // Hafta sonu ayarını uygula
             if (weekendAdjustmentEnabled) {
-                if (nextPayday.dayOfWeek == DayOfWeek.SATURDAY) {
-                    nextPayday = nextPayday.minusDays(1)
-                } else if (nextPayday.dayOfWeek == DayOfWeek.SUNDAY) {
-                    nextPayday = nextPayday.minusDays(2)
+                if (adjustedNextPayday.dayOfWeek == DayOfWeek.SATURDAY) {
+                    adjustedNextPayday = adjustedNextPayday.minusDays(1)
+                } else if (adjustedNextPayday.dayOfWeek == DayOfWeek.SUNDAY) {
+                    adjustedNextPayday = adjustedNextPayday.minusDays(2)
                 }
             }
 
-            val daysLeft = ChronoUnit.DAYS.between(today, nextPayday)
-            val isPayday = daysLeft <= 0L
-            // Döngü süresini orijinal (ayarlanmamış) tarihlere göre hesapla
-            val totalDaysInCycle = ChronoUnit.DAYS.between(previousPayday, originalNextPayday)
+            val daysLeft = ChronoUnit.DAYS.between(today, adjustedNextPayday)
+            val isPayday = today.isEqual(adjustedNextPayday)
+
+            // DÜZELTME: Döngü başlangıç ve bitiş tarihlerini netleştirme.
+            // Mevcut döngü, bir önceki maaş gününde başlar ve bir sonraki maaş gününden bir gün önce biter.
+            val cycleStartDate = if (today.isBefore(previousPayday)) {
+                // Bu durum normalde olmamalı ama güvenlik için eklendi.
+                previousPayday.minusDays(ChronoUnit.DAYS.between(previousPayday, originalNextPayday))
+            } else {
+                previousPayday
+            }
 
             return PaydayResult(
                 daysLeft = daysLeft,
                 isPayday = isPayday,
-                totalDaysInCycle = totalDaysInCycle,
-                cycleStartDate = previousPayday,
+                totalDaysInCycle = ChronoUnit.DAYS.between(cycleStartDate, originalNextPayday),
+                cycleStartDate = cycleStartDate,
                 cycleEndDate = originalNextPayday.minusDays(1)
             )
         } catch (e: Exception) {

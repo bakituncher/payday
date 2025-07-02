@@ -278,6 +278,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // YENİ: ViewModel'den gelen Toast mesajlarını dinle
+        viewModel.toastEvent.observe(this) { event ->
+            event.getContentIfNotHandled()?.let { message ->
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+        }
+
         viewModel.transactionsForCurrentCycle.observe(this) { transactions ->
             transactionAdapter.submitList(transactions)
             val areTransactionsEmpty = transactions.isNullOrEmpty()

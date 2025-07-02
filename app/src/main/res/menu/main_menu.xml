@@ -11,7 +11,7 @@
     <item
         android:id="@+id/action_achievements"
         android:icon="@android:drawable/btn_star"
-        android:title="@string/achievements"
+        android:title="@string/achievements_title"
         app:showAsAction="ifRoom"
         app:iconTint="@color/text_secondary" />
 

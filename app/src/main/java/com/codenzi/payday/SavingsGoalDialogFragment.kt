@@ -1,5 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/SavingsGoalDialogFragment.kt
-
 package com.codenzi.payday
 
 import android.app.DatePickerDialog
@@ -16,6 +14,7 @@ import androidx.fragment.app.activityViewModels
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.*
@@ -28,16 +27,17 @@ class SavingsGoalDialogFragment : DialogFragment() {
     private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
 
     private var selectedCategoryId: Int = SavingsGoalCategory.OTHER.ordinal
+    private var selectedPortion: Int = 100
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val goalId = arguments?.getString(ARG_GOAL_ID)
         if (goalId != null) {
-            runBlocking {
-                existingGoal = viewModel.uiState.value?.savingsGoals?.find { it.id == goalId }
-            }
+            // DÜZELTME: runBlocking yerine viewModel'den state'i direkt alıyoruz.
+            existingGoal = viewModel.uiState.value?.savingsGoals?.find { it.id == goalId }
             selectedTimestamp = existingGoal?.targetDate
             selectedCategoryId = existingGoal?.categoryId ?: SavingsGoalCategory.OTHER.ordinal
+            selectedPortion = existingGoal?.portion ?: 100
         }
     }
 
@@ -48,7 +48,11 @@ class SavingsGoalDialogFragment : DialogFragment() {
         val selectDateButton = dialogView.findViewById<Button>(R.id.selectDateButton)
         val selectedDateTextView = dialogView.findViewById<TextView>(R.id.selectedDateTextView)
         val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.goalCategoryChipGroup)
+        // YENİ: Slider ve değer metni için referanslar
+        val portionSlider = dialogView.findViewById<Slider>(R.id.portionSlider)
+        val portionValueTextView = dialogView.findViewById<TextView>(R.id.portionValueTextView)
 
+        // Kategori Chip'lerini oluştur
         SavingsGoalCategory.entries.forEach { category ->
             val chip = Chip(requireContext()).apply {
                 text = category.categoryName
@@ -62,6 +66,14 @@ class SavingsGoalDialogFragment : DialogFragment() {
             if (checkedIds.isNotEmpty()) {
                 selectedCategoryId = checkedIds.first()
             }
+        }
+
+        // YENİ: Slider'ı ayarla
+        portionSlider.value = selectedPortion.toFloat()
+        portionValueTextView.text = getString(R.string.portion_percentage, selectedPortion)
+        portionSlider.addOnChangeListener { _, value, _ ->
+            selectedPortion = value.toInt()
+            portionValueTextView.text = getString(R.string.portion_percentage, selectedPortion)
         }
 
         val dialogTitle = if (existingGoal == null) {
@@ -88,8 +100,15 @@ class SavingsGoalDialogFragment : DialogFragment() {
             .setPositiveButton(R.string.save) { _, _ ->
                 val name = nameEditText.text.toString()
                 val amount = amountEditText.text.toString().toDoubleOrNull()
-                if (name.isNotBlank() && amount != null && amount > 0) {
-                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp, selectedCategoryId)
+                // YENİ: Oranların toplamını kontrol et
+                val currentGoals = viewModel.uiState.value?.savingsGoals ?: emptyList()
+                val otherGoalsPortion = currentGoals.filter { it.id != existingGoal?.id }.sumOf { it.portion }
+                val totalPortion = otherGoalsPortion + selectedPortion
+
+                if (totalPortion > 100) {
+                    Toast.makeText(requireContext(), getString(R.string.toast_total_portion_exceeded), Toast.LENGTH_LONG).show()
+                } else if (name.isNotBlank() && amount != null && amount > 0) {
+                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp, selectedCategoryId, selectedPortion)
                 } else {
                     Toast.makeText(requireContext(), getString(R.string.toast_invalid_goal_input), Toast.LENGTH_SHORT).show()
                 }

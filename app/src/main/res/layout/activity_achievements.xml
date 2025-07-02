@@ -12,7 +12,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        app:title="Başarımlar"
+        app:title="@string/achievements_title"
         app:navigationIcon="@drawable/ic_arrow_back" />
 
     <androidx.recyclerview.widget.RecyclerView
