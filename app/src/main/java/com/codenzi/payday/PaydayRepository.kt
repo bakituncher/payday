@@ -46,13 +46,16 @@ class PaydayRepository(private val context: Context) {
         val KEY_LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
         val KEY_AUTO_SAVING_ENABLED = booleanPreferencesKey("auto_saving_enabled")
         val KEY_LAST_PROCESSED_PAYDAY = stringPreferencesKey("last_processed_payday")
-        // YENİ: Geri yükleme sonrası kontrol için anahtar
         val KEY_RESTORE_VALIDATION_NEEDED = booleanPreferencesKey("restore_validation_needed")
+        val KEY_CARRY_OVER_AMOUNT = longPreferencesKey("carry_over_amount")
     }
 
-    suspend fun deleteAllUserData() = withContext(Dispatchers.IO) {
-        googleDriveManager.deleteBackupFile()
-        clearLocalData()
+    suspend fun deleteAllUserData(): Boolean = withContext(Dispatchers.IO) {
+        val driveSuccess = googleDriveManager.deleteBackupFile()
+        if (driveSuccess) {
+            clearLocalData()
+        }
+        return@withContext driveSuccess
     }
 
     suspend fun clearLocalData() = withContext(Dispatchers.IO) {
@@ -81,6 +84,7 @@ class PaydayRepository(private val context: Context) {
     fun isAutoSavingEnabled(): Flow<Boolean> = prefs.data.map { it[KEY_AUTO_SAVING_ENABLED] ?: false }
     fun getLastProcessedPayday(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_PAYDAY] }
     fun isRestoreValidationNeeded(): Flow<Boolean> = prefs.data.map { it[KEY_RESTORE_VALIDATION_NEEDED] ?: false }
+    fun getCarryOverAmount(): Flow<Long> = prefs.data.map { it[KEY_CARRY_OVER_AMOUNT] ?: 0L }
 
 
     // SETTERS
@@ -100,6 +104,7 @@ class PaydayRepository(private val context: Context) {
     suspend fun saveLastProcessedPayday(date: LocalDate) = prefs.edit { it[KEY_LAST_PROCESSED_PAYDAY] = date.format(DateTimeFormatter.ISO_LOCAL_DATE) }
     suspend fun saveAutoSavingEnabled(isEnabled: Boolean) = prefs.edit { it[KEY_AUTO_SAVING_ENABLED] = isEnabled }
     suspend fun clearRestoreValidationFlag() = prefs.edit { it.remove(KEY_RESTORE_VALIDATION_NEEDED) }
+    suspend fun saveCarryOverAmount(amount: Long) = prefs.edit { it[KEY_CARRY_OVER_AMOUNT] = amount }
 
 
     suspend fun saveLastBackupTimestamp(timestamp: Long) {
@@ -193,7 +198,7 @@ class PaydayRepository(private val context: Context) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name, KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
                         KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name, KEY_AUTO_SAVING_ENABLED.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                        KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
+                        KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name, KEY_CARRY_OVER_AMOUNT.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_PAY_PERIOD.name, KEY_BI_WEEKLY_REF_DATE.name, KEY_FIRST_LAUNCH_DATE.name, KEY_LAST_PROCESSED_PAYDAY.name, KEY_THEME.name -> {
                             if (value != null) preferences[stringPreferencesKey(key)] = value
                         }

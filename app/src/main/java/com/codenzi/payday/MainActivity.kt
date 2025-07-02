@@ -128,7 +128,6 @@ class MainActivity : AppCompatActivity() {
                 val backupData = repository.getAllDataForBackup()
                 val backupJson = gson.toJson(backupData)
                 googleDriveManager.uploadFileContent(backupJson)
-                // Hatanın olduğu yer burasıydı. Artık fonksiyon public olduğu için sorunsuz çalışacaktır.
                 repository.saveLastBackupTimestamp(System.currentTimeMillis())
                 viewModel.triggerBackupHeroAchievement()
                 showSnackbar(getString(R.string.backup_success))
@@ -306,6 +305,13 @@ class MainActivity : AppCompatActivity() {
         savingsGoalAdapter.submitList(state.savingsGoals)
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
+
+        if (state.carryOverAmount > 0) {
+            binding.carryOverContainer.visibility = View.VISIBLE
+            binding.carryOverTextView.text = formatCurrency(state.carryOverAmount.toDouble())
+        } else {
+            binding.carryOverContainer.visibility = View.GONE
+        }
 
         if (state.isPayday) {
             startConfettiEffect()

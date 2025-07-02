@@ -61,6 +61,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private val _toastEvent = MutableLiveData<Event<String>>()
     val toastEvent: LiveData<Event<String>> = _toastEvent
 
+    private val _accountDeletionResult = MutableLiveData<Event<Boolean>>()
+    val accountDeletionResult: LiveData<Event<Boolean>> = _accountDeletionResult
+
+
     private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,7 +94,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deleteAccount() {
         viewModelScope.launch {
-            repository.deleteAllUserData()
+            val success = repository.deleteAllUserData()
+            _accountDeletionResult.postValue(Event(success))
         }
     }
 
@@ -137,7 +142,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 repository.getBiWeeklyRefDateString(),
                 repository.isWeekendAdjustmentEnabled(),
                 repository.getSalaryAmount(),
-                repository.getGoals()
+                repository.getGoals(),
+                repository.getCarryOverAmount()
             ) { values ->
                 val payPeriod = values[0] as PayPeriod
                 val paydayValue = values[1] as Int
@@ -146,6 +152,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val salaryAmount = values[4] as Long
                 @Suppress("UNCHECKED_CAST")
                 val goals = values[5] as MutableList<SavingsGoal>
+                val carryOverAmount = values[6] as Long
 
                 val result = PaydayCalculator.calculate(LocalDate.now(), payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
 
@@ -162,7 +169,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                     val categorySpendingFlow = repository.getSpendingByCategoryBetweenDates(cycleStartDate, cycleEndDate)
 
                     combine(totalExpensesFlow, totalSavingsFlow, categorySpendingFlow) { totalExpenses, totalSavings, categorySpending ->
-                        updateUi(result, salaryAmount, totalExpenses ?: 0.0, totalSavings ?: 0.0, goals, categorySpending)
+                        updateUi(result, salaryAmount, totalExpenses ?: 0.0, totalSavings ?: 0.0, goals, categorySpending, carryOverAmount)
                         generateFinancialInsights(totalExpenses ?: 0.0, categorySpending)
                     }.collect()
                 } else {
@@ -199,6 +206,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val previousCycleEndDate = paydayResult.cycleStartDate.minusDays(1).toEndOfDayDate()
         val salary = repository.getSalaryAmount().first()
         val expenses = repository.getTotalExpensesBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
+        val totalSavings = repository.getTotalSavingsBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
+        val carryOver = repository.getCarryOverAmount().first()
+
+        val remainingFromPreviousCycle = (salary + carryOver) - expenses - totalSavings
+        if (remainingFromPreviousCycle > 0) {
+            repository.saveCarryOverAmount(remainingFromPreviousCycle.toLong())
+        } else {
+            repository.saveCarryOverAmount(0L)
+        }
+
+
         if (salary > expenses) {
             unlockAchievement("BUDGET_WIZARD")
             val consecutivePositiveCycles = (repository.getConsecutivePositiveCycles().first() ?: 0) + 1
@@ -279,9 +297,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         totalExpenses: Double,
         totalSavings: Double,
         goals: List<SavingsGoal>,
-        categorySpending: List<CategorySpending>
+        categorySpending: List<CategorySpending>,
+        carryOverAmount: Long
     ) {
-        val remainingAmount = salaryAmount - totalExpenses - totalSavings
+        val totalIncome = salaryAmount + carryOverAmount
+        val remainingAmount = totalIncome - totalExpenses - totalSavings
 
         val pieEntries = categorySpending.map { spending ->
             val category = ExpenseCategory.fromId(spending.categoryId)
@@ -300,6 +320,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             expensesText = formatCurrency(totalExpenses, "- "),
             savingsText = formatCurrency(totalSavings),
             remainingText = formatCurrency(remainingAmount),
+            carryOverAmount = carryOverAmount,
             actualRemainingAmountForGoals = remainingAmount,
             categorySpendingData = pieEntries
         )

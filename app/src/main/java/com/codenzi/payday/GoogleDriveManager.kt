@@ -85,7 +85,7 @@ class GoogleDriveManager(private val context: Context) {
             }
         } catch (e: IOException) {
             Log.e(TAG, "Dosya yüklenirken ağ hatası oluştu.", e)
-            throw e // Hatanın üst katmanlara bildirilmesi için yeniden fırlatılabilir
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Dosya yüklenirken genel bir hata oluştu.", e)
             throw e
@@ -107,21 +107,25 @@ class GoogleDriveManager(private val context: Context) {
         }
     }
 
-    suspend fun deleteBackupFile() = withContext(Dispatchers.IO) {
+    suspend fun deleteBackupFile(): Boolean = withContext(Dispatchers.IO) {
         try {
-            val drive = getDriveService() ?: return@withContext
+            val drive = getDriveService() ?: return@withContext false
             val fileId = getBackupFileId(drive)
             if (fileId != null) {
                 drive.files().delete(fileId).execute()
                 cachedFileId = null
                 Log.d(TAG, "Google Drive'daki yedek dosyası başarıyla silindi.")
             }
+            true // Return true even if file didn't exist, the state is still "no backup file"
         } catch (e: IOException) {
             Log.e(TAG, "Google Drive yedeği silinirken ağ hatası.", e)
+            false
         } catch (e: Exception) {
             Log.e(TAG, "Google Drive yedek dosyası silinirken genel bir hata oluştu.", e)
+            false
         }
     }
+
 
     companion object {
         fun getSignInIntent(context: Context): Intent {

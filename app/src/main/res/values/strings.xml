@@ -212,6 +212,7 @@
     <string name="your_reports_are_empty">Raporlarınız Henüz Boş</string>
     <string name="start_adding_expenses_for_charts">Harcamalarınızı eklemeye başlayın, sizin için grafikler ve özetler oluşturalım.</string>
     <string name="add_your_first_expense">İlk Harcamanı Ekle</string>
+    <string name="carry_over">Devreden</string>
 
     <!-- =================================================================== -->
     <!-- DİZİLER (ARRAYS) -->

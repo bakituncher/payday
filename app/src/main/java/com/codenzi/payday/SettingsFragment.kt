@@ -62,6 +62,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         setupGoogleClient()
         setupAccountPreferences()
+        setupObservers()
 
         findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
             val theme = newValue as String
@@ -82,6 +83,24 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupCurrencyPreference("monthly_savings")
         setupAutoBackupPreference()
         setupAutoSavingPreference()
+    }
+
+    private fun setupObservers() {
+        viewModel.accountDeletionResult.observe(this) { event ->
+            event.getContentIfNotHandled()?.let { success ->
+                if (success) {
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
+                        val intent = Intent(requireActivity(), LoginActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        requireActivity().finish()
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Veri silinirken bir hata oluştu. Lütfen tekrar deneyin.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -145,7 +164,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             googleAccountPreference?.summary = getString(R.string.google_sign_in_summary)
             deleteAccountPreference?.isVisible = false
         }
-        // Hesabın durumuna göre yedekleme özetini güncelle
         updateAutoBackupSummary()
     }
 
@@ -174,13 +192,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setPositiveButton(R.string.delete_button_text) { _, _ ->
                 viewModel.deleteAccount()
-                googleSignInClient.signOut().addOnCompleteListener {
-                    Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
-                    val intent = Intent(requireActivity(), LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                    requireActivity().finish()
-                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -211,12 +222,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
             updatePaydaySummary()
             updateCurrencySummary("salary", repository.getSalaryAmount().first())
             updateCurrencySummary("monthly_savings", repository.getMonthlySavingsAmount().first())
-            // YENİ: Yedekleme özeti de güncelleniyor.
             updateAutoBackupSummary()
         }
     }
 
-    // YENİ FONKSİYON: Son yedekleme zamanını gösteren özet metnini günceller.
     private fun updateAutoBackupSummary() {
         lifecycleScope.launch {
             val autoBackupPref = findPreference<SwitchPreferenceCompat>("auto_backup_enabled") ?: return@launch
@@ -236,7 +245,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    // YENİ FONKSİYON: Zaman damgasını (timestamp) okunabilir bir formata çevirir.
     private fun formatTimestamp(timestamp: Long): String {
         val now = System.currentTimeMillis()
 

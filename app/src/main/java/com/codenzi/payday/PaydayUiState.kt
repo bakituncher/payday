@@ -12,8 +12,9 @@ data class PaydayUiState(
     val areTransactionsVisible: Boolean = false,
     val incomeText: String = "₺0,00",
     val expensesText: String = "₺0,00",
-    val savingsText: String = "₺0,00", // YENİ ALAN
+    val savingsText: String = "₺0,00",
     val remainingText: String = "₺0,00",
+    val carryOverAmount: Long = 0L, // ÖNCEKİ 'carryOverText' BU SATIRLA DEĞİŞTİRİLDİ
     val actualRemainingAmountForGoals: Double = 0.0,
     val categorySpendingData: List<PieEntry> = emptyList()
 )
