@@ -16,6 +16,7 @@ import androidx.fragment.app.activityViewModels
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.*
@@ -28,6 +29,7 @@ class SavingsGoalDialogFragment : DialogFragment() {
     private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
 
     private var selectedCategoryId: Int = SavingsGoalCategory.OTHER.ordinal
+    private var selectedPortion: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +40,7 @@ class SavingsGoalDialogFragment : DialogFragment() {
             }
             selectedTimestamp = existingGoal?.targetDate
             selectedCategoryId = existingGoal?.categoryId ?: SavingsGoalCategory.OTHER.ordinal
+            selectedPortion = existingGoal?.portion ?: 0
         }
     }
 
@@ -48,6 +51,8 @@ class SavingsGoalDialogFragment : DialogFragment() {
         val selectDateButton = dialogView.findViewById<Button>(R.id.selectDateButton)
         val selectedDateTextView = dialogView.findViewById<TextView>(R.id.selectedDateTextView)
         val categoryChipGroup = dialogView.findViewById<ChipGroup>(R.id.goalCategoryChipGroup)
+        val portionSlider = dialogView.findViewById<Slider>(R.id.portionSlider)
+        val portionValueTextView = dialogView.findViewById<TextView>(R.id.portionValueTextView)
 
         SavingsGoalCategory.entries.forEach { category ->
             val chip = Chip(requireContext()).apply {
@@ -62,6 +67,14 @@ class SavingsGoalDialogFragment : DialogFragment() {
             if (checkedIds.isNotEmpty()) {
                 selectedCategoryId = checkedIds.first()
             }
+        }
+
+        portionSlider.value = selectedPortion.toFloat()
+        updatePortionText(portionValueTextView, selectedPortion)
+
+        portionSlider.addOnChangeListener { _, value, _ ->
+            selectedPortion = value.toInt()
+            updatePortionText(portionValueTextView, selectedPortion)
         }
 
         val dialogTitle = if (existingGoal == null) {
@@ -88,14 +101,38 @@ class SavingsGoalDialogFragment : DialogFragment() {
             .setPositiveButton(R.string.save) { _, _ ->
                 val name = nameEditText.text.toString()
                 val amount = amountEditText.text.toString().toDoubleOrNull()
+                
                 if (name.isNotBlank() && amount != null && amount > 0) {
-                    viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp, selectedCategoryId)
+                    if (validateTotalAllocation()) {
+                        viewModel.addOrUpdateGoal(name, amount, existingGoal?.id, selectedTimestamp, selectedCategoryId, selectedPortion)
+                    }
                 } else {
                     Toast.makeText(requireContext(), getString(R.string.toast_invalid_goal_input), Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
             .create()
+    }
+
+    private fun updatePortionText(textView: TextView, portion: Int) {
+        textView.text = getString(R.string.priority_allocation_value, portion)
+    }
+
+    private fun validateTotalAllocation(): Boolean {
+        val currentGoals = viewModel.uiState.value?.savingsGoals ?: emptyList()
+        val totalAllocation = currentGoals
+            .filter { it.id != existingGoal?.id }
+            .sumOf { it.portion } + selectedPortion
+
+        if (totalAllocation > 100) {
+            Toast.makeText(
+                requireContext(), 
+                getString(R.string.total_allocation_exceeds_100_error, totalAllocation),
+                Toast.LENGTH_LONG
+            ).show()
+            return false
+        }
+        return true
     }
 
     private fun showDatePickerDialog(dateTextView: TextView) {

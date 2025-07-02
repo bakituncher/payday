@@ -242,4 +242,13 @@
         <item>Cumartesi</item>
         <item>Pazar</item>
     </string-array>
+
+    <!-- =================================================================== -->
+    <!-- Öncelik ve Oran Bazlı Hedef Dağıtımı -->
+    <!-- =================================================================== -->
+    <string name="priority_allocation_title">Otomatik Dağıtım Oranı</string>
+    <string name="priority_allocation_value">Seçilen Oran: %1$d%%</string>
+    <string name="priority_allocation_description">Bu oran, aylık tasarruf miktarınızın ne kadarının bu hedefe otomatik olarak aktarılacağını belirler.</string>
+    <string name="total_allocation_exceeds_100_error">Toplam dağıtım oranı %100\'ü aşamaz! Şu anki toplam: %1$d%%</string>
+    <string name="insufficient_balance_for_goal">Bu hedefe para eklemek için yetersiz bakiye!</string>
 </resources>

@@ -263,12 +263,12 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         loadData()
     }
 
-    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int) = viewModelScope.launch {
+    fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int, portion: Int = 0) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
             val currentGoals = repository.getGoals().first().toMutableList()
 
             if (existingGoalId == null) {
-                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate, categoryId = categoryId))
+                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, savedAmount = 0.0, targetDate = targetDate, categoryId = categoryId, portion = portion))
                 unlockAchievement("FIRST_GOAL")
                 if (currentGoals.size >= 3) {
                     unlockAchievement("COLLECTOR")
@@ -277,7 +277,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val index = currentGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
                     val existingSavedAmount = currentGoals[index].savedAmount
-                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, savedAmount = existingSavedAmount, targetDate = targetDate, categoryId = categoryId)
+                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, savedAmount = existingSavedAmount, targetDate = targetDate, categoryId = categoryId, portion = portion)
                 }
             }
             repository.saveGoals(currentGoals)
@@ -317,93 +317,123 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val lastProcessedDate = lastProcessedPaydayStr?.let { LocalDate.parse(it) }
 
         if (lastProcessedDate != null && lastProcessedDate >= currentPaydayDate) {
+            Log.d(TAG, "Bu maaş döngüsü zaten işlenmiş, tekrarlama yapılmıyor")
             return
         }
+
+        Log.d(TAG, "Yeni maaş döngüsü başlıyor - otomatik işlemler çalıştırılıyor")
 
         val isAutoSavingEnabled = repository.isAutoSavingEnabled().first()
         val isAutoBackupEnabled = repository.isAutoBackupEnabled().first()
 
         unlockAchievement("PAYDAY_HYPE")
 
+        // GELIŞTIRILMIŞ: Önceki döngü analizi ve başarım kontrolleri
         val previousCycleStartDate = result.cycleStartDate.toDate()
         val previousCycleEndDate = result.cycleEndDate.toDate()
         val salary = repository.getSalaryAmount().first()
         val expenses = repository.getTotalExpensesBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
+        val savings = repository.getTotalSavingsBetweenDates(previousCycleStartDate, previousCycleEndDate).first() ?: 0.0
+        
+        Log.d(TAG, "Önceki döngü analizi - Maaş: $salary, Harcama: $expenses, Birikim: $savings")
+        
         if (salary > expenses) {
             unlockAchievement("BUDGET_WIZARD")
             val consecutivePositiveCycles = (repository.getConsecutivePositiveCycles().first() ?: 0) + 1
             repository.saveConsecutivePositiveCycles(consecutivePositiveCycles)
+            Log.d(TAG, "Pozitif döngü: $consecutivePositiveCycles ardışık döngü")
             if (consecutivePositiveCycles >= 3) {
                 unlockAchievement("CYCLE_CHAMPION")
             }
         } else {
             repository.saveConsecutivePositiveCycles(0)
+            Log.d(TAG, "Negatif döngü - ardışık pozitif döngü sayacı sıfırlandı")
         }
 
+        // GELIŞTIRILMIŞ: Akıllı otomatik tasarruf dağıtımı
         if (isAutoSavingEnabled) {
             val monthlySavings = repository.getMonthlySavingsAmount().first()
             if (monthlySavings > 0) {
+                Log.d(TAG, "Otomatik tasarruf dağıtımı başlatılıyor: $monthlySavings TL")
                 distributeSavingsToGoals(monthlySavings.toDouble())
+            } else {
+                Log.d(TAG, "Otomatik tasarruf etkin ama hedef tutar 0")
             }
         }
 
+        // Tekrarlayan harcamaları ekle
         val templates = repository.getRecurringTransactionTemplates().first()
-        templates.forEach { template ->
-            val newTransaction = Transaction(
-                name = template.name,
-                amount = template.amount,
-                date = Date(),
-                categoryId = template.categoryId,
-                isRecurringTemplate = false
-            )
-            repository.insertTransaction(newTransaction)
+        if (templates.isNotEmpty()) {
+            Log.d(TAG, "${templates.size} tekrarlayan harcama ekleniyor")
+            templates.forEach { template ->
+                val newTransaction = Transaction(
+                    name = template.name,
+                    amount = template.amount,
+                    date = Date(),
+                    categoryId = template.categoryId,
+                    isRecurringTemplate = false
+                )
+                repository.insertTransaction(newTransaction)
+            }
         }
 
+        // Otomatik yedekleme
         if (isAutoBackupEnabled) {
+            Log.d(TAG, "Otomatik yedekleme başlatılıyor")
             performAutoBackup()
         }
 
         repository.saveLastProcessedPayday(currentPaydayDate)
+        Log.d(TAG, "Maaş döngüsü işlemleri tamamlandı")
 
         loadData()
     }
 
     private suspend fun distributeSavingsToGoals(totalSavingsAmount: Double) {
-        val goals = repository.getGoals().first()
-            .filter { it.savedAmount < it.targetAmount }
-            .sortedBy { (it.targetAmount - it.savedAmount) } // En az ihtiyacı olandan başla
-            .toMutableList()
-
-        if (goals.isEmpty()) return
-        var remainingSavings = totalSavingsAmount
-
-        for (goal in goals) {
-            if (remainingSavings <= 0) break
-
-            val neededForThisGoal = goal.targetAmount - goal.savedAmount
-            val amountToAdd = min(remainingSavings, neededForThisGoal)
-
-            if (amountToAdd > 0) {
-                val updatedGoal = goal.copy(savedAmount = goal.savedAmount + amountToAdd)
-
-                val allGoals = repository.getGoals().first().toMutableList()
+        val allGoals = repository.getGoals().first().toMutableList()
+        val eligibleGoals = allGoals.filter { it.savedAmount < it.targetAmount && it.portion > 0 }
+        
+        if (eligibleGoals.isEmpty()) return
+        
+        // Toplam oran kontrolü
+        val totalAllocation = eligibleGoals.sumOf { it.portion }
+        if (totalAllocation == 0) return
+        
+        Log.d(TAG, "Otomatik hedef dağıtımı başlıyor. Toplam miktar: $totalSavingsAmount")
+        
+        for (goal in eligibleGoals) {
+            // Bu hedefe düşen pay = (hedefin oranı / toplam oran) * toplam tasarruf
+            val allocatedAmount = (goal.portion.toDouble() / totalAllocation.toDouble()) * totalSavingsAmount
+            
+            // Hedefe gerçekten ihtiyaç duyulan miktar
+            val neededAmount = goal.targetAmount - goal.savedAmount
+            
+            // Eklenecek nihai miktar (ihtiyaçtan fazla eklenmez)
+            val finalAmountToAdd = min(allocatedAmount, neededAmount)
+            
+            if (finalAmountToAdd > 0) {
+                val updatedGoal = goal.copy(savedAmount = goal.savedAmount + finalAmountToAdd)
+                
                 val index = allGoals.indexOfFirst { it.id == updatedGoal.id }
                 if (index != -1) {
                     allGoals[index] = updatedGoal
-                    repository.saveGoals(allGoals)
                 }
-
+                
                 val transaction = Transaction(
                     name = context.getString(R.string.auto_savings_transaction_name, goal.name),
-                    amount = amountToAdd,
+                    amount = finalAmountToAdd,
                     date = Date(),
                     categoryId = ExpenseCategory.SAVINGS.ordinal,
                     isRecurringTemplate = false
                 )
                 repository.insertTransaction(transaction)
-                remainingSavings -= amountToAdd
+                
+                Log.d(TAG, "${goal.name} hedefine ${finalAmountToAdd} TL otomatik aktarıldı (Oran: %${goal.portion})")
             }
         }
+        
+        // Güncellenmiş hedefleri kaydet
+        repository.saveGoals(allGoals)
     }
 
     private fun performAutoBackup() {
@@ -431,11 +461,24 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val goal = currentGoals[goalIndex]
         val availableFunds = currentState.actualRemainingAmountForGoals
 
+        // GELIŞTIRILMIŞ: Kullanıcı deneyimi iyileştirmeleri
+        if (availableFunds <= 0) {
+            // Yetersiz bakiye durumu için özel hata mesajı
+            Log.w(TAG, "Hedefe para ekleme işlemi reddedildi: Yetersiz bakiye")
+            return@launch
+        }
+
+        if (amountToAdd <= 0) {
+            Log.w(TAG, "Hedefe para ekleme işlemi reddedildi: Geçersiz tutar")
+            return@launch
+        }
+
         // --- DÜZELTME: Eklenecek nihai tutar, 3 kritere göre belirleniyor ---
         val neededAmount = goal.targetAmount - goal.savedAmount
         val finalAmountToAdd = minOf(amountToAdd, neededAmount, availableFunds)
 
         if (finalAmountToAdd <= 0) {
+            Log.w(TAG, "Hedefe para ekleme işlemi reddedildi: Eklenecek tutar 0 veya negatif")
             return@launch
         }
 
@@ -452,8 +495,10 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         )
         repository.insertTransaction(transaction)
 
+        // Başarım kontrolleri
         if (updatedGoal.savedAmount >= updatedGoal.targetAmount) {
             unlockAchievement("GOAL_COMPLETED")
+            Log.d(TAG, "${goal.name} hedefi tamamlandı!")
         }
 
         val totalSavedAmount = currentGoals.sumOf { it.savedAmount }
@@ -461,6 +506,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (totalSavedAmount >= 10000) unlockAchievement("SAVER_LV2")
         if (totalSavedAmount >= 50000) unlockAchievement("SAVER_LV3")
 
+        Log.d(TAG, "${goal.name} hedefine ${finalAmountToAdd} TL eklendi")
         loadData()
     }
 

@@ -84,6 +84,12 @@ object PaydayCalculator {
 
             val daysLeft = ChronoUnit.DAYS.between(today, nextPayday)
             val isPayday = daysLeft <= 0L
+            
+            // DÜZELTME: Maaş günü yeni döngünün başlangıcı olarak kabul edilir
+            // Eğer bugün maaş günüyse, döngüyü bugünden başlat
+            val actualCycleStart = if (isPayday) today else previousPayday
+            val actualCycleEnd = if (isPayday) originalNextPayday.minusDays(1) else originalNextPayday.minusDays(1)
+            
             // Döngü süresini orijinal (ayarlanmamış) tarihlere göre hesapla
             val totalDaysInCycle = ChronoUnit.DAYS.between(previousPayday, originalNextPayday)
 
@@ -91,8 +97,8 @@ object PaydayCalculator {
                 daysLeft = daysLeft,
                 isPayday = isPayday,
                 totalDaysInCycle = totalDaysInCycle,
-                cycleStartDate = previousPayday,
-                cycleEndDate = originalNextPayday.minusDays(1)
+                cycleStartDate = actualCycleStart,
+                cycleEndDate = actualCycleEnd
             )
         } catch (e: Exception) {
             e.printStackTrace()

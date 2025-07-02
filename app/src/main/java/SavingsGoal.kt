@@ -8,5 +8,6 @@ data class SavingsGoal(
     val targetAmount: Double,
     val savedAmount: Double = 0.0,
     val targetDate: Long? = null,
-    val categoryId: Int = SavingsGoalCategory.OTHER.ordinal // *** YENİ EKLENDİ ***
+    val categoryId: Int = SavingsGoalCategory.OTHER.ordinal,
+    val portion: Int = 0 // Dağıtım oranı (0-100 arası)
 )
