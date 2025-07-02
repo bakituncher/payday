@@ -128,6 +128,8 @@ class MainActivity : AppCompatActivity() {
                 val backupData = repository.getAllDataForBackup()
                 val backupJson = gson.toJson(backupData)
                 googleDriveManager.uploadFileContent(backupJson)
+                // Hatanın olduğu yer burasıydı. Artık fonksiyon public olduğu için sorunsuz çalışacaktır.
+                repository.saveLastBackupTimestamp(System.currentTimeMillis())
                 viewModel.triggerBackupHeroAchievement()
                 showSnackbar(getString(R.string.backup_success))
             } catch (e: Exception) {
@@ -278,7 +280,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // YENİ: ViewModel'den gelen Toast mesajlarını dinle
         viewModel.toastEvent.observe(this) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()

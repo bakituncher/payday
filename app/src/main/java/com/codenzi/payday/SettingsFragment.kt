@@ -5,6 +5,7 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
+import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -77,10 +78,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         setupPayPeriodPreference()
         setupPaydayPreference()
-        setupCurrencyPreference(PaydayRepository.KEY_SALARY.name)
-        setupCurrencyPreference(PaydayRepository.KEY_MONTHLY_SAVINGS.name)
+        setupCurrencyPreference("salary")
+        setupCurrencyPreference("monthly_savings")
         setupAutoBackupPreference()
-        setupAutoSavingPreference() // EKSİK OLAN FONKSİYON ÇAĞRISI EKLENDİ
+        setupAutoSavingPreference()
     }
 
     override fun onResume() {
@@ -89,16 +90,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
         updateAccountSection(GoogleSignIn.getLastSignedInAccount(requireContext()))
     }
 
-    // YENİ EKLENEN FONKSİYON
     private fun setupAutoSavingPreference() {
-        val autoSavingPref = findPreference<SwitchPreferenceCompat>(PaydayRepository.KEY_AUTO_SAVING_ENABLED.name)
-
-        // Anahtarın mevcut durumunu hafızadan okuyup UI'a yansıt
+        val autoSavingPref = findPreference<SwitchPreferenceCompat>("auto_saving_enabled")
         lifecycleScope.launch {
             autoSavingPref?.isChecked = repository.isAutoSavingEnabled().first()
         }
-
-        // Anahtarın durumu değiştiğinde bunu hafızaya kaydet
         autoSavingPref?.setOnPreferenceChangeListener { _, newValue ->
             lifecycleScope.launch {
                 repository.saveAutoSavingEnabled(newValue as Boolean)
@@ -149,7 +145,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
             googleAccountPreference?.summary = getString(R.string.google_sign_in_summary)
             deleteAccountPreference?.isVisible = false
         }
-        setupAutoBackupPreference()
+        // Hesabın durumuna göre yedekleme özetini güncelle
+        updateAutoBackupSummary()
     }
 
     private fun showSignOutDialog() {
@@ -190,19 +187,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun setupAutoBackupPreference() {
-        val autoBackupPref = findPreference<SwitchPreferenceCompat>(PaydayRepository.KEY_AUTO_BACKUP_ENABLED.name)
-        val account = GoogleSignIn.getLastSignedInAccount(requireContext())
-
-        autoBackupPref?.isEnabled = (account != null)
-
-        if (account == null) {
-            autoBackupPref?.summary = "Bu özelliği kullanmak için Google ile giriş yapmalısınız."
-        } else {
-            autoBackupPref?.summary = "Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
-        }
+        val autoBackupPref = findPreference<SwitchPreferenceCompat>("auto_backup_enabled")
 
         lifecycleScope.launch {
+            val account = GoogleSignIn.getLastSignedInAccount(requireContext())
             val isEnabled = repository.isAutoBackupEnabled().first()
+            autoBackupPref?.isEnabled = (account != null)
             autoBackupPref?.isChecked = isEnabled && (account != null)
         }
 
@@ -219,13 +209,48 @@ class SettingsFragment : PreferenceFragmentCompat() {
             val themePreference = findPreference<ListPreference>("theme")
             themePreference?.value = repository.getTheme().first()
             updatePaydaySummary()
-            updateCurrencySummary(PaydayRepository.KEY_SALARY.name, repository.getSalaryAmount().first())
-            updateCurrencySummary(PaydayRepository.KEY_MONTHLY_SAVINGS.name, repository.getMonthlySavingsAmount().first())
+            updateCurrencySummary("salary", repository.getSalaryAmount().first())
+            updateCurrencySummary("monthly_savings", repository.getMonthlySavingsAmount().first())
+            // YENİ: Yedekleme özeti de güncelleniyor.
+            updateAutoBackupSummary()
+        }
+    }
+
+    // YENİ FONKSİYON: Son yedekleme zamanını gösteren özet metnini günceller.
+    private fun updateAutoBackupSummary() {
+        lifecycleScope.launch {
+            val autoBackupPref = findPreference<SwitchPreferenceCompat>("auto_backup_enabled") ?: return@launch
+            val account = GoogleSignIn.getLastSignedInAccount(requireContext())
+
+            if (account == null) {
+                autoBackupPref.summary = getString(R.string.google_sign_in_summary)
+                return@launch
+            }
+
+            val lastBackupTimestamp = repository.getLastBackupTimestamp().first()
+            if (lastBackupTimestamp > 0) {
+                autoBackupPref.summary = "Son yedekleme: ${formatTimestamp(lastBackupTimestamp)}"
+            } else {
+                autoBackupPref.summary = getString(R.string.auto_backup_summary)
+            }
+        }
+    }
+
+    // YENİ FONKSİYON: Zaman damgasını (timestamp) okunabilir bir formata çevirir.
+    private fun formatTimestamp(timestamp: Long): String {
+        val now = System.currentTimeMillis()
+
+        return if (DateUtils.isToday(timestamp)) {
+            "Bugün, ${android.text.format.DateFormat.getTimeFormat(requireContext()).format(Date(timestamp))}"
+        } else {
+            val dateFormat = android.text.format.DateFormat.getMediumDateFormat(requireContext())
+            val timeFormat = android.text.format.DateFormat.getTimeFormat(requireContext())
+            "${dateFormat.format(Date(timestamp))}, ${timeFormat.format(Date(timestamp))}"
         }
     }
 
     private fun setupPayPeriodPreference() {
-        val payPeriodPref = findPreference<ListPreference>(PaydayRepository.KEY_PAY_PERIOD.name)
+        val payPeriodPref = findPreference<ListPreference>("pay_period")
         payPeriodPref?.setOnPreferenceChangeListener { _, _ ->
             lifecycleScope.launch {
                 repository.savePayday(-1)
@@ -235,7 +260,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun setupPaydayPreference() {
-        findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE.name)?.setOnPreferenceClickListener {
+        findPreference<Preference>("payday")?.setOnPreferenceClickListener {
             lifecycleScope.launch {
                 showPaydaySelectionDialog()
             }
@@ -252,9 +277,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         preference?.onPreferenceChangeListener = Preference.OnPreferenceChangeListener { pref, newValue ->
             val valueAsLong = (newValue as? String)?.toLongOrNull() ?: 0L
             lifecycleScope.launch {
-                if (key == PaydayRepository.KEY_SALARY.name) {
+                if (key == "salary") {
                     repository.saveSalary(valueAsLong)
-                } else if (key == PaydayRepository.KEY_MONTHLY_SAVINGS.name) {
+                } else if (key == "monthly_savings") {
                     repository.saveMonthlySavings(valueAsLong)
                 }
                 pref.summary = formatToCurrency(valueAsLong)
@@ -264,7 +289,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private suspend fun updatePaydaySummary() {
-        val paydayPref = findPreference<Preference>(PaydayRepository.KEY_PAYDAY_VALUE.name)
+        val paydayPref = findPreference<Preference>("payday")
         val period = repository.getPayPeriod().first()
         val dayValue = repository.getPaydayValue().first()
         val dateString = repository.getBiWeeklyRefDateString().first()

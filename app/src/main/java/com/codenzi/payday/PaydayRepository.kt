@@ -102,7 +102,7 @@ class PaydayRepository(private val context: Context) {
     suspend fun clearRestoreValidationFlag() = prefs.edit { it.remove(KEY_RESTORE_VALIDATION_NEEDED) }
 
 
-    private suspend fun saveLastBackupTimestamp(timestamp: Long) {
+    suspend fun saveLastBackupTimestamp(timestamp: Long) {
         prefs.edit { it[KEY_LAST_BACKUP_TIMESTAMP] = timestamp }
     }
 

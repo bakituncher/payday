@@ -6,6 +6,7 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Date
+import kotlin.math.min
 
 data class PaydayResult(
     val daysLeft: Long,
@@ -18,96 +19,72 @@ data class PaydayResult(
 object PaydayCalculator {
 
     fun calculate(
+        dateToCheck: LocalDate,
         payPeriod: PayPeriod,
         paydayValue: Int,
         biWeeklyRefDateString: String?,
         weekendAdjustmentEnabled: Boolean
     ): PaydayResult? {
         try {
-            val today = LocalDate.now()
-            var nextPayday: LocalDate
-            var previousPayday: LocalDate
+            val currentCyclePayday: LocalDate
+            val previousCyclePayday: LocalDate
 
             when (payPeriod) {
                 PayPeriod.MONTHLY -> {
-                    if (paydayValue < 1) return null
-                    val dayInCurrentMonth = minOf(paydayValue, today.month.length(today.isLeapYear))
-                    var thisMonthPayday = today.withDayOfMonth(dayInCurrentMonth)
+                    if (paydayValue !in 1..31) return null
 
-                    // DÜZELTME: Maaş günü hatasını gidermek için mantık değişikliği.
-                    // Eğer bugün maaş günü veya sonrasıysa, bir sonraki maaş günü gelecek ayınkidir.
-                    if (today.isAfter(thisMonthPayday) || today.isEqual(thisMonthPayday)) {
-                        val nextMonthDate = today.plusMonths(1)
-                        val dayInNextMonth = minOf(paydayValue, nextMonthDate.lengthOfMonth())
-                        nextPayday = nextMonthDate.withDayOfMonth(dayInNextMonth)
-                        previousPayday = thisMonthPayday
+                    val thisMonthPayday = dateToCheck.withDayOfMonth(min(paydayValue, dateToCheck.month.length(dateToCheck.isLeapYear)))
+
+                    if (dateToCheck.isAfter(thisMonthPayday)) {
+                        val nextMonth = dateToCheck.plusMonths(1)
+                        currentCyclePayday = nextMonth.withDayOfMonth(min(paydayValue, nextMonth.month.length(nextMonth.isLeapYear)))
+                        previousCyclePayday = thisMonthPayday
                     } else {
-                        nextPayday = thisMonthPayday
-                        val prevMonthDate = today.minusMonths(1)
-                        val dayInPrevMonth = minOf(paydayValue, prevMonthDate.lengthOfMonth())
-                        previousPayday = prevMonthDate.withDayOfMonth(dayInPrevMonth)
+                        currentCyclePayday = thisMonthPayday
+                        val prevMonth = dateToCheck.minusMonths(1)
+                        previousCyclePayday = prevMonth.withDayOfMonth(min(paydayValue, prevMonth.month.length(prevMonth.isLeapYear)))
                     }
                 }
                 PayPeriod.WEEKLY -> {
-                    if (paydayValue < 1) return null
+                    if (paydayValue !in 1..7) return null
                     val payDayOfWeek = DayOfWeek.of(paydayValue)
-                    // DÜZELTME: nextOrSame, eğer bugün maaş günüyse bugünü verir, bu da döngüyü bozar.
-                    // Bu yüzden 'next' kullanarak her zaman bir sonraki günü hedefliyoruz.
-                    nextPayday = today.with(TemporalAdjusters.next(payDayOfWeek))
-                    // Eğer bugün maaş günüyse, bir sonraki maaş günü 7 gün sonradır.
-                    if(today.dayOfWeek == payDayOfWeek) {
-                        nextPayday = today.plusWeeks(1)
-                    }
-                    previousPayday = nextPayday.minusWeeks(1)
+                    currentCyclePayday = dateToCheck.with(TemporalAdjusters.nextOrSame(payDayOfWeek))
+                    previousCyclePayday = currentCyclePayday.minusWeeks(1)
                 }
                 PayPeriod.BI_WEEKLY -> {
                     val referenceDate = LocalDate.parse(biWeeklyRefDateString) ?: return null
                     var tempPayday = referenceDate
-                    while (tempPayday.isBefore(today) || tempPayday.isEqual(today)) {
+                    while (tempPayday.isBefore(dateToCheck)) {
                         tempPayday = tempPayday.plusDays(14)
                     }
-                    nextPayday = tempPayday
-                    previousPayday = nextPayday.minusDays(14)
+                    currentCyclePayday = tempPayday
+                    previousCyclePayday = currentCyclePayday.minusDays(14)
                 }
             }
 
-            val originalNextPayday = nextPayday
-            var adjustedNextPayday = nextPayday
-
+            var adjustedPayday = currentCyclePayday
             if (weekendAdjustmentEnabled) {
-                if (adjustedNextPayday.dayOfWeek == DayOfWeek.SATURDAY) {
-                    adjustedNextPayday = adjustedNextPayday.minusDays(1)
-                } else if (adjustedNextPayday.dayOfWeek == DayOfWeek.SUNDAY) {
-                    adjustedNextPayday = adjustedNextPayday.minusDays(2)
-                }
+                if (adjustedPayday.dayOfWeek == DayOfWeek.SATURDAY) adjustedPayday = adjustedPayday.minusDays(1)
+                if (adjustedPayday.dayOfWeek == DayOfWeek.SUNDAY) adjustedPayday = adjustedPayday.minusDays(2)
             }
 
-            val daysLeft = ChronoUnit.DAYS.between(today, adjustedNextPayday)
-            val isPayday = today.isEqual(adjustedNextPayday)
+            val isPaydayForCheckedDate = dateToCheck.isEqual(adjustedPayday)
+            val daysLeft = if(isPaydayForCheckedDate) 0 else ChronoUnit.DAYS.between(dateToCheck, adjustedPayday)
 
-            // DÜZELTME: Döngü başlangıç ve bitiş tarihlerini netleştirme.
-            // Mevcut döngü, bir önceki maaş gününde başlar ve bir sonraki maaş gününden bir gün önce biter.
-            val cycleStartDate = if (today.isBefore(previousPayday)) {
-                // Bu durum normalde olmamalı ama güvenlik için eklendi.
-                previousPayday.minusDays(ChronoUnit.DAYS.between(previousPayday, originalNextPayday))
-            } else {
-                previousPayday
-            }
+            val cycleStartDate = previousCyclePayday
+            val cycleEndDate = currentCyclePayday.minusDays(1)
 
             return PaydayResult(
                 daysLeft = daysLeft,
-                isPayday = isPayday,
-                totalDaysInCycle = ChronoUnit.DAYS.between(cycleStartDate, originalNextPayday),
+                isPayday = isPaydayForCheckedDate,
+                totalDaysInCycle = ChronoUnit.DAYS.between(previousCyclePayday, currentCyclePayday),
                 cycleStartDate = cycleStartDate,
-                cycleEndDate = originalNextPayday.minusDays(1)
+                cycleEndDate = cycleEndDate
             )
+
         } catch (e: Exception) {
             e.printStackTrace()
             return null
         }
     }
-}
-
-fun LocalDate.toDate(): Date {
-    return Date.from(this.atStartOfDay(ZoneId.systemDefault()).toInstant())
 }

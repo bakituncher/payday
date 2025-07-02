@@ -11,10 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class PaydayWidgetProvider : AppWidgetProvider() {
 
-    // Widget'ın kendi CoroutineScope'u
     private val appWidgetScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onUpdate(
@@ -44,14 +44,15 @@ class PaydayWidgetProvider : AppWidgetProvider() {
 
             val repository = PaydayRepository(context)
 
-            // Flow'lardan verileri asenkron olarak 'first()' ile al
             val payPeriod = repository.getPayPeriod().first()
             val paydayValue = repository.getPaydayValue().first()
             val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
-            val salary = repository.getSalaryAmount().first()
             val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
 
+            // DÜZELTME: 'calculate' fonksiyonu artık ilk parametre olarak tarihi bekliyor.
+            // Widget'ın her zaman bugünün durumunu göstermesi için LocalDate.now() gönderiyoruz.
             val result = PaydayCalculator.calculate(
+                dateToCheck = LocalDate.now(), // EKSİK OLAN PARAMETRE EKLENDİ
                 payPeriod = payPeriod,
                 paydayValue = paydayValue,
                 biWeeklyRefDateString = biWeeklyRefDate,
