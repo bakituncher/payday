@@ -49,6 +49,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private val _newAchievementEvent = MutableLiveData<Event<Achievement>>()
     val newAchievementEvent: LiveData<Event<Achievement>> = _newAchievementEvent
 
+    private val _goalCompletedEvent = MutableLiveData<Event<SavingsGoal>>()
+    val goalCompletedEvent: LiveData<Event<SavingsGoal>> = _goalCompletedEvent
+
     private val _dailySpendingData = MutableLiveData<Pair<List<BarEntry>, List<String>>>()
     val dailySpendingData: LiveData<Pair<List<BarEntry>, List<String>>> = _dailySpendingData
 
@@ -365,21 +368,23 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addOrUpdateGoal(name: String, amount: Double, existingGoalId: String?, targetDate: Long?, categoryId: Int, portion: Int) = viewModelScope.launch {
         if (name.isNotBlank() && amount > 0) {
-            val currentGoals = repository.getGoals().first().toMutableList()
+            val oldGoals = repository.getGoals().first()
+            val newGoals = oldGoals.toMutableList()
 
             if (existingGoalId == null) {
-                currentGoals.add(SavingsGoal(name = name, targetAmount = amount, categoryId = categoryId, targetDate = targetDate, portion = portion))
+                newGoals.add(SavingsGoal(name = name, targetAmount = amount, categoryId = categoryId, targetDate = targetDate, portion = portion))
                 unlockAchievement("FIRST_GOAL")
-                if (currentGoals.size >= 3) {
+                if (newGoals.size >= 3) {
                     unlockAchievement("COLLECTOR")
                 }
             } else {
-                val index = currentGoals.indexOfFirst { it.id == existingGoalId }
+                val index = newGoals.indexOfFirst { it.id == existingGoalId }
                 if (index != -1) {
-                    currentGoals[index] = currentGoals[index].copy(name = name, targetAmount = amount, categoryId = categoryId, targetDate = targetDate, portion = portion)
+                    newGoals[index] = newGoals[index].copy(name = name, targetAmount = amount, categoryId = categoryId, targetDate = targetDate, portion = portion)
                 }
             }
-            repository.saveGoals(currentGoals)
+            repository.saveGoals(newGoals)
+            checkAndNotifyForCompletedGoals(oldGoals, newGoals)
             loadData()
         }
     }
@@ -409,27 +414,25 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun distributeSavingsToGoals(totalSavingsAmount: Double) {
-        val allGoals = repository.getGoals().first()
-        val activeGoals = allGoals.filter { it.savedAmount < it.targetAmount }
-        if (activeGoals.isEmpty()) return
+        val oldGoals = repository.getGoals().first()
+        if (oldGoals.none { !it.isComplete }) return
 
+        val activeGoals = oldGoals.filter { !it.isComplete }
         val totalPortion = activeGoals.sumOf { it.portion }
         if (totalPortion <= 0) return
 
-        val updatedGoals = allGoals.toMutableList()
+        val newGoals = oldGoals.toMutableList()
 
         activeGoals.forEach { goal ->
-            val goalShare = (goal.portion.toDouble() / totalPortion) * totalSavingsAmount
-            val neededForGoal = goal.targetAmount - goal.savedAmount
-            val amountToAdd = min(goalShare, neededForGoal)
+            val goalIndex = newGoals.indexOfFirst { it.id == goal.id }
+            if (goalIndex != -1) {
+                val currentGoal = newGoals[goalIndex]
+                val goalShare = (currentGoal.portion.toDouble() / totalPortion) * totalSavingsAmount
+                val neededForGoal = currentGoal.targetAmount - currentGoal.savedAmount
+                val amountToAdd = min(goalShare, neededForGoal)
 
-            if (amountToAdd > 0) {
-                val goalIndex = updatedGoals.indexOfFirst { it.id == goal.id }
-                if (goalIndex != -1) {
-                    val currentGoal = updatedGoals[goalIndex]
-                    val newSavedAmount = currentGoal.savedAmount + amountToAdd
-                    updatedGoals[goalIndex] = currentGoal.copy(savedAmount = newSavedAmount)
-
+                if (amountToAdd > 0) {
+                    newGoals[goalIndex] = currentGoal.copy(savedAmount = currentGoal.savedAmount + amountToAdd)
                     val transaction = Transaction(
                         name = context.getString(R.string.auto_savings_transaction_name, goal.name),
                         amount = amountToAdd,
@@ -437,15 +440,14 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                         categoryId = ExpenseCategory.SAVINGS.ordinal
                     )
                     repository.insertTransaction(transaction)
-
-                    if (newSavedAmount >= currentGoal.targetAmount) {
-                        unlockAchievement("GOAL_COMPLETED")
-                    }
                 }
             }
         }
-        repository.saveGoals(updatedGoals)
+        repository.saveGoals(newGoals)
+        checkAndNotifyForCompletedGoals(oldGoals, newGoals)
+        loadData()
     }
+
 
     private fun performAutoBackup() {
         viewModelScope.launch {
@@ -464,25 +466,25 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addFundsToGoal(goalId: String, amountToAdd: Double) = viewModelScope.launch {
         val currentState = _uiState.value ?: return@launch
-        val currentGoals = repository.getGoals().first().toMutableList()
-
-        val goalIndex = currentGoals.indexOfFirst { it.id == goalId }
-        if (goalIndex == -1) return@launch
-
         if (amountToAdd > currentState.actualRemainingAmountForGoals) {
             _toastEvent.postValue(Event(context.getString(R.string.insufficient_funds_error)))
             return@launch
         }
 
-        val goal = currentGoals[goalIndex]
+        val oldGoals = repository.getGoals().first()
+        val newGoals = oldGoals.toMutableList()
+        val goalIndex = newGoals.indexOfFirst { it.id == goalId }
+
+        if (goalIndex == -1 || newGoals[goalIndex].isComplete) return@launch
+
+        val goal = newGoals[goalIndex]
         val neededAmount = goal.targetAmount - goal.savedAmount
         val finalAmountToAdd = min(amountToAdd, neededAmount)
 
         if (finalAmountToAdd <= 0) return@launch
 
-        val updatedGoal = goal.copy(savedAmount = goal.savedAmount + finalAmountToAdd)
-        currentGoals[goalIndex] = updatedGoal
-        repository.saveGoals(currentGoals)
+        newGoals[goalIndex] = goal.copy(savedAmount = goal.savedAmount + finalAmountToAdd)
+        repository.saveGoals(newGoals)
 
         val transaction = Transaction(
             name = context.getString(R.string.add_funds_to_goal_transaction_name, goal.name),
@@ -492,16 +494,24 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         )
         repository.insertTransaction(transaction)
 
-        if (updatedGoal.savedAmount >= updatedGoal.targetAmount) {
-            unlockAchievement("GOAL_COMPLETED")
-        }
+        checkAndNotifyForCompletedGoals(oldGoals, newGoals)
 
-        val totalSavedAmount = currentGoals.sumOf { it.savedAmount }
+        val totalSavedAmount = newGoals.sumOf { it.savedAmount }
         if (totalSavedAmount >= 1000) unlockAchievement("SAVER_LV1")
         if (totalSavedAmount >= 10000) unlockAchievement("SAVER_LV2")
         if (totalSavedAmount >= 50000) unlockAchievement("SAVER_LV3")
 
         loadData()
+    }
+
+    private fun checkAndNotifyForCompletedGoals(oldGoals: List<SavingsGoal>, newGoals: List<SavingsGoal>) {
+        newGoals.forEach { newGoal ->
+            val oldGoal = oldGoals.find { it.id == newGoal.id }
+            if (newGoal.isComplete && (oldGoal == null || !oldGoal.isComplete)) {
+                _goalCompletedEvent.postValue(Event(newGoal))
+                unlockAchievement("GOAL_COMPLETED")
+            }
+        }
     }
 
 

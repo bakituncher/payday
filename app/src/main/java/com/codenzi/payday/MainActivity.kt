@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
                 if (backupJson != null) {
                     val backupData = gson.fromJson(backupJson, BackupData::class.java)
                     repository.restoreDataFromBackup(backupData)
-                    viewModel.loadData() // Veri yüklemesini yeniden tetikle
+                    viewModel.loadData()
                     showSnackbar(getString(R.string.restore_success))
                 } else {
                     showSnackbar(getString(R.string.restore_failed), isError = true)
@@ -266,6 +266,12 @@ class MainActivity : AppCompatActivity() {
         viewModel.widgetUpdateEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { updateAllWidgets() } }
         viewModel.newAchievementEvent.observe(this) { event -> event.getContentIfNotHandled()?.let { showAchievementSnackbar(it) } }
 
+        viewModel.goalCompletedEvent.observe(this) { event ->
+            event.getContentIfNotHandled()?.let { goal ->
+                showGoalCompletedDialog(goal)
+            }
+        }
+
         viewModel.showRestoreWarningEvent.observe(this) { event ->
             event.getContentIfNotHandled()?.let {
                 MaterialAlertDialogBuilder(this)
@@ -292,6 +298,22 @@ class MainActivity : AppCompatActivity() {
             binding.transactionsRecyclerView.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
             binding.transactionsTitle.visibility = if (areTransactionsEmpty) View.GONE else View.VISIBLE
         }
+    }
+
+    private fun showGoalCompletedDialog(goal: SavingsGoal) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🎉 Hedef Tamamlandı! 🎉")
+            .setMessage("Tebrikler! '${goal.name}' hedefinizi başarıyla tamamladınız. Şimdi ne yapmak istersiniz?")
+            .setCancelable(false)
+            .setPositiveButton("Harika! Hedefi Bitir") { _, _ ->
+                viewModel.deleteGoal(goal)
+                showSnackbar("'${goal.name}' hedefi tamamlandı olarak işaretlendi.")
+            }
+            .setNegativeButton("Parayı Geri Yükle") { _, _ ->
+                viewModel.releaseFundsFromGoal(goal)
+                showSnackbar("'${goal.name}' hedefinden biriktirilen para hesaba geri aktarıldı.")
+            }
+            .show()
     }
 
     private fun updateUi(state: PaydayUiState) {
