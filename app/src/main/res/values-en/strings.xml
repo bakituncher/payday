@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Payday</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="ok">OK</string>
+    <string name="currency_symbol">$</string>
+    <string name="initial_amount">0.00</string>
+    <string name="category">Category</string>
+    <string name="achievements_title">Achievements</string>
+
+    <string name="next_payday_countdown">UNTIL NEXT PAYDAY</string>
+    <string name="days_left_suffix">DAYS LEFT</string>
+    <string name="day_not_set_placeholder">--</string>
+    <string name="payday_is_today">TODAY IS PAYDAY!</string>
+    <string name="welcome_message">Complete the setup to get started.</string>
+    <string name="financial_summary">Financial Summary</string>
+    <string name="income">Income</string>
+    <string name="expenses">Expenses</string>
+    <string name="savings">Savings</string>
+    <string name="remaining">Remaining</string>
+    <string name="title_savings_goals">Savings Goals</string>
+    <string name="recent_transactions">Recent Transactions</string>
+    <string name="no_transactions_yet">You haven\'t added any transactions yet.</string>
+    <string name="carry_over">Carried Over</string>
+    <string name="carry_over_debt">Carried Over Debt</string>
+    <string name="total_savings_label">Total: %s</string>
+    <string name="greeting_morning">Good morning</string>
+    <string name="greeting_afternoon">Good afternoon</string>
+    <string name="greeting_evening">Good evening</string>
+    <string name="goal_completed_dialog_title">🎉 Goal Completed! 🎉</string>
+    <string name="goal_completed_dialog_message">Congratulations! You have successfully completed your \'%1$s\' goal. What would you like to do now?</string>
+    <string name="goal_completed_dialog_positive">Great! Finish Goal</string>
+    <string name="goal_completed_dialog_negative">Restore Funds</string>
+    <string name="goal_completed_snackbar_message">\'%1$s\' goal marked as complete.</string>
+    <string name="funds_restored_snackbar_message">Funds from \'%1$s\' goal have been restored to your account.</string>
+
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_finish">Finish &amp; Start</string>
+    <string name="onboarding_pay_period_title">How do you get paid?</string>
+    <string name="onboarding_pay_period_subtitle">Start by selecting your pay period.</string>
+    <string name="pay_period_monthly">Monthly</string>
+    <string name="pay_period_bi_weekly">Bi-Weekly</string>
+    <string name="pay_period_weekly">Weekly</string>
+    <string name="onboarding_payday_title">When is your payday?</string>
+    <string name="onboarding_payday_subtitle_monthly">Select the day you get paid each month.</string>
+    <string name="onboarding_payday_subtitle_bi_weekly">Select the date of any upcoming payday.</string>
+    <string name="onboarding_payday_subtitle_weekly">Select which day of the week you get paid.</string>
+    <string name="onboarding_salary_title">Your Monthly Net Salary</string>
+    <string name="onboarding_salary_subtitle">We need this information to calculate your savings.</string>
+    <string name="onboarding_salary_hint">Net Salary (e.g., 3500)</string>
+    <string name="onboarding_savings_title">Your Monthly Savings Goal</string>
+    <string name="onboarding_savings_subtitle">How much do you aim to save each month?</string>
+    <string name="onboarding_savings_hint">Monthly Savings (e.g., 500)</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_payment_title">Payment Information</string>
+    <string name="settings_general_title">General</string>
+    <string name="set_pay_period_button">Pay Period</string>
+    <string name="set_payday_button">Payday</string>
+    <string name="set_salary_button_text">Monthly Salary</string>
+    <string name="set_monthly_savings_button">Monthly Savings</string>
+    <string name="weekend_adjustment_label">Adjust weekend to Friday</string>
+    <string name="weekend_adjustment_summary">If payday falls on a weekend, it will be counted as Friday.</string>
+    <string name="dialog_set_salary_title">Edit Monthly Salary</string>
+    <string name="dialog_set_monthly_savings_title">Edit Monthly Savings</string>
+    <string name="payday_not_set">Not set yet</string>
+    <string name="select_payday_dialog_title">Select Payday</string>
+    <string name="theme_title">App Theme</string>
+    <string name="auto_saving_title">Automatic Goal Savings</string>
+    <string name="auto_saving_summary">Automatically distribute your monthly savings goal to your active goals each pay period.</string>
+    <string name="payday_summary_monthly">Day %1$d of every month</string>
+    <string name="last_backup_label">"Last backup: "</string>
+    <string name="today_label">"Today, "</string>
+    <string name="welcome_back_toast">"Welcome, %1$s"</string>
+    <string name="sign_in_failed_toast">"Sign in failed."</string>
+    <string name="no_backup_found_toast">"No backup found on your Google Drive."</string>
+
+    <string name="account_category_title">Account</string>
+    <string name="profile_title">Profile</string>
+    <string name="google_sign_in_title">Sign in with Google</string>
+    <string name="google_sign_in_summary">Sign in for backup and synchronization.</string>
+    <string name="google_sign_out_title">Google Account (Sign Out)</string>
+    <string name="google_sign_out_confirmation_message">Are you sure you want to sign out of your Google account? Backup and sync features will be disabled.</string>
+    <string name="action_sign_out">Yes, Sign Out</string>
+    <string name="delete_account_title">Delete Account and Data</string>
+    <string name="delete_account_summary">Permanently delete all your app and Google Drive data.</string>
+    <string name="delete_account_confirmation_message">This action cannot be undone. All your local data, settings, and your app backup on Google Drive will be permanently deleted. Are you sure you want to continue?</string>
+    <string name="delete_button_text">Delete</string>
+    <string name="action_backup">Backup</string>
+    <string name="action_restore">Restore</string>
+    <string name="backup_success">Data successfully backed up to Google Drive.</string>
+    <string name="backup_failed">Backup failed.</string>
+    <string name="restore_success">Data successfully restored.</string>
+    <string name="restore_failed">Restore failed or no backup found.</string>
+    <string name="google_sign_in_failed">Google sign-in failed.</string>
+    <string name="auto_backup_prompt_message">Would you like to automatically back up your data to Google Drive regularly? You can change this later in the Settings menu.</string>
+    <string name="yes_turn_on">Yes, Turn On</string>
+    <string name="no_thanks">No, Thanks</string>
+    <string name="backup_found_title">Backup Found</string>
+    <string name="restore_confirmation_message_main">A backup was found on your Google Drive. Do you want to restore your data? (Your current data will be overwritten)</string>
+    <string name="restore_confirmation_message_login">A backup was found on your Google Drive. Do you want to restore your data?</string>
+    <string name="yes_restore">Yes, Restore</string>
+    <string name="no_dont_touch">No, Don\'t Touch</string>
+    <string name="no_start_new">No, Start New</string>
+    <string name="restore_success_login">Your data has been successfully restored.</string>
+    <string name="backup_download_failed_creating_new_profile">Failed to download backup, creating a new profile.</string>
+    <string name="restore_failed_login">Restore failed.</string>
+    <string name="sign_in_required_for_feature">You must sign in with Google to use this feature.</string>
+    <string name="all_data_deleted_and_signed_out">All your data has been deleted and you have been signed out.</string>
+    <string name="sign_out_success_local_data_cleared">Successfully signed out and local data cleared.</string>
+    <string name="dont_show_again">Don\'t ask again</string>
+    <string name="restore_warning_title">Data Check Required</string>
+    <string name="restore_warning_message">Your data has been restored, but some essential settings like salary or pay period seem to be missing. To ensure the app works correctly, please check and update this information on the Settings screen.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="backup_started">Backup started...</string>
+    <string name="restore_started">Restore started...</string>
+    <string name="sign_in_success_and_initial_backup">Sign-in successful. Your initial data is now being backed up...</string>
+    <string name="existing_data_preserved">Your existing data has been preserved.</string>
+    <string name="welcome_message_user">Welcome, %1$s</string>
+    <string name="network_error_please_check_connection">Network error. Please check your internet connection.</string>
+    <string name="login_error_occurred">An error occurred during sign-in.</string>
+    <string name="account_delete_error">"An error occurred while deleting data. Please try again."</string>
+
+    <string name="dialog_add_goal_title">New Savings Goal</string>
+    <string name="dialog_edit_goal_title">Edit Goal</string>
+    <string name="dialog_goal_name_hint">Goal Name (e.g., Vacation)</string>
+    <string name="dialog_goal_amount_hint">Target Amount (e.g., 5000)</string>
+    <string name="toast_invalid_goal_input">Please enter a valid name and amount.</string>
+    <string name="delete_goal_confirmation_title">Delete "%s"?</string>
+    <string name="delete_goal_confirmation_message">This goal will be permanently deleted. This action cannot be undone.</string>
+    <string name="dialog_goal_date_hint">Target Date (Optional)</string>
+    <string name="select_date_button">Select Date</string>
+    <string name="goal_date_info">Target: %1$s (%2$d days left)</string>
+    <string name="auto_savings_transaction_name">Auto-transferred to \'%1$s\' goal</string>
+    <string name="auto_savings_general">General Auto-Savings</string>
+    <string name="release_funds_title">Funds Found</string>
+    <string name="release_funds_message">%2$s has been saved for the \'%1$s\' goal. To delete the goal, this money must first be added back to your spendable balance.</string>
+    <string name="release_funds_button">Release Funds and Delete</string>
+    <string name="goal_refund_transaction_name">Refund from \'%1$s\' goal</string>
+    <string name="add_funds">Add Funds</string>
+    <string name="edit_goal">Edit Goal</string>
+    <string name="delete_goal">Delete Goal</string>
+    <string name="insufficient_funds_error">Insufficient funds!</string>
+    <string name="please_enter_valid_amount">Please enter a valid amount.</string>
+    <string name="please_enter_valid_name_and_amount">Please enter a valid name and amount.</string>
+    <string name="add_funds_to_goal_title">Add funds to \'%1$s\' goal</string>
+    <string name="available_funds_label">Available Balance: %1$s</string>
+    <string name="goal_date_passed">Target date has passed!</string>
+    <string name="funds_released_and_goal_deleted">Funds released and goal deleted.</string>
+    <string name="add_funds_to_goal_transaction_name">Transferred to \'%1$s\' goal</string>
+    <string name="auto_savings_portion_label">Auto-Savings Distribution Rate</string>
+    <string name="portion_percentage">%d%%</string>
+    <string name="toast_total_portion_exceeded">The total distribution rate for goals cannot exceed 100%!</string>
+    <string name="add_funds_amount_hint">Amount to Add</string>
+
+    <string name="add_transaction">Add Expense</string>
+    <string name="edit_transaction_title">Edit Expense</string>
+    <string name="delete_transaction_confirmation_title">Delete Expense?</string>
+    <string name="delete_transaction_confirmation_message">This expense will be permanently deleted. This action cannot be undone.</string>
+    <string name="transaction_name_hint">Expense Name (e.g., Coffee)</string>
+    <string name="transaction_amount_hint">Amount (e.g., 5.50)</string>
+    <string name="recurring_transaction_label">Repeat this expense every month</string>
+    <string name="recurring_transactions_title">Recurring Transactions</string>
+    <string name="recurring_transactions_summary">Manage your monthly fixed expenses.</string>
+    <string name="no_recurring_transactions_yet">No recurring transactions yet.</string>
+    <string name="delete_recurring_transaction_title">Delete Template?</string>
+    <string name="delete_recurring_transaction_message">The recurring transaction template named \'%s\' will be deleted. This action cannot be undone.</string>
+
+    <string name="reports_title">Reports</string>
+    <string name="no_spending_data">No spending data yet to create a chart.</string>
+    <string name="spending_by_category">Spending by Category</string>
+    <string name="daily_spending_summary_30_days">Daily Spending Summary (Last 30 Days)</string>
+    <string name="monthly_category_comparison">Monthly Category Comparison</string>
+    <string name="daily_spending_chart_label">"Daily Spending"</string>
+    <string name="monthly_spending_chart_label">"Monthly Spending"</string>
+
+    <string name="suggestion_title">Smart Suggestion</string>
+    <string name="suggestion_high_spending">You\'ve spent the most in the <b>%1$s</b> category this period. You might want to review it.</string>
+    <string name="suggestion_good_progress">You\'re doing great! You are well below your budget. How about transferring this money to your goals?</string>
+
+    <string name="widget_configure">Configure</string>
+    <string name="widget_payday_today">Payday!</string>
+    <string name="widget_days_left">Days Left</string>
+
+    <string name="notification_channel_name">Payday Reminder</string>
+    <string name="notification_channel_description">Sends a notification when it\'s your payday.</string>
+    <string name="payday_notification_title">It\'s Payday!</string>
+    <string name="payday_notification_text">Congratulations! Today is your payday. 🎉</string>
+
+    <string name="add_goal_fab">Add Savings Goal</string>
+    <string name="add_expense_fab">Add Expense</string>
+    <string name="toggle_fab_menu_description">Toggle add menu</string>
+
+    <string name="lets_get_started">Let\'s Get Started!</string>
+    <string name="welcome_to_payday">Welcome to Payday!</string>
+    <string name="we_need_some_info_to_get_started">We need some basic information for the app to work for you.</string>
+    <string name="your_reports_are_empty">Your Reports Are Empty</string>
+    <string name="start_adding_expenses_for_charts">Start adding your expenses, and we\'ll create charts and summaries for you.</string>
+    <string name="add_your_first_expense">Add Your First Expense</string>
+    <string name="welcome_to_login_title">Welcome to Payday</string>
+    <string name="welcome_to_login_subtitle">Sign in with your Google account to securely back up your data and sync across devices.</string>
+    <string name="skip_for_now_button">Skip for Now</string>
+    <string name="achievement_unlocked_toast_title">Achievement Unlocked!</string>
+
+    <string-array name="theme_entries">
+        <item>Light</item>
+        <item>Dark</item>
+        <item>System Default</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>Light</item>
+        <item>Dark</item>
+        <item>System</item>
+    </string-array>
+    <string-array name="pay_periods">
+        <item>@string/pay_period_monthly</item>
+        <item>@string/pay_period_bi_weekly</item>
+        <item>@string/pay_period_weekly</item>
+    </string-array>
+    <string-array name="pay_period_values">
+        <item>MONTHLY</item>
+        <item>BI_WEEKLY</item>
+        <item>WEEKLY</item>
+    </string-array>
+    <string-array name="days_of_week">
+        <item>Monday</item>
+        <item>Tuesday</item>
+        <item>Wednesday</item>
+        <item>Thursday</item>
+        <item>Friday</item>
+        <item>Saturday</item>
+        <item>Sunday</item>
+    </string-array>
+
+    <string name="category_food">Food</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_bills">Bills</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_savings">Savings</string>
+    <string name="category_other">Other</string>
+    <string name="category_goal_car">Car</string>
+    <string name="category_goal_house">House</string>
+    <string name="category_goal_tech">Tech</string>
+    <string name="category_goal_travel">Travel</string>
+    <string name="category_goal_other">Other</string>
+
+    <string name="achievement_title_setup_complete">All Set!</string>
+    <string name="achievement_desc_setup_complete">You have successfully completed the setup wizard.</string>
+    <string name="achievement_title_first_goal">First Step</string>
+    <string name="achievement_desc_first_goal">You have created your first savings goal.</string>
+    <string name="achievement_title_first_transaction">Spending Diary</string>
+    <string name="achievement_desc_first_transaction">You have logged your first expense.</string>
+    <string name="achievement_title_reports_viewed">Analyst</string>
+    <string name="achievement_desc_reports_viewed">You have visited the reports screen for the first time.</string>
+    <string name="achievement_title_backup_hero">Data Protector</string>
+    <string name="achievement_desc_backup_hero">You have backed up your data to Google Drive for the first time.</string>
+    <string name="achievement_title_streak_7_days">Determined</string>
+    <string name="achievement_desc_streak_7_days">You have used the app for 7 consecutive days.</string>
+    <string name="achievement_title_saver_lv1">Penny-Pincher</string>
+    <string name="achievement_desc_saver_lv1">You have saved a total of 1,000 for your savings goals.</string>
+    <string name="achievement_title_category_expert">Category Expert</string>
+    <string name="achievement_desc_category_expert">You have used 5 different expense categories.</string>
+    <string name="achievement_title_auto_pilot">Auto Pilot</string>
+    <string name="achievement_desc_auto_pilot">You have created a recurring expense template.</string>
+    <string name="achievement_title_payday_hype">Payday!</string>
+    <string name="achievement_desc_payday_hype">You have successfully completed your first payday.</string>
+    <string name="achievement_title_streak_30_days">Marathoner</string>
+    <string name="achievement_desc_streak_30_days">You have used the app for 30 consecutive days.</string>
+    <string name="achievement_title_goal_completed">Goal Hunter</string>
+    <string name="achievement_desc_goal_completed">You have successfully completed your first savings goal.</string>
+    <string name="achievement_title_budget_wizard">Budget Wizard</string>
+    <string name="achievement_desc_budget_wizard">You finished a pay cycle with a positive budget.</string>
+    <string name="achievement_title_saver_lv2">Investor</string>
+    <string name="achievement_desc_saver_lv2">You have saved a total of 10,000 for your savings goals.</string>
+    <string name="achievement_title_collector">Collector</string>
+    <string name="achievement_desc_collector">You have 3 or more active savings goals at the same time.</string>
+    <string name="achievement_title_streak_180_days">Veteran</string>
+    <string name="achievement_desc_streak_180_days">You have used the app for 6 months (180 days).</string>
+    <string name="achievement_title_saver_lv3">Savings Guru</string>
+    <string name="achievement_desc_saver_lv3">You have saved a total of 50,000 for your savings goals.</string>
+    <string name="achievement_title_cycle_champion">Cycle Champion</string>
+    <string name="achievement_desc_cycle_champion">You finished 3 consecutive pay cycles with a positive balance.</string>
+    <string name="achievement_title_dark_side">The Dark Side</string>
+    <string name="achievement_desc_dark_side">You have discovered the app\'s Dark Theme.</string>
+    <string name="achievement_title_legend_one_year">Payday Legend</string>
+    <string name="achievement_desc_legend_one_year">You have completed your 1st year with us. Congratulations!</string>
+    <string name="menu_action_delete">Delete</string>
+    <string name="add_funds_dialog_title">Add Funds to Goal</string>
+    <string name="goal_options_edit">Edit</string>
+    <string name="goal_options_delete">Delete</string>
+    <string name="menu_action_edit">Edit</string>
+    <string name="toast_achievement_title">Achievement Name</string>
+    <string name="no_recurring_transactions_message">No recurring transactions yet.</string>
+    <string name="portion_value_text">100%</string>
+    <string name="toast_achievement_name">Achievement Name</string>
+    <string name="signin_prompt_dialog_message">To use this feature and securely save your data, you need to sign in with your Google account.</string>
+    <string name="signin_prompt_checkbox_text">Don\'t ask again</string>
+    <string name="auto_backup_title">Automatic Backup</string>
+    <string name="auto_backup_summary">Regularly backs up your app data to Google Drive.</string>
+</resources>
