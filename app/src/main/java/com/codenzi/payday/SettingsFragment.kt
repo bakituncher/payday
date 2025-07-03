@@ -22,7 +22,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
-import com.google.android.material.dialog.MaterialAlertDialogBuilder // <-- EKSİK OLAN VE HATAYA NEDEN OLAN SATIR BUYDU
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -53,7 +53,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             task.addOnSuccessListener { account ->
                 Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
                 updateAccountSection(account)
-                // Giriş yapıldıktan sonra yedek kontrolü yap
                 checkForBackupAndRestore()
             }.addOnFailureListener {
                 Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
@@ -84,7 +83,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
-        setupPayPeriodPreference()
         setupPaydayPreference()
         setupCurrencyPreference("salary")
         setupCurrencyPreference("monthly_savings")
@@ -306,16 +304,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun setupPayPeriodPreference() {
-        val payPeriodPref = findPreference<ListPreference>("pay_period")
-        payPeriodPref?.setOnPreferenceChangeListener { _, _ ->
-            lifecycleScope.launch {
-                repository.savePayday(-1)
-            }
-            true
-        }
-    }
-
     private fun setupPaydayPreference() {
         findPreference<Preference>("payday")?.setOnPreferenceClickListener {
             lifecycleScope.launch {
@@ -347,15 +335,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private suspend fun updatePaydaySummary() {
         val paydayPref = findPreference<Preference>("payday")
-        val period = repository.getPayPeriod().first()
         val dayValue = repository.getPaydayValue().first()
-        val dateString = repository.getBiWeeklyRefDateString().first()
-
-        paydayPref?.summary = when (period) {
-            PayPeriod.MONTHLY -> if (dayValue != -1) "Her ayın $dayValue. günü" else getString(R.string.payday_not_set)
-            PayPeriod.WEEKLY -> if (dayValue != -1) "Her hafta ${DayOfWeek.of(dayValue).getDisplayName(TextStyle.FULL, Locale("tr"))}" else getString(R.string.payday_not_set)
-            PayPeriod.BI_WEEKLY -> if (!dateString.isNullOrEmpty()) LocalDate.parse(dateString).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale("tr"))) else getString(R.string.payday_not_set)
-        }
+        paydayPref?.summary = if (dayValue != -1) "Her ayın $dayValue. günü" else getString(R.string.payday_not_set)
     }
 
     private fun updateCurrencySummary(key: String, value: Long) {
@@ -369,45 +350,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private suspend fun showPaydaySelectionDialog() {
-        when (repository.getPayPeriod().first()) {
-            PayPeriod.MONTHLY -> {
-                val days = (1..31).map { it.toString() }.toTypedArray()
-                AlertDialog.Builder(requireContext())
-                    .setTitle(R.string.select_payday_dialog_title)
-                    .setItems(days) { _, which ->
-                        lifecycleScope.launch { repository.savePayday(which + 1); updatePaydaySummary() }
-                    }
-                    .show()
+        val days = (1..31).map { it.toString() }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.select_payday_dialog_title)
+            .setItems(days) { _, which ->
+                lifecycleScope.launch { repository.savePayday(which + 1); updatePaydaySummary() }
             }
-            PayPeriod.WEEKLY -> {
-                val daysOfWeek = resources.getStringArray(R.array.days_of_week)
-                AlertDialog.Builder(requireContext())
-                    .setTitle(R.string.select_payday_dialog_title)
-                    .setItems(daysOfWeek) { _, which ->
-                        lifecycleScope.launch { repository.savePayday(which + 1); updatePaydaySummary() }
-                    }
-                    .show()
-            }
-            PayPeriod.BI_WEEKLY -> {
-                val today = Calendar.getInstance()
-                repository.getBiWeeklyRefDateString().first()?.let {
-                    val date = LocalDate.parse(it)
-                    today.set(date.year, date.monthValue - 1, date.dayOfMonth)
-                }
-                DatePickerDialog(
-                    requireContext(),
-                    // Düzeltme: Lambda parametrelerine tipleri ekledik
-                    { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-                        lifecycleScope.launch {
-                            repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, dayOfMonth))
-                            updatePaydaySummary()
-                        }
-                    },
-                    today.get(Calendar.YEAR),
-                    today.get(Calendar.MONTH),
-                    today.get(Calendar.DAY_OF_MONTH)
-                ).show()
-            }
-        }
+            .show()
     }
 }

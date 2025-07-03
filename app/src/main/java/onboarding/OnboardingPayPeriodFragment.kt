@@ -6,9 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.codenzi.payday.PayPeriod
 import com.codenzi.payday.PaydayViewModel
-import com.codenzi.payday.R
 import com.codenzi.payday.databinding.FragmentOnboardingPayPeriodBinding
 
 class OnboardingPayPeriodFragment : Fragment() {
@@ -28,18 +26,14 @@ class OnboardingPayPeriodFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // DÜZELTME: Deprecated listener modern versiyonu ile değiştirildi ve
-        // kullanılmayan 'group' parametresi '_' olarak adlandırıldı.
-        binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            if (checkedIds.isNotEmpty()) {
-                val selectedPeriod = when (checkedIds.first()) {
-                    R.id.chip_monthly -> PayPeriod.MONTHLY
-                    R.id.chip_bi_weekly -> PayPeriod.BI_WEEKLY
-                    else -> PayPeriod.WEEKLY
-                }
-                viewModel.savePayPeriod(selectedPeriod)
-            }
-        }
+        // Sadece AYLIK seçeneği otomatik olarak seçiliyor
+        // Hata veren satır düzeltildi. Fonksiyon artık parametresiz çağrılıyor.
+        viewModel.savePayPeriod()
+
+        // Diğer chipleri gizliyoruz
+        binding.chipMonthly.isChecked = true
+        binding.chipBiWeekly.visibility = View.GONE
+        binding.chipWeekly.visibility = View.GONE
     }
 
     override fun onDestroyView() {

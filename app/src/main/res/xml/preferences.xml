@@ -5,16 +5,6 @@
         app:title="@string/settings_payment_title"
         app:iconSpaceReserved="false">
 
-        <androidx.preference.ListPreference
-            app:key="pay_period"
-            app:title="@string/set_pay_period_button"
-            app:summary="%s"
-            app:entries="@array/pay_periods"
-            app:entryValues="@array/pay_period_values"
-            app:defaultValue="MONTHLY"
-            app:useSimpleSummaryProvider="true"
-            app:icon="@drawable/ic_event_repeat" />
-
         <androidx.preference.Preference
             app:key="payday"
             app:title="@string/set_payday_button"

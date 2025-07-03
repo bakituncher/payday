@@ -41,50 +41,12 @@ class OnboardingPaydayFragment : Fragment() {
     }
 
     private suspend fun setupUIForPayPeriod() {
-        val payPeriod = repository.getPayPeriod().first()
+        // Artık sadece AYLIK olduğu için bu mantık basitleştirildi.
+        binding.subtitleTextView.text = getString(R.string.onboarding_payday_subtitle_monthly)
+        binding.viewFlipper.displayedChild = 0 // Sadece takvimi göster
 
-        when (payPeriod) {
-            PayPeriod.MONTHLY -> {
-                binding.subtitleTextView.text = getString(R.string.onboarding_payday_subtitle_monthly)
-                binding.viewFlipper.displayedChild = 0
-                // DÜZELTME: Kullanılmayan parametreler '_' ile değiştirildi.
-                binding.calendarView.setOnDateChangeListener { _, _, _, dayOfMonth ->
-                    viewModel.savePayday(dayOfMonth)
-                }
-            }
-            PayPeriod.BI_WEEKLY -> {
-                binding.subtitleTextView.text = getString(R.string.onboarding_payday_subtitle_bi_weekly)
-                binding.viewFlipper.displayedChild = 0
-                binding.calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-                    viewModel.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, dayOfMonth))
-                }
-            }
-            PayPeriod.WEEKLY -> {
-                binding.subtitleTextView.text = getString(R.string.onboarding_payday_subtitle_weekly)
-                binding.viewFlipper.displayedChild = 1
-                setupWeeklyPicker()
-            }
-        }
-    }
-
-    private fun setupWeeklyPicker() {
-        val daysOfWeek = resources.getStringArray(R.array.days_of_week)
-        binding.daysOfWeekChipGroup.removeAllViews()
-        daysOfWeek.forEachIndexed { index, dayName ->
-            val chip = Chip(requireContext()).apply {
-                text = dayName
-                isCheckable = true
-                id = index + 1
-            }
-            binding.daysOfWeekChipGroup.addView(chip)
-        }
-
-        // DÜZELTME: Deprecated listener modern versiyonu ile değiştirildi ve
-        // kullanılmayan 'group' parametresi '_' olarak adlandırıldı.
-        binding.daysOfWeekChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            if (checkedIds.isNotEmpty()) {
-                viewModel.savePayday(checkedIds.first())
-            }
+        binding.calendarView.setOnDateChangeListener { _, _, _, dayOfMonth ->
+            viewModel.savePayday(dayOfMonth)
         }
     }
 

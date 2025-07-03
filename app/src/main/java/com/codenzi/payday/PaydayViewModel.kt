@@ -143,19 +143,22 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadData() {
         viewModelScope.launch {
-            // 1. Gerekliyse, önce döngü sonu görevlerini çalıştır ve bitmesini bekle.
             checkAndProcessPostPaydayTasks()
 
-            // 2. Döngü sonu görevleri bittikten sonra, güncel verilerle UI'ı yükle.
-            val payPeriod = repository.getPayPeriod().first()
             val paydayValue = repository.getPaydayValue().first()
-            val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
             val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
             val salaryAmount = repository.getSalaryAmount().first()
             val goals = repository.getGoals().first()
             val carryOverAmount = repository.getCarryOverAmount().first()
 
-            val result = PaydayCalculator.calculate(LocalDate.now(), payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
+            // Hesaplama artık sadece AYLIK ve referans tarih olmadan yapılıyor
+            val result = PaydayCalculator.calculate(
+                dateToCheck = LocalDate.now(),
+                payPeriod = PayPeriod.MONTHLY, // Sabit
+                paydayValue = paydayValue,
+                biWeeklyRefDateString = null, // Artık gerekli değil
+                weekendAdjustmentEnabled = weekendAdjustment
+            )
 
             if (result != null) {
                 val cycleStartDate = result.cycleStartDate.toStartOfDayDate()
@@ -183,12 +186,16 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun checkAndProcessPostPaydayTasks() {
         val yesterday = LocalDate.now().minusDays(1)
 
-        val payPeriod = repository.getPayPeriod().first()
         val paydayValue = repository.getPaydayValue().first()
-        val biWeeklyRefDate = repository.getBiWeeklyRefDateString().first()
         val weekendAdjustment = repository.isWeekendAdjustmentEnabled().first()
 
-        val resultForYesterday = PaydayCalculator.calculate(yesterday, payPeriod, paydayValue, biWeeklyRefDate, weekendAdjustment)
+        val resultForYesterday = PaydayCalculator.calculate(
+            dateToCheck = yesterday,
+            payPeriod = PayPeriod.MONTHLY, // Sabit
+            paydayValue = paydayValue,
+            biWeeklyRefDateString = null, // Artık gerekli değil
+            weekendAdjustmentEnabled = weekendAdjustment
+        )
 
         if (resultForYesterday != null && resultForYesterday.isPayday) {
             val lastProcessedDateStr = repository.getLastProcessedPayday().first()
@@ -201,12 +208,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun runCycleEndTasks(paydayResult: PaydayResult) {
         unlockAchievement("PAYDAY_HYPE")
 
-        // *** DÜZELTME BAŞLANGICI ***
-        // Sorunlu olan ve yanlış döngüyü hesaplayan kod satırları kaldırıldı.
-        // Artık 'paydayResult' içerisinden gelen doğru tarihler kullanılıyor.
         val previousCycleStartDate = paydayResult.cycleStartDate.toStartOfDayDate()
         val previousCycleEndDate = paydayResult.cycleEndDate.toEndOfDayDate()
-        // *** DÜZELTME SONU ***
 
         val summary = repository.getPreviousCycleSummary(previousCycleStartDate, previousCycleEndDate)
         val expenses = summary.totalExpenses
@@ -255,7 +258,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         repository.saveLastProcessedPayday(LocalDate.now().minusDays(1))
     }
-
 
     private fun generateFinancialInsights(totalExpenses: Double, categorySpending: List<CategorySpending>) {
         if (categorySpending.isEmpty()) {
@@ -476,7 +478,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         checkAndNotifyForCompletedGoals(oldGoals, newGoals)
     }
 
-
     private fun performAutoBackup() {
         viewModelScope.launch {
             if (GoogleSignIn.getLastSignedInAccount(getApplication()) == null) return@launch
@@ -556,7 +557,6 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         transactionObserverJob?.cancel()
     }
 
-
     fun loadDailySpending(startDate: Date, endDate: Date) {
         viewModelScope.launch {
             repository.getDailySpendingForChart(startDate, endDate).collect { dailySpendingList ->
@@ -588,10 +588,17 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         return prefix + NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
     }
 
-    fun savePayPeriod(period: PayPeriod) = viewModelScope.launch { repository.savePayPeriod(period) }
+    // Artık sadece AYLIK kaydediliyor, bu yüzden parametreye gerek yok
+    fun savePayPeriod() = viewModelScope.launch {
+        repository.savePayPeriod(PayPeriod.MONTHLY)
+    }
+
     fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
-    fun saveBiWeeklyReferenceDate(date: LocalDate) = viewModelScope.launch { repository.saveBiWeeklyReferenceDate(date) }
+
+    // biWeeklyReferenceDate metodu kaldırıldı
+
     fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
+
     fun saveMonthlySavings(amount: Long) = viewModelScope.launch { repository.saveMonthlySavings(amount) }
 
     private fun unlockAchievement(achievementId: String) {
