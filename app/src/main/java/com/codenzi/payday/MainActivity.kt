@@ -4,6 +4,7 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +25,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -31,6 +34,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -54,6 +60,16 @@ class MainActivity : AppCompatActivity() {
     private val TAG = "PaydayBackup"
 
     private lateinit var googleDriveManager: GoogleDriveManager
+    private lateinit var firebaseAnalytics: FirebaseAnalytics
+
+    // --- SELAMLAMA VE ANİMASYON İÇİN YENİ DEĞİŞKENLER ---
+    private val titleHandler = Handler(Looper.getMainLooper())
+    private lateinit var titleRunnable: Runnable
+    private var isShowingGreeting = true
+    private var greetingMessage = ""
+    private val originalAppName by lazy { getString(R.string.app_name) }
+    private val montserratBold: Typeface? by lazy { ResourcesCompat.getFont(this, R.font.montserrat_bold) }
+    // --- YENİ DEĞİŞKENLER SONU ---
 
     private val suggestionHandler = Handler(Looper.getMainLooper())
     private var suggestionRunnable: Runnable? = null
@@ -63,6 +79,7 @@ class MainActivity : AppCompatActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
+                updateGreetingMessage() // Giriş yapıldıktan sonra selamlama mesajını güncelle
                 showSnackbar(getString(R.string.welcome_message_user, account.displayName))
                 showAutoBackupPrompt {
                     checkForBackupAndProceed()
@@ -96,8 +113,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Kenardan kenara görünüm için düzeltme
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        firebaseAnalytics = Firebase.analytics
+
+        // Selamlama ve yazı değiştirme mantığını kur
+        updateGreetingMessage()
+        setupTitleRunnable()
+        setupCustomFontForToolbar()
 
         onBackPressedDispatcher.addCallback(this, backPressedCallback)
 
@@ -112,6 +139,76 @@ class MainActivity : AppCompatActivity() {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
     }
+
+    // --- YENİ EKLENEN METOTLAR ---
+
+    private fun setupCustomFontForToolbar() {
+        // Toolbar'ın başlık TextView'ini bulup fontunu değiştiriyoruz.
+        binding.toolbar.post {
+            for (i in 0 until binding.toolbar.childCount) {
+                val view = binding.toolbar.getChildAt(i)
+                if (view is TextView) {
+                    // Sadece başlık olan TextView'i hedef alalım
+                    if (view.text.toString() == binding.toolbar.title) {
+                        view.typeface = montserratBold
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateGreetingMessage() {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+
+        val greetingPrefix = when (hour) {
+            in 5..11 -> "Günaydın"
+            in 12..17 -> "Tünaydın"
+            else -> "İyi akşamlar"
+        }
+
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        // İsim 15 karakterden kısaysa ve boşluk içeriyorsa sadece ilk ismi al
+        val displayName = account?.displayName?.let { name ->
+            if (name.length > 15) "" else {
+                val firstName = name.split(" ").firstOrNull() ?: ""
+                " $firstName"
+            }
+        } ?: ""
+
+        greetingMessage = "$greetingPrefix$displayName"
+    }
+
+    private fun setupTitleRunnable() {
+        titleRunnable = Runnable {
+            val nextTitle = if (isShowingGreeting) {
+                originalAppName
+            } else {
+                greetingMessage.ifBlank { originalAppName }
+            }
+            binding.toolbar.title = nextTitle
+            isShowingGreeting = !isShowingGreeting
+
+            // Kendini 10 saniye sonra tekrar çalıştırmak için planla
+            titleHandler.postDelayed(titleRunnable, 10000)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Ekran göründüğünde runnable'ı başlat
+        titleHandler.post(titleRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Ekran görünmediğinde runnable'ı durdurarak kaynak tasarrufu yap
+        titleHandler.removeCallbacks(titleRunnable)
+        // Ekran kapandığında başlığı orijinal haline döndür
+        binding.toolbar.title = originalAppName
+    }
+    // --- YENİ METOTLAR SONU ---
 
     private fun performActionWithSignIn(action: () -> Unit) {
         val account = GoogleSignIn.getLastSignedInAccount(this)
@@ -351,11 +448,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.addTransactionFab.setOnClickListener { toggleFabMenu() }
+
         binding.addTransactionSecondaryFab.setOnClickListener {
+            firebaseAnalytics.logEvent("add_expense_clicked", null)
             TransactionDialogFragment.newInstance(null).show(supportFragmentManager, TransactionDialogFragment.TAG)
             toggleFabMenu()
         }
+
         binding.addSavingsGoalFab.setOnClickListener {
+            firebaseAnalytics.logEvent("add_goal_clicked", null)
             SavingsGoalDialogFragment.newInstance(null).show(supportFragmentManager, SavingsGoalDialogFragment.TAG)
             toggleFabMenu()
         }

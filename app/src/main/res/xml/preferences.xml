@@ -1,7 +1,10 @@
 <androidx.preference.PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <androidx.preference.PreferenceCategory app:title="@string/settings_payment_title">
+    <androidx.preference.PreferenceCategory
+        app:title="@string/settings_payment_title"
+        app:iconSpaceReserved="false">
+
         <androidx.preference.ListPreference
             app:key="pay_period"
             app:title="@string/set_pay_period_button"
@@ -9,34 +12,47 @@
             app:entries="@array/pay_periods"
             app:entryValues="@array/pay_period_values"
             app:defaultValue="MONTHLY"
-            app:useSimpleSummaryProvider="true" />
+            app:useSimpleSummaryProvider="true"
+            app:icon="@drawable/ic_event_repeat" />
+
         <androidx.preference.Preference
             app:key="payday"
             app:title="@string/set_payday_button"
-            app:summary="@string/payday_not_set"/>
+            app:summary="@string/payday_not_set"
+            app:icon="@drawable/ic_calendar_today" />
+
         <androidx.preference.EditTextPreference
             app:key="salary"
             app:title="@string/set_salary_button_text"
             app:dialogTitle="@string/dialog_set_salary_title"
-            android:inputType="number" />
+            android:inputType="number"
+            app:icon="@drawable/ic_payments" />
+
         <androidx.preference.EditTextPreference
             app:key="monthly_savings"
             app:title="@string/set_monthly_savings_button"
             app:dialogTitle="@string/dialog_set_monthly_savings_title"
-            android:inputType="number" />
+            android:inputType="number"
+            app:icon="@drawable/ic_account_balance" />
+
     </androidx.preference.PreferenceCategory>
 
-    <androidx.preference.PreferenceCategory app:title="@string/settings_general_title">
+    <androidx.preference.PreferenceCategory
+        app:title="@string/settings_general_title"
+        app:iconSpaceReserved="false">
+
         <androidx.preference.SwitchPreferenceCompat
             app:key="weekend_adjustment"
             app:title="@string/weekend_adjustment_label"
-            app:summary="@string/weekend_adjustment_summary"/>
+            app:summary="@string/weekend_adjustment_summary"
+            app:icon="@drawable/ic_date_range" />
 
         <androidx.preference.SwitchPreferenceCompat
             app:key="auto_saving_enabled"
             app:title="@string/auto_saving_title"
             app:summary="@string/auto_saving_summary"
-            app:defaultValue="false" />
+            app:defaultValue="false"
+            app:icon="@drawable/ic_auto_awesome" />
 
         <Preference
             app:key="recurring_transactions"
@@ -50,30 +66,36 @@
             app:summary="%s"
             app:entries="@array/theme_entries"
             app:entryValues="@array/theme_values"
-            app:defaultValue="System" />
+            app:defaultValue="System"
+            app:icon="@drawable/ic_dark_mode" />
 
         <androidx.preference.SwitchPreferenceCompat
             app:key="auto_backup_enabled"
             app:title="Otomatik Yedekleme"
             app:summary="Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
-            app:defaultValue="false" />
+            app:defaultValue="false"
+            app:icon="@drawable/ic_backup" />
 
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory
         app:key="account_category"
-        app:title="@string/account_category_title">
+        app:title="@string/account_category_title"
+        app:iconSpaceReserved="false">
+
         <Preference
             app:key="google_account"
             app:title="@string/google_sign_in_title"
             app:summary="@string/google_sign_in_summary"
             app:icon="@drawable/ic_google_logo"/>
+
         <Preference
             app:key="delete_account"
             app:title="@string/delete_account_title"
             app:summary="@string/delete_account_summary"
             app:icon="@drawable/ic_delete_forever"
             android:visible="false" />
+
     </androidx.preference.PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>
