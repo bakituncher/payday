@@ -302,4 +302,12 @@
     <string name="signin_prompt_checkbox_text">Don\'t ask again</string>
     <string name="auto_backup_title">Automatic Backup</string>
     <string name="auto_backup_summary">Regularly backs up your app data to Google Drive.</string>
+    <string name="intro_hypnotic_subtitle">Your Financial Future Starts Now</string>
+    <string name="intro_welcome_title">Welcome to Payday!</string>
+    <string name="intro_subtitle">The easiest way to take control of your finances.</string>
+    <string name="intro_feature_1">Countdown to your payday</string>
+    <string name="intro_feature_2">Track your expenses with ease</string>
+    <string name="intro_feature_3">Create and achieve savings goals</string>
+    <string name="intro_feature_4">Analyze your spending with reports</string>
+    <string name="intro_start_button">Let\'s Get Started!</string>
 </resources>

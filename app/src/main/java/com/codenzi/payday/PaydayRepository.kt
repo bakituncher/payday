@@ -54,6 +54,8 @@ class PaydayRepository(private val context: Context) {
         val KEY_LAST_PROCESSED_PAYDAY = stringPreferencesKey("last_processed_payday")
         val KEY_RESTORE_VALIDATION_NEEDED = booleanPreferencesKey("restore_validation_needed")
         val KEY_CARRY_OVER_AMOUNT = longPreferencesKey("carry_over_amount")
+        // YENİ EKLENEN ANAHTAR
+        val KEY_INTRO_SHOWN = booleanPreferencesKey("intro_shown")
     }
 
     suspend fun deleteAllUserData(): Boolean = withContext(Dispatchers.IO) {
@@ -91,6 +93,8 @@ class PaydayRepository(private val context: Context) {
     fun getLastProcessedPayday(): Flow<String?> = prefs.data.map { it[KEY_LAST_PROCESSED_PAYDAY] }
     fun isRestoreValidationNeeded(): Flow<Boolean> = prefs.data.map { it[KEY_RESTORE_VALIDATION_NEEDED] ?: false }
     fun getCarryOverAmount(): Flow<Long> = prefs.data.map { it[KEY_CARRY_OVER_AMOUNT] ?: 0L }
+    // YENİ EKLENEN GETTER
+    fun hasIntroBeenShown(): Flow<Boolean> = prefs.data.map { it[KEY_INTRO_SHOWN] ?: false }
 
 
     // SETTERS
@@ -111,6 +115,8 @@ class PaydayRepository(private val context: Context) {
     suspend fun saveAutoSavingEnabled(isEnabled: Boolean) = prefs.edit { it[KEY_AUTO_SAVING_ENABLED] = isEnabled }
     suspend fun clearRestoreValidationFlag() = prefs.edit { it.remove(KEY_RESTORE_VALIDATION_NEEDED) }
     suspend fun saveCarryOverAmount(amount: Long) = prefs.edit { it[KEY_CARRY_OVER_AMOUNT] = amount }
+    // YENİ EKLENEN SETTER
+    suspend fun setIntroShown(hasBeenShown: Boolean) = prefs.edit { it[KEY_INTRO_SHOWN] = hasBeenShown }
 
 
     suspend fun saveLastBackupTimestamp(timestamp: Long) {
@@ -213,8 +219,8 @@ class PaydayRepository(private val context: Context) {
                 if (key != KEY_SAVINGS_GOALS.name && key != KEY_AUTO_BACKUP_ENABLED.name) {
                     when (key) {
                         KEY_PAYDAY_VALUE.name, KEY_CONSECUTIVE_POSITIVE_CYCLES.name -> preferences[intPreferencesKey(key)] = value?.toIntOrNull() ?: 0
-                        KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name, KEY_AUTO_SAVING_ENABLED.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
-                        KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name, KEY_CARRY_OVER_AMOUNT.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
+                        KEY_WEEKEND_ADJUSTMENT.name, KEY_ONBOARDING_COMPLETE.name, KEY_SHOW_LOGIN_ON_START.name, KEY_SHOW_SIGN_IN_PROMPT.name, KEY_AUTO_SAVING_ENABLED.name, KEY_INTRO_SHOWN.name -> preferences[booleanPreferencesKey(key)] = value?.toBoolean() ?: false
+                        KEY_SALARY.name, KEY_MONTHLY_SAVINGS.name, KEY_CARRY_OVER_AMOUNT.name, KEY_LAST_BACKUP_TIMESTAMP.name -> preferences[longPreferencesKey(key)] = value?.toLongOrNull() ?: 0L
                         KEY_PAY_PERIOD.name, KEY_BI_WEEKLY_REF_DATE.name, KEY_FIRST_LAUNCH_DATE.name, KEY_LAST_PROCESSED_PAYDAY.name, KEY_THEME.name -> {
                             if (value != null) preferences[stringPreferencesKey(key)] = value
                         }

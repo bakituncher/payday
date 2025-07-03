@@ -301,4 +301,12 @@
     <string name="signin_prompt_dialog_message">Bu özelliği kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir.</string>
     <string name="signin_prompt_checkbox_text">Bir daha sorma</string>
     <string name="auto_backup_title">Otomatik Yedekleme</string>
+    <string name="intro_hypnotic_subtitle">Finansal Geleceğin Başlıyor</string>
+    <string name="intro_welcome_title">Payday\'e Hoş Geldiniz!</string>
+    <string name="intro_subtitle">Finansal durumunuzu kontrol altına almanın en kolay yolu.</string>
+    <string name="intro_feature_1">Maaş gününüze geri sayım yapın</string>
+    <string name="intro_feature_2">Harcamalarınızı kolayca takip edin</string>
+    <string name="intro_feature_3">Tasarruf hedefleri oluşturun ve ulaşın</string>
+    <string name="intro_feature_4">Raporlarla harcamalarınızı analiz edin</string>
+    <string name="intro_start_button">Hadi Başlayalım!</string>
 </resources>
