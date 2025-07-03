@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -54,6 +56,14 @@ android {
 }
 
 dependencies {
+
+    // --- ÖNEMLİ: FIREBASE KÜTÜPHANELERİNİ EKLEYİN ---
+    // Firebase Bill of Materials (BoM) - Bu satır, diğer Firebase kütüphanelerinin sürümlerini otomatik yönetir.
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    // Firebase Crashlytics bağımlılığını ekleyin
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    // Daha iyi analiz için Analytics'i de eklemeniz önerilir.
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     // --- TEMEL VE UI KÜTÜPHANELERİ ---
     implementation(libs.androidx.core.ktx)

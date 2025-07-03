@@ -277,7 +277,7 @@ class MainActivity : AppCompatActivity() {
             event.getContentIfNotHandled()?.let {
                 MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.restore_warning_title)
-                    .setMessage(R.string.restore_warning_message) // This string is now more descriptive
+                    .setMessage(R.string.restore_warning_message)
                     .setPositiveButton(R.string.go_to_settings) { _, _ ->
                         settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
                     }
@@ -329,7 +329,6 @@ class MainActivity : AppCompatActivity() {
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
 
-        // *** DÜZELTME: Negatif bakiye (borç) UI yönetimi ***
         if (state.carryOverAmount != 0L) {
             binding.carryOverContainer.visibility = View.VISIBLE
             if (state.carryOverAmount > 0) {
@@ -338,7 +337,6 @@ class MainActivity : AppCompatActivity() {
                 binding.carryOverTextView.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
             } else {
                 binding.carryOverTitleTextView.text = getString(R.string.carry_over_debt)
-                // Negatif değeri pozitif göster ama rengi kırmızı yap
                 binding.carryOverTextView.text = formatCurrency(abs(state.carryOverAmount).toDouble())
                 binding.carryOverTextView.setTextColor(ContextCompat.getColor(this, R.color.red_500))
             }
