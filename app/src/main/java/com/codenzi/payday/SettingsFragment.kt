@@ -6,6 +6,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.text.format.DateUtils
+import android.util.Log
+import android.widget.DatePicker
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -17,8 +19,11 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
+import com.google.android.material.dialog.MaterialAlertDialogBuilder // <-- EKSİK OLAN VE HATAYA NEDEN OLAN SATIR BUYDU
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -37,10 +42,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private val viewModel: PaydayViewModel by activityViewModels()
 
     private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var googleDriveManager: GoogleDriveManager
     private var accountCategory: PreferenceCategory? = null
     private var googleAccountPreference: Preference? = null
     private var deleteAccountPreference: Preference? = null
-
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -48,7 +53,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
             task.addOnSuccessListener { account ->
                 Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
                 updateAccountSection(account)
-                requireActivity().recreate()
+                // Giriş yapıldıktan sonra yedek kontrolü yap
+                checkForBackupAndRestore()
             }.addOnFailureListener {
                 Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
                 updateAccountSection(null)
@@ -59,6 +65,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences, rootKey)
         repository = PaydayRepository(requireContext())
+        googleDriveManager = GoogleDriveManager(requireContext())
 
         setupGoogleClient()
         setupAccountPreferences()
@@ -84,7 +91,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupAutoBackupPreference()
         setupAutoSavingPreference()
 
-        // *** YENİ: Tekrarlayan harcamalar ekranını açan listener. ***
         findPreference<Preference>("recurring_transactions")?.setOnPreferenceClickListener {
             startActivity(Intent(requireContext(), RecurringTransactionsActivity::class.java))
             true
@@ -105,6 +111,45 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 } else {
                     Toast.makeText(requireContext(), "Veri silinirken bir hata oluştu. Lütfen tekrar deneyin.", Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+    private fun checkForBackupAndRestore() {
+        lifecycleScope.launch {
+            if (googleDriveManager.isBackupAvailable()) {
+                showRestoreDialog()
+            } else {
+                Toast.makeText(requireContext(), "Google Drive'da bir yedeğiniz bulunamadı.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun showRestoreDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.backup_found_title)
+            .setMessage(R.string.restore_confirmation_message_login)
+            .setCancelable(false)
+            .setPositiveButton(R.string.yes_restore) { _, _ -> restoreData() }
+            .setNegativeButton(R.string.no_start_new) { _, _ -> /* Hiçbir şey yapma */ }
+            .show()
+    }
+
+    private fun restoreData() {
+        lifecycleScope.launch {
+            try {
+                val backupJson = googleDriveManager.downloadFileContent()
+                if (backupJson != null) {
+                    val backupData = Gson().fromJson(backupJson, BackupData::class.java)
+                    repository.restoreDataFromBackup(backupData)
+                    Toast.makeText(requireContext(), "Veriler başarıyla geri yüklendi.", Toast.LENGTH_SHORT).show()
+                    requireActivity().recreate()
+                } else {
+                    Toast.makeText(requireContext(), "Geri yükleme başarısız oldu.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsRestore", "Geri yükleme sırasında hata", e)
+                Toast.makeText(requireContext(), "Geri yükleme sırasında bir hata oluştu.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -192,7 +237,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun showDeleteAccountConfirmationDialog() {
-        AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.delete_account_title))
             .setMessage(getString(R.string.delete_account_confirmation_message))
             .setIcon(android.R.drawable.ic_dialog_alert)
@@ -252,8 +297,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun formatTimestamp(timestamp: Long): String {
-        val now = System.currentTimeMillis()
-
         return if (DateUtils.isToday(timestamp)) {
             "Bugün, ${android.text.format.DateFormat.getTimeFormat(requireContext()).format(Date(timestamp))}"
         } else {
@@ -351,12 +394,19 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     val date = LocalDate.parse(it)
                     today.set(date.year, date.monthValue - 1, date.dayOfMonth)
                 }
-                DatePickerDialog(requireContext(), { _, year, month, day ->
-                    lifecycleScope.launch {
-                        repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, day))
-                        updatePaydaySummary()
-                    }
-                }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
+                DatePickerDialog(
+                    requireContext(),
+                    // Düzeltme: Lambda parametrelerine tipleri ekledik
+                    { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+                        lifecycleScope.launch {
+                            repository.saveBiWeeklyReferenceDate(LocalDate.of(year, month + 1, dayOfMonth))
+                            updatePaydaySummary()
+                        }
+                    },
+                    today.get(Calendar.YEAR),
+                    today.get(Calendar.MONTH),
+                    today.get(Calendar.DAY_OF_MONTH)
+                ).show()
             }
         }
     }

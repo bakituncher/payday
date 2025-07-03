@@ -1,12 +1,12 @@
-// Dosya: app/src/main/java/com/example/payday/AchievementsAdapter.kt
-
 package com.codenzi.payday
 
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 
 class AchievementsAdapter(private val achievements: List<Achievement>) : RecyclerView.Adapter<AchievementsAdapter.AchievementViewHolder>() {
@@ -33,26 +33,21 @@ class AchievementsAdapter(private val achievements: List<Achievement>) : Recycle
             description.text = achievement.description
             icon.setImageResource(achievement.iconResId)
 
+            val iconBackground = icon.background.mutate() as GradientDrawable
+
             if (achievement.isUnlocked) {
                 // Kilidi açık başarım
                 container.alpha = 1.0f
-                (icon.background as android.graphics.drawable.GradientDrawable).apply {
-                    val colors = intArrayOf(
-                        itemView.context.getColor(R.color.primary),
-                        itemView.context.getColor(R.color.secondary)
-                    )
-                    setColors(colors)
-                }
+                val unlockedColors = intArrayOf(
+                    ContextCompat.getColor(itemView.context, R.color.primary),
+                    ContextCompat.getColor(itemView.context, R.color.secondary)
+                )
+                iconBackground.colors = unlockedColors
             } else {
                 // Kilitli başarım
                 container.alpha = 0.5f
-                (icon.background as android.graphics.drawable.GradientDrawable).apply {
-                    val colors = intArrayOf(
-                        itemView.context.getColor(R.color.text_tertiary),
-                        itemView.context.getColor(R.color.text_tertiary)
-                    )
-                    setColors(colors)
-                }
+                val lockedColor = ContextCompat.getColor(itemView.context, R.color.text_tertiary)
+                iconBackground.setColor(lockedColor)
             }
         }
     }

@@ -11,11 +11,12 @@
         android:id="@+id/onboarding_image"
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:layout_marginTop="32dp"
         android:src="@drawable/ic_achievement_calendar"
+        app:layout_constraintBottom_toTopOf="@+id/titleTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
         app:tint="?attr/colorPrimary" />
 
     <TextView
@@ -27,6 +28,7 @@
         android:text="@string/onboarding_pay_period_title"
         android:textAlignment="center"
         android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/subtitleTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/onboarding_image" />
@@ -41,6 +43,7 @@
         android:text="@string/onboarding_pay_period_subtitle"
         android:textAlignment="center"
         android:textColor="?attr/colorOnSurface"
+        app:layout_constraintBottom_toTopOf="@+id/chipGroup"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/titleTextView" />
@@ -51,6 +54,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
         app:chipSpacingHorizontal="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/subtitleTextView"

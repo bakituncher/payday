@@ -1,6 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/ReportsActivity.kt
-// Nihai sürüm: boş ekran durumu dahil edildi, tüm mevcut kodlar korundu
-
 package com.codenzi.payday
 
 import android.graphics.Color
@@ -12,6 +9,7 @@ import android.widget.Button
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat // <-- EKLENDİ
 import com.codenzi.payday.databinding.ActivityReportsBinding
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.components.XAxis
@@ -23,7 +21,6 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.google.android.material.color.MaterialColors
 import java.util.Calendar
 import java.util.Date
-import com.codenzi.payday.R
 
 class ReportsActivity : AppCompatActivity() {
 
@@ -33,6 +30,10 @@ class ReportsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Kenardan kenara görünüm için DÜZELTME
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityReportsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -44,7 +45,6 @@ class ReportsActivity : AppCompatActivity() {
         setupFilters()
         setupObservers()
 
-        // Yeni: Boş ekran butonu işlevi
         binding.reportsEmptyState.root.findViewById<Button>(R.id.add_expense_button).setOnClickListener {
             finish()
         }
