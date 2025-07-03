@@ -11,7 +11,7 @@
         android:id="@+id/dialog_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Bu özelliği kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir."
+        android:text="@string/signin_prompt_dialog_message"
         android:textAppearance="?attr/textAppearanceBodyMedium"
         android:textColor="?android:attr/textColorSecondary" />
 
@@ -20,6 +20,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Bir daha sorma" />
+        android:text="@string/signin_prompt_checkbox_text" />
 
 </LinearLayout>

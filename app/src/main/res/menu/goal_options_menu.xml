@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_edit_goal"
-        android:title="Düzenle" />
+        android:title="@string/edit_goal" />
     <item
         android:id="@+id/action_delete_goal"
-        android:title="Sil" />
+        android:title="@string/delete_goal" />
 </menu>

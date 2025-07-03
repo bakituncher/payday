@@ -23,7 +23,6 @@ class TransactionDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
         val transactionId = arguments?.getInt(ARG_TRANSACTION_ID, -1) ?: -1
         if (transactionId != -1) {
-            // *** DÜZELTME: Düzenlenecek işlemi ViewModel'den yüklemesini iste ***
             viewModel.loadTransactionToEdit(transactionId)
         }
     }
@@ -36,7 +35,6 @@ class TransactionDialogFragment : DialogFragment() {
         val recurringSwitch = dialogView.findViewById<SwitchCompat>(R.id.recurringSwitch)
         var selectedCategoryId = ExpenseCategory.OTHER.ordinal
 
-        // *** DÜZELTME: ViewModel'deki anlık veriyi gözlemle ve UI'ı doldur ***
         viewModel.transactionToEdit.observe(this) { transaction ->
             existingTransaction = transaction
             if (transaction != null) {
@@ -44,7 +42,6 @@ class TransactionDialogFragment : DialogFragment() {
                 amountEditText.setText(transaction.amount.toString())
                 recurringSwitch.isChecked = transaction.isRecurringTemplate
                 selectedCategoryId = transaction.categoryId
-                // Chip'lerin durumunu güncelle
                 for (i in 0 until categoryChipGroup.childCount) {
                     val chip = categoryChipGroup.getChildAt(i) as Chip
                     chip.isChecked = (chip.id == selectedCategoryId)
@@ -54,7 +51,8 @@ class TransactionDialogFragment : DialogFragment() {
 
         ExpenseCategory.entries.forEach { category ->
             val chip = Chip(requireContext()).apply {
-                text = category.categoryName
+                // HATA BURADAYDI: DÜZELTİLDİ
+                text = category.getDisplayName(requireContext())
                 id = category.ordinal
                 isCheckable = true
             }
@@ -94,7 +92,7 @@ class TransactionDialogFragment : DialogFragment() {
                         viewModel.updateTransaction(updatedTransaction)
                     }
                 } else {
-                    Toast.makeText(requireContext(), "Lütfen geçerli bir ad ve tutar girin.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.please_enter_valid_name_and_amount), Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -103,7 +101,6 @@ class TransactionDialogFragment : DialogFragment() {
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
-        // *** YENİ: Dialog kapandığında ViewModel'i temizle ***
         viewModel.onDialogDismissed()
     }
 

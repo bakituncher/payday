@@ -34,7 +34,7 @@ fun LocalDate.toEndOfDayDate(): Date {
 @Suppress("DEPRECATION")
 class PaydayViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val TAG = "PaydayAutomation"
+    private val tag = "PaydayAutomation"
     private val repository = PaydayRepository(application)
     private val context = application.applicationContext
 
@@ -269,7 +269,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         if (topCategorySpending != null && topCategorySpending.totalAmount > totalExpenses * 0.4) {
             val topCategory = ExpenseCategory.fromId(topCategorySpending.categoryId)
-            val insight = context.getString(R.string.suggestion_high_spending, topCategory.categoryName)
+            val insight = context.getString(R.string.suggestion_high_spending, topCategory.getDisplayName(context))
             _financialInsight.postValue(Event(insight))
             return
         }
@@ -283,7 +283,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         if (totalDaysInCycle > 0) {
             val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
             val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
-            val salary = uiState.value?.incomeText?.replace(Regex("[^\\d]"), "")?.toLongOrNull() ?: 0L
+            val salary = uiState.value?.incomeText?.replace(Regex("\\D"), "")?.toLongOrNull() ?: 0L
             if (salary > 0) {
                 val spendingProgress = totalExpenses / salary
                 if (cycleProgress > 0.5 && spendingProgress < 0.3) {
@@ -308,9 +308,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         val totalIncome = salaryAmount + carryOverAmount
         val remainingAmount = totalIncome - totalExpenses - totalSavings
 
-        val pieEntries = categorySpending.map { spending ->
+        val pieEntries = categorySpending.map { spending: CategorySpending ->
             val category = ExpenseCategory.fromId(spending.categoryId)
-            PieEntry(spending.totalAmount.toFloat(), category.categoryName)
+            PieEntry(spending.totalAmount.toFloat(), category.getDisplayName(context))
         }
 
         val transactionsList = transactionsForCurrentCycle.value ?: emptyList()
@@ -488,7 +488,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 val backupJson = Gson().toJson(backupData)
                 googleDriveManager.uploadFileContent(backupJson)
             } catch (e: Exception) {
-                Log.e("AutoBackup", "Otomatik yedekleme sırasında bir hata oluştu.", e)
+                Log.e(tag, "Otomatik yedekleme sırasında bir hata oluştu.", e)
             }
         }
     }
@@ -585,7 +585,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun formatCurrency(amount: Double, prefix: String = ""): String {
-        return prefix + NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
+        return prefix + NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
     }
 
     // Artık sadece AYLIK kaydediliyor, bu yüzden parametreye gerek yok

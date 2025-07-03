@@ -52,7 +52,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="24dp"
-                android:text="Günlük Harcama Özeti (Son 30 Gün)" />
+                android:text="@string/daily_spending_summary_30_days" />
 
             <com.github.mikephil.charting.charts.BarChart
                 android:id="@+id/barChart"
@@ -65,7 +65,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="24dp"
-                android:text="Aylık Kategori Karşılaştırması" />
+                android:text="@string/monthly_category_comparison" />
 
             <Spinner
                 android:id="@+id/categorySpinner"

@@ -62,14 +62,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var googleDriveManager: GoogleDriveManager
     private lateinit var firebaseAnalytics: FirebaseAnalytics
 
-    // --- SELAMLAMA VE ANİMASYON İÇİN YENİ DEĞİŞKENLER ---
     private val titleHandler = Handler(Looper.getMainLooper())
     private lateinit var titleRunnable: Runnable
     private var isShowingGreeting = true
     private var greetingMessage = ""
     private val originalAppName by lazy { getString(R.string.app_name) }
     private val montserratBold: Typeface? by lazy { ResourcesCompat.getFont(this, R.font.montserrat_bold) }
-    // --- YENİ DEĞİŞKENLER SONU ---
 
     private val suggestionHandler = Handler(Looper.getMainLooper())
     private var suggestionRunnable: Runnable? = null
@@ -79,13 +77,13 @@ class MainActivity : AppCompatActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                updateGreetingMessage() // Giriş yapıldıktan sonra selamlama mesajını güncelle
+                updateGreetingMessage()
                 showSnackbar(getString(R.string.welcome_message_user, account.displayName))
                 showAutoBackupPrompt {
                     checkForBackupAndProceed()
                 }
             } catch (e: ApiException) {
-                Log.w(TAG, "Giriş başarısız, kod: " + e.statusCode)
+                Log.w(TAG, "Sign-in failed, code: " + e.statusCode)
                 showSnackbar(getString(R.string.google_sign_in_failed), isError = true)
             }
         }
@@ -113,7 +111,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Kenardan kenara görünüm için düzeltme
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -121,7 +118,6 @@ class MainActivity : AppCompatActivity() {
 
         firebaseAnalytics = Firebase.analytics
 
-        // Selamlama ve yazı değiştirme mantığını kur
         updateGreetingMessage()
         setupTitleRunnable()
         setupCustomFontForToolbar()
@@ -140,15 +136,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- YENİ EKLENEN METOTLAR ---
-
     private fun setupCustomFontForToolbar() {
-        // Toolbar'ın başlık TextView'ini bulup fontunu değiştiriyoruz.
         binding.toolbar.post {
             for (i in 0 until binding.toolbar.childCount) {
                 val view = binding.toolbar.getChildAt(i)
                 if (view is TextView) {
-                    // Sadece başlık olan TextView'i hedef alalım
                     if (view.text.toString() == binding.toolbar.title) {
                         view.typeface = montserratBold
                         break
@@ -163,13 +155,12 @@ class MainActivity : AppCompatActivity() {
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
         val greetingPrefix = when (hour) {
-            in 5..11 -> "Günaydın"
-            in 12..17 -> "Tünaydın"
-            else -> "İyi akşamlar"
+            in 5..11 -> getString(R.string.greeting_morning)
+            in 12..17 -> getString(R.string.greeting_afternoon)
+            else -> getString(R.string.greeting_evening)
         }
 
         val account = GoogleSignIn.getLastSignedInAccount(this)
-        // İsim 15 karakterden kısaysa ve boşluk içeriyorsa sadece ilk ismi al
         val displayName = account?.displayName?.let { name ->
             if (name.length > 15) "" else {
                 val firstName = name.split(" ").firstOrNull() ?: ""
@@ -189,26 +180,20 @@ class MainActivity : AppCompatActivity() {
             }
             binding.toolbar.title = nextTitle
             isShowingGreeting = !isShowingGreeting
-
-            // Kendini 10 saniye sonra tekrar çalıştırmak için planla
             titleHandler.postDelayed(titleRunnable, 10000)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        // Ekran göründüğünde runnable'ı başlat
         titleHandler.post(titleRunnable)
     }
 
     override fun onPause() {
         super.onPause()
-        // Ekran görünmediğinde runnable'ı durdurarak kaynak tasarrufu yap
         titleHandler.removeCallbacks(titleRunnable)
-        // Ekran kapandığında başlığı orijinal haline döndür
         binding.toolbar.title = originalAppName
     }
-    // --- YENİ METOTLAR SONU ---
 
     private fun performActionWithSignIn(action: () -> Unit) {
         val account = GoogleSignIn.getLastSignedInAccount(this)
@@ -230,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                 viewModel.triggerBackupHeroAchievement()
                 showSnackbar(getString(R.string.backup_success))
             } catch (e: Exception) {
-                Log.e(TAG, "Yedekleme işlemi sırasında HATA!", e)
+                Log.e(TAG, "Error during backup!", e)
                 showSnackbar(getString(R.string.backup_failed), isError = true)
             }
         }
@@ -250,7 +235,7 @@ class MainActivity : AppCompatActivity() {
                     showSnackbar(getString(R.string.restore_failed), isError = true)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Geri yükleme işlemi sırasında HATA!", e)
+                Log.e(TAG, "Error during restore!", e)
                 showSnackbar(getString(R.string.restore_failed), isError = true)
             }
         }
@@ -400,16 +385,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun showGoalCompletedDialog(goal: SavingsGoal) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("🎉 Hedef Tamamlandı! 🎉")
-            .setMessage("Tebrikler! '${goal.name}' hedefinizi başarıyla tamamladınız. Şimdi ne yapmak istersiniz?")
+            .setTitle(getString(R.string.goal_completed_dialog_title))
+            .setMessage(getString(R.string.goal_completed_dialog_message, goal.name))
             .setCancelable(false)
-            .setPositiveButton("Harika! Hedefi Bitir") { _, _ ->
+            .setPositiveButton(getString(R.string.goal_completed_dialog_positive)) { _, _ ->
                 viewModel.deleteGoal(goal)
-                showSnackbar("'${goal.name}' hedefi tamamlandı olarak işaretlendi.")
+                showSnackbar(getString(R.string.goal_completed_snackbar_message, goal.name))
             }
-            .setNegativeButton("Parayı Geri Yükle") { _, _ ->
+            .setNegativeButton(getString(R.string.goal_completed_dialog_negative)) { _, _ ->
                 viewModel.releaseFundsFromGoal(goal)
-                showSnackbar("'${goal.name}' hedefinden biriktirilen para hesaba geri aktarıldı.")
+                showSnackbar(getString(R.string.funds_restored_snackbar_message, goal.name))
             }
             .show()
     }
@@ -426,16 +411,13 @@ class MainActivity : AppCompatActivity() {
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
 
-        // --- YENİ EKLENEN KOD BAŞLANGICI ---
-        // Toplam birikim miktarını hesapla ve göster
         if (state.areGoalsVisible) {
             val totalSavedAmount = state.savingsGoals.sumOf { it.savedAmount }
-            binding.totalSavingsValueTextView.text = "Toplam: ${formatCurrency(totalSavedAmount)}"
+            binding.totalSavingsValueTextView.text = getString(R.string.total_savings_label, formatCurrency(totalSavedAmount))
             binding.totalSavingsValueTextView.visibility = View.VISIBLE
         } else {
             binding.totalSavingsValueTextView.visibility = View.GONE
         }
-        // --- YENİ EKLENEN KOD SONU ---
 
         if (state.carryOverAmount != 0L) {
             binding.carryOverContainer.visibility = View.VISIBLE
@@ -546,7 +528,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun formatCurrency(amount: Double): String {
-        return NumberFormat.getCurrencyInstance(Locale("tr", "TR")).format(amount)
+        return NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
     }
 
     private fun showAddFundsDialog(goal: SavingsGoal) {
@@ -556,7 +538,7 @@ class MainActivity : AppCompatActivity() {
         val availableFundsTextView = dialogView.findViewById<TextView>(R.id.availableFundsTextView)
 
         val currentRemainingAmount = viewModel.uiState.value?.actualRemainingAmountForGoals ?: 0.0
-        val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+        val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.getDefault())
 
         titleTextView.text = getString(R.string.add_funds_to_goal_title, goal.name)
         availableFundsTextView.text = getString(R.string.available_funds_label, currencyFormatter.format(currentRemainingAmount))
@@ -602,7 +584,7 @@ class MainActivity : AppCompatActivity() {
         snackbarLayout.setPadding(0, 0, 0, 0)
         val customView = layoutInflater.inflate(R.layout.toast_achievement_unlocked, snackbarLayout, false)
         customView.findViewById<ImageView>(R.id.toast_icon).setImageResource(achievement.iconResId)
-        customView.findViewById<TextView>(R.id.toast_achievement_name).text = achievement.title
+        customView.findViewById<TextView>(R.id.toast_achievement_name).text = getString(achievement.titleResId)
         snackbarLayout.addView(customView, 0)
         snackbar.show()
     }

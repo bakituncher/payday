@@ -1,11 +1,11 @@
-// Dosya: app/src/main/java/com/example/payday/Achievement.kt
-
 package com.codenzi.payday
+
+import androidx.annotation.StringRes
 
 data class Achievement(
     val id: String,
-    val title: String,
-    val description: String,
+    @StringRes val titleResId: Int,
+    @StringRes val descriptionResId: Int,
     var isUnlocked: Boolean = false,
-    val iconResId: Int // Başarım için özel ikon
+    val iconResId: Int
 )

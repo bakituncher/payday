@@ -61,8 +61,8 @@
 
         <androidx.preference.SwitchPreferenceCompat
             app:key="auto_backup_enabled"
-            app:title="Otomatik Yedekleme"
-            app:summary="Verileri her maaş döngüsünde otomatik olarak Google Drive'a yedekle."
+            app:title="@string/auto_backup_title"
+            app:summary="@string/auto_backup_summary"
             app:defaultValue="false"
             app:icon="@drawable/ic_backup" />
 

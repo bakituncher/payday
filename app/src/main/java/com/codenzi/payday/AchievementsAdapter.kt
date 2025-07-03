@@ -29,8 +29,8 @@ class AchievementsAdapter(private val achievements: List<Achievement>) : Recycle
         private val description: TextView = itemView.findViewById(R.id.achievementDescription)
 
         fun bind(achievement: Achievement) {
-            title.text = achievement.title
-            description.text = achievement.description
+            title.text = itemView.context.getString(achievement.titleResId)
+            description.text = itemView.context.getString(achievement.descriptionResId)
             icon.setImageResource(achievement.iconResId)
 
             val iconBackground = icon.background.mutate() as GradientDrawable

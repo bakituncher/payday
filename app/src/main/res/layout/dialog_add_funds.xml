@@ -10,7 +10,7 @@
         style="@style/TextAppearance.MaterialComponents.Headline6"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Hedefe Para Ekle" />
+        android:text="@string/add_funds" />
 
     <TextView
         android:id="@+id/availableFundsTextView"
@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:textColor="?android:attr/textColorSecondary"
-        android:text="Kullanılabilir Bakiye: ₺0,00" />
+        android:text="@string/available_funds_label" />
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -31,7 +31,7 @@
             android:id="@+id/amountEditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Eklenecek Tutar"
+            android:hint="@string/add_funds_amount_hint"
             android:inputType="numberDecimal" />
     </com.google.android.material.textfield.TextInputLayout>
 

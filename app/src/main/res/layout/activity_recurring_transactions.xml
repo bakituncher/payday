@@ -52,7 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/no_recurring_transactions_yet"
+            android:text="@string/no_recurring_transactions_message"
             android:textAppearance="?attr/textAppearanceHeadline6"
             android:textColor="?android:attr/textColorSecondary"/>
     </LinearLayout>

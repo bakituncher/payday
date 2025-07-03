@@ -50,8 +50,8 @@ class SavingsGoalAdapter(
         private val addFundsButton: Button = itemView.findViewById(R.id.addFundsButton)
         private val iconImageView: ImageView = itemView.findViewById(R.id.goalIcon)
 
-        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
-        private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
+        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale.getDefault())
+        private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
         private lateinit var currentGoal: SavingsGoal
 
         init {

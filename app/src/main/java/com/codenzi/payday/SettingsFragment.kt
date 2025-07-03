@@ -1,13 +1,11 @@
 package com.codenzi.payday
 
 import android.app.Activity
-import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.text.format.DateUtils
 import android.util.Log
-import android.widget.DatePicker
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -19,7 +17,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -27,18 +24,13 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.time.format.TextStyle
 import java.util.*
 
 @Suppress("DEPRECATION")
 class SettingsFragment : PreferenceFragmentCompat() {
 
     private lateinit var repository: PaydayRepository
-    private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+    private val currencyFormatter: NumberFormat by lazy { NumberFormat.getCurrencyInstance(Locale.getDefault()) }
     private val viewModel: PaydayViewModel by activityViewModels()
 
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -51,11 +43,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             task.addOnSuccessListener { account ->
-                Toast.makeText(requireContext(), "Hoş geldin, ${account.displayName}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.welcome_back_toast, account.displayName), Toast.LENGTH_SHORT).show()
                 updateAccountSection(account)
                 checkForBackupAndRestore()
             }.addOnFailureListener {
-                Toast.makeText(requireContext(), "Giriş yapılamadı.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.sign_in_failed_toast), Toast.LENGTH_SHORT).show()
                 updateAccountSection(null)
             }
         }
@@ -100,14 +92,14 @@ class SettingsFragment : PreferenceFragmentCompat() {
             event.getContentIfNotHandled()?.let { success ->
                 if (success) {
                     googleSignInClient.signOut().addOnCompleteListener {
-                        Toast.makeText(requireContext(), "Tüm verileriniz silindi ve çıkış yapıldı.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(requireContext(), getString(R.string.all_data_deleted_and_signed_out), Toast.LENGTH_LONG).show()
                         val intent = Intent(requireActivity(), LoginActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
                         requireActivity().finish()
                     }
                 } else {
-                    Toast.makeText(requireContext(), "Veri silinirken bir hata oluştu. Lütfen tekrar deneyin.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), getString(R.string.account_delete_error), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -118,7 +110,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             if (googleDriveManager.isBackupAvailable()) {
                 showRestoreDialog()
             } else {
-                Toast.makeText(requireContext(), "Google Drive'da bir yedeğiniz bulunamadı.", Toast.LENGTH_LONG).show()
+                Toast.makeText(requireContext(), getString(R.string.no_backup_found_toast), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -129,7 +121,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setMessage(R.string.restore_confirmation_message_login)
             .setCancelable(false)
             .setPositiveButton(R.string.yes_restore) { _, _ -> restoreData() }
-            .setNegativeButton(R.string.no_start_new) { _, _ -> /* Hiçbir şey yapma */ }
+            .setNegativeButton(R.string.no_start_new) { _, _ -> /* Do nothing */ }
             .show()
     }
 
@@ -140,14 +132,14 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 if (backupJson != null) {
                     val backupData = Gson().fromJson(backupJson, BackupData::class.java)
                     repository.restoreDataFromBackup(backupData)
-                    Toast.makeText(requireContext(), "Veriler başarıyla geri yüklendi.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.restore_success), Toast.LENGTH_SHORT).show()
                     requireActivity().recreate()
                 } else {
-                    Toast.makeText(requireContext(), "Geri yükleme başarısız oldu.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("SettingsRestore", "Geri yükleme sırasında hata", e)
-                Toast.makeText(requireContext(), "Geri yükleme sırasında bir hata oluştu.", Toast.LENGTH_SHORT).show()
+                Log.e("SettingsRestore", "Error during restore", e)
+                Toast.makeText(requireContext(), getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -223,7 +215,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .setPositiveButton(R.string.action_sign_out) { _, _ ->
                 viewModel.clearLocalData()
                 googleSignInClient.signOut().addOnCompleteListener {
-                    Toast.makeText(requireContext(), "Başarıyla çıkış yapıldı ve yerel veriler temizlendi.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), getString(R.string.sign_out_success_local_data_cleared), Toast.LENGTH_LONG).show()
                     val intent = Intent(requireActivity(), LoginActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
@@ -287,7 +279,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
             val lastBackupTimestamp = repository.getLastBackupTimestamp().first()
             if (lastBackupTimestamp > 0) {
-                autoBackupPref.summary = "Son yedekleme: ${formatTimestamp(lastBackupTimestamp)}"
+                autoBackupPref.summary = getString(R.string.last_backup_label) + formatTimestamp(lastBackupTimestamp)
             } else {
                 autoBackupPref.summary = getString(R.string.auto_backup_summary)
             }
@@ -296,7 +288,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private fun formatTimestamp(timestamp: Long): String {
         return if (DateUtils.isToday(timestamp)) {
-            "Bugün, ${android.text.format.DateFormat.getTimeFormat(requireContext()).format(Date(timestamp))}"
+            getString(R.string.today_label) + android.text.format.DateFormat.getTimeFormat(requireContext()).format(Date(timestamp))
         } else {
             val dateFormat = android.text.format.DateFormat.getMediumDateFormat(requireContext())
             val timeFormat = android.text.format.DateFormat.getTimeFormat(requireContext())
@@ -336,7 +328,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private suspend fun updatePaydaySummary() {
         val paydayPref = findPreference<Preference>("payday")
         val dayValue = repository.getPaydayValue().first()
-        paydayPref?.summary = if (dayValue != -1) "Her ayın $dayValue. günü" else getString(R.string.payday_not_set)
+        paydayPref?.summary = if (dayValue != -1) getString(R.string.payday_summary_monthly, dayValue) else getString(R.string.payday_not_set)
     }
 
     private fun updateCurrencySummary(key: String, value: Long) {

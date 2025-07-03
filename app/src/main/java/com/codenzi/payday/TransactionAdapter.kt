@@ -37,8 +37,8 @@ class TransactionAdapter(
         private val dateTextView: TextView = itemView.findViewById(R.id.transactionDateTextView)
         private val amountTextView: TextView = itemView.findViewById(R.id.transactionAmountTextView)
         private val iconImageView: ImageView = itemView.findViewById(R.id.transactionIcon) // DÜZELTME: İkon için referans eklendi.
-        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
-        private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("tr"))
+        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale.getDefault())
+        private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
         private lateinit var currentTransaction: Transaction
 
         init {

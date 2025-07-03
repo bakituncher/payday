@@ -9,7 +9,7 @@ import android.widget.Button
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat // <-- EKLENDİ
+import androidx.core.view.WindowCompat
 import com.codenzi.payday.databinding.ActivityReportsBinding
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.components.XAxis
@@ -30,8 +30,6 @@ class ReportsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Kenardan kenara görünüm için DÜZELTME
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityReportsBinding.inflate(layoutInflater)
@@ -101,7 +99,7 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun setupFilters() {
-        val categories = ExpenseCategory.entries.map { it.categoryName }.toTypedArray()
+        val categories = ExpenseCategory.entries.map { it.getDisplayName(this) }.toTypedArray()
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categories)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.categorySpinner.adapter = adapter
@@ -168,7 +166,7 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun setDataToBarChart(entries: List<BarEntry>, labels: List<String>) {
-        val dataSet = BarDataSet(entries, "Günlük Harcamalar")
+        val dataSet = BarDataSet(entries, getString(R.string.daily_spending_chart_label))
         dataSet.color = ContextCompat.getColor(this, R.color.primary)
         dataSet.valueTextColor = chartTextColor
 
@@ -188,7 +186,7 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun setDataToLineChart(entries: List<Entry>, labels: List<String>) {
-        val dataSet = LineDataSet(entries, "Aylık Harcama")
+        val dataSet = LineDataSet(entries, getString(R.string.monthly_spending_chart_label))
         dataSet.color = ContextCompat.getColor(this, R.color.secondary)
         dataSet.setCircleColor(ContextCompat.getColor(this, R.color.secondary))
         dataSet.lineWidth = 2f

@@ -29,7 +29,7 @@ class RecurringTransactionAdapter(
     }
 
     class ViewHolder(private val binding: ListItemRecurringTransactionBinding) : RecyclerView.ViewHolder(binding.root) {
-        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale("tr", "TR"))
+        private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale.getDefault())
 
         fun bind(
             transaction: Transaction,
@@ -39,7 +39,8 @@ class RecurringTransactionAdapter(
             binding.transactionNameTextView.text = transaction.name
             binding.transactionAmountTextView.text = "- ${currencyFormatter.format(transaction.amount)}"
             val category = ExpenseCategory.fromId(transaction.categoryId)
-            binding.transactionCategoryTextView.text = category.categoryName
+            // HATA BURADAYDI: DÜZELTİLDİ
+            binding.transactionCategoryTextView.text = category.getDisplayName(binding.root.context)
             binding.transactionIcon.setImageResource(category.iconResId)
 
             binding.editButton.setOnClickListener { onEditClicked(transaction) }

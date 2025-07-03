@@ -74,7 +74,6 @@
             android:text="@string/select_date_button"
             app:icon="@drawable/ic_achievement_calendar" />
 
-        <!-- YENİ: Otomatik Tasarruf Dağıtım Oranı için Slider ve Metin -->
         <TextView
             android:id="@+id/portionLabelTextView"
             android:layout_width="wrap_content"
@@ -90,7 +89,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
-            android:text="100%"
+            android:text="@string/portion_value_text"
             android:textAppearance="?attr/textAppearanceBody1"
             android:textStyle="bold" />
 
