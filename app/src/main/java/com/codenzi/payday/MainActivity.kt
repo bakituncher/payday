@@ -426,6 +426,17 @@ class MainActivity : AppCompatActivity() {
         binding.savingsGoalsTitleContainer.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
         binding.savingsGoalsRecyclerView.visibility = if (state.areGoalsVisible) View.VISIBLE else View.GONE
 
+        // --- YENİ EKLENEN KOD BAŞLANGICI ---
+        // Toplam birikim miktarını hesapla ve göster
+        if (state.areGoalsVisible) {
+            val totalSavedAmount = state.savingsGoals.sumOf { it.savedAmount }
+            binding.totalSavingsValueTextView.text = "Toplam: ${formatCurrency(totalSavedAmount)}"
+            binding.totalSavingsValueTextView.visibility = View.VISIBLE
+        } else {
+            binding.totalSavingsValueTextView.visibility = View.GONE
+        }
+        // --- YENİ EKLENEN KOD SONU ---
+
         if (state.carryOverAmount != 0L) {
             binding.carryOverContainer.visibility = View.VISIBLE
             if (state.carryOverAmount > 0) {
