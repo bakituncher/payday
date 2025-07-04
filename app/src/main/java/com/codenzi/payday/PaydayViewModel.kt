@@ -151,12 +151,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
             val goals = repository.getGoals().first()
             val carryOverAmount = repository.getCarryOverAmount().first()
 
-            // Hesaplama artık sadece AYLIK ve referans tarih olmadan yapılıyor
             val result = PaydayCalculator.calculate(
                 dateToCheck = LocalDate.now(),
-                payPeriod = PayPeriod.MONTHLY, // Sabit
+                payPeriod = PayPeriod.MONTHLY,
                 paydayValue = paydayValue,
-                biWeeklyRefDateString = null, // Artık gerekli değil
+                biWeeklyRefDateString = null,
                 weekendAdjustmentEnabled = weekendAdjustment
             )
 
@@ -175,7 +174,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                         .sumOf { it.amount }
 
                     updateUi(result, salaryAmount, totalExpenses, totalSavings, goals, categorySpending, carryOverAmount)
-                    generateFinancialInsights(totalExpenses, categorySpending)
+                    generateFinancialInsights(totalExpenses, totalSavings, categorySpending, salaryAmount, carryOverAmount, result)
                 }
             } else {
                 _uiState.postValue(PaydayUiState(daysLeftText = context.getString(R.string.day_not_set_placeholder), daysLeftSuffix = context.getString(R.string.welcome_message)))
@@ -191,9 +190,9 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         val resultForYesterday = PaydayCalculator.calculate(
             dateToCheck = yesterday,
-            payPeriod = PayPeriod.MONTHLY, // Sabit
+            payPeriod = PayPeriod.MONTHLY,
             paydayValue = paydayValue,
-            biWeeklyRefDateString = null, // Artık gerekli değil
+            biWeeklyRefDateString = null,
             weekendAdjustmentEnabled = weekendAdjustment
         )
 
@@ -259,42 +258,64 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         repository.saveLastProcessedPayday(LocalDate.now().minusDays(1))
     }
 
-    private fun generateFinancialInsights(totalExpenses: Double, categorySpending: List<CategorySpending>) {
-        if (categorySpending.isEmpty()) {
-            _financialInsight.postValue(Event(null))
+    private fun generateFinancialInsights(
+        totalExpenses: Double,
+        totalSavings: Double,
+        categorySpending: List<CategorySpending>,
+        salaryAmount: Long,
+        carryOverAmount: Long,
+        paydayResult: PaydayResult
+    ) {
+        val totalIncome = salaryAmount + carryOverAmount
+        val remainingAmount = totalIncome - totalExpenses - totalSavings
+
+        // 1. Bütçe Aşımı Uyarısı (En Yüksek Öncelik)
+        if (remainingAmount < 0) {
+            _financialInsight.postValue(Event("Bütçenizi aşmış görünüyorsunuz. Harcamalarınızı gözden geçirin."))
             return
         }
 
-        val topCategorySpending = categorySpending.maxByOrNull { it.totalAmount }
-
-        if (topCategorySpending != null && topCategorySpending.totalAmount > totalExpenses * 0.4) {
-            val topCategory = ExpenseCategory.fromId(topCategorySpending.categoryId)
-            val insight = context.getString(R.string.suggestion_high_spending, topCategory.getDisplayName(context))
-            _financialInsight.postValue(Event(insight))
-            return
-        }
-
-        val cycle = currentPayCycle.value ?: return
-        val today = LocalDate.now()
-        val cycleStart = cycle.first.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-        val cycleEnd = cycle.second.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-        val totalDaysInCycle = ChronoUnit.DAYS.between(cycleStart, cycleEnd)
-
-        if (totalDaysInCycle > 0) {
-            val daysPassed = ChronoUnit.DAYS.between(cycleStart, today)
-            val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
-            val salary = uiState.value?.incomeText?.replace(Regex("\\D"), "")?.toLongOrNull() ?: 0L
-            if (salary > 0) {
-                val spendingProgress = totalExpenses / salary
-                if (cycleProgress > 0.5 && spendingProgress < 0.3) {
-                    _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress)))
-                    return
-                }
+        // 2. Yüksek Harcama Kategorisi Uyarısı
+        val transactionsInCycle = transactionsForCurrentCycle.value ?: emptyList()
+        if (transactionsInCycle.size > 1 && totalExpenses > 100) {
+            val topCategorySpending = categorySpending.maxByOrNull { it.totalAmount }
+            if (topCategorySpending != null && topCategorySpending.totalAmount > totalExpenses * 0.4) {
+                val topCategory = ExpenseCategory.fromId(topCategorySpending.categoryId)
+                val insight = context.getString(R.string.suggestion_high_spending, topCategory.getDisplayName(context))
+                _financialInsight.postValue(Event(insight))
+                return
             }
         }
 
+        // 3. Bütçe Sınırına Yaklaşma Uyarısı
+        if (totalIncome > 0 && (remainingAmount / totalIncome) < 0.15) {
+            _financialInsight.postValue(Event("Bütçenizin sonuna yaklaşıyorsunuz, dikkatli harcama yapın."))
+            return
+        }
+
+        // 4. İyi Gidişat ve Tasarruf Önerisi
+        val totalDaysInCycle = paydayResult.totalDaysInCycle
+        if (totalDaysInCycle > 0) {
+            val daysPassed = ChronoUnit.DAYS.between(paydayResult.cycleStartDate, LocalDate.now())
+            val cycleProgress = daysPassed.toDouble() / totalDaysInCycle.toDouble()
+
+            // Döngünün yarısından fazlası geçtiyse ve harcamalar gelirin %30'undan azsa
+            if (cycleProgress > 0.5 && totalExpenses < totalIncome * 0.3) {
+                _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress)))
+                return
+            }
+
+            // Döngünün sonuna gelinmişse ve hala para varsa
+            if (cycleProgress > 0.8 && remainingAmount > totalIncome * 0.2) {
+                _financialInsight.postValue(Event("İyi gidiyorsun! Kalan paranı tasarruf hedeflerine aktarmaya ne dersin?"))
+                return
+            }
+        }
+
+        // Hiçbir koşul karşılanmazsa öneri gösterme
         _financialInsight.postValue(Event(null))
     }
+
 
     private fun updateUi(
         paydayResult: PaydayResult,
@@ -588,14 +609,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         return prefix + NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
     }
 
-    // Artık sadece AYLIK kaydediliyor, bu yüzden parametreye gerek yok
     fun savePayPeriod() = viewModelScope.launch {
         repository.savePayPeriod(PayPeriod.MONTHLY)
     }
 
     fun savePayday(day: Int) = viewModelScope.launch { repository.savePayday(day) }
-
-    // biWeeklyReferenceDate metodu kaldırıldı
 
     fun saveSalary(salary: Long) = viewModelScope.launch { repository.saveSalary(salary) }
 

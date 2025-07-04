@@ -13,6 +13,7 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -51,9 +52,11 @@ class GoogleDriveManager(private val context: Context) {
                 .files.firstOrNull()?.id?.also { cachedFileId = it }
         } catch (e: IOException) {
             Log.e(TAG, "Dosya ID'si alınırken ağ hatası oluştu.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             null
         } catch (e: Exception) {
             Log.e(TAG, "Dosya ID'si alınırken genel bir hata oluştu.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             null
         }
     }
@@ -64,6 +67,7 @@ class GoogleDriveManager(private val context: Context) {
             getBackupFileId(drive) != null
         } catch (e: Exception) {
             Log.e(TAG, "Yedek kontrolü sırasında hata", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             false
         }
     }
@@ -85,9 +89,11 @@ class GoogleDriveManager(private val context: Context) {
             }
         } catch (e: IOException) {
             Log.e(TAG, "Dosya yüklenirken ağ hatası oluştu.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Dosya yüklenirken genel bir hata oluştu.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             throw e
         }
     }
@@ -100,9 +106,11 @@ class GoogleDriveManager(private val context: Context) {
             BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
         } catch (e: IOException) {
             Log.e(TAG, "Dosya indirilirken ağ hatası.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             null
         } catch (e: Exception) {
             Log.e(TAG, "Dosya indirme sırasında genel bir hata.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             null
         }
     }
@@ -116,12 +124,14 @@ class GoogleDriveManager(private val context: Context) {
                 cachedFileId = null
                 Log.d(TAG, "Google Drive'daki yedek dosyası başarıyla silindi.")
             }
-            true // Return true even if file didn't exist, the state is still "no backup file"
+            true
         } catch (e: IOException) {
             Log.e(TAG, "Google Drive yedeği silinirken ağ hatası.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             false
         } catch (e: Exception) {
             Log.e(TAG, "Google Drive yedek dosyası silinirken genel bir hata oluştu.", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
             false
         }
     }

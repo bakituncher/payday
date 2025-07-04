@@ -162,8 +162,10 @@ class MainActivity : AppCompatActivity() {
 
         val account = GoogleSignIn.getLastSignedInAccount(this)
         val displayName = account?.displayName?.let { name ->
-            if (name.length > 15) "" else {
-                val firstName = name.split(" ").firstOrNull() ?: ""
+            val firstName = name.split(" ").firstOrNull() ?: ""
+            if (firstName.length > 15) {
+                " ${firstName.substring(0, 12)}..."
+            } else {
                 " $firstName"
             }
         } ?: ""

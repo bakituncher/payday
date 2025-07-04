@@ -135,14 +135,23 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     Toast.makeText(requireContext(), getString(R.string.restore_success), Toast.LENGTH_SHORT).show()
                     requireActivity().recreate()
                 } else {
-                    Toast.makeText(requireContext(), getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
+                    // DÜZELTME: Güvenli context kontrolü
+                    val safeContext = context
+                    if (safeContext != null) {
+                        Toast.makeText(safeContext, getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("SettingsRestore", "Error during restore", e)
-                Toast.makeText(requireContext(), getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
+                // DÜZELTME: Güvenli context kontrolü
+                val safeContext = context
+                if (safeContext != null) {
+                    Toast.makeText(safeContext, getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
+
 
     override fun onResume() {
         super.onResume()
