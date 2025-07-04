@@ -42,7 +42,7 @@
             app:title="@string/auto_saving_title"
             app:summary="@string/auto_saving_summary"
             app:defaultValue="false"
-            app:icon="@drawable/ic_auto_awesome" />
+            app:icon="@drawable/ic_yard" />
 
         <Preference
             app:key="recurring_transactions"
@@ -65,6 +65,24 @@
             app:summary="@string/auto_backup_summary"
             app:defaultValue="false"
             app:icon="@drawable/ic_backup" />
+
+    </androidx.preference.PreferenceCategory>
+
+    <androidx.preference.PreferenceCategory
+        app:title="@string/settings_communication_title"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            app:key="privacy_policy"
+            app:title="@string/privacy_policy_title"
+            app:summary="@string/privacy_policy_summary"
+            app:icon="@drawable/ic_privacy_policy" />
+
+        <Preference
+            app:key="send_feedback"
+            app:title="@string/send_feedback_title"
+            app:summary="@string/send_feedback_summary"
+            app:icon="@drawable/ic_send_feedback" />
 
     </androidx.preference.PreferenceCategory>
 

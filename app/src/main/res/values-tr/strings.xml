@@ -312,4 +312,12 @@
     <string name="suggestion_budget_exceeded">Bütçenizi aşmış görünüyorsunuz. Harcamalarınızı gözden geçirin.</string>
     <string name="suggestion_approaching_budget_limit">Bütçenizin sonuna yaklaşıyorsunuz, dikkatli harcama yapın.</string>
     <string name="suggestion_good_progress_transfer">İyi gidiyorsun! Kalan paranı tasarruf hedeflerine aktarmaya ne dersin?</string>
+    <string name="settings_communication_title">İletişim &amp; Geri Bildirim</string>
+    <string name="privacy_policy_title">Gizlilik Politikası</string>
+    <string name="privacy_policy_summary">Gizlilik politikamızı okuyun.</string>
+    <string name="send_feedback_title">Geri Bildirim Gönder</string>
+    <string name="send_feedback_summary">Hataları bildirin veya yeni özellikler önerin.</string>
+    <string name="feedback_email">info@codenzi.com</string>
+    <string name="feedback_subject">Payday Uygulaması Geri Bildirimi</string>
+    <string name="privacy_policy_url">https://www.codenzi.com/payday.html</string>
 </resources>
