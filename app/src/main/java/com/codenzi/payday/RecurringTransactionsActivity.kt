@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat // <-- EKLENDİ
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.codenzi.payday.databinding.ActivityRecurringTransactionsBinding
@@ -19,6 +20,10 @@ class RecurringTransactionsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Kenardan kenara görünüm için DÜZELTME
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityRecurringTransactionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -36,12 +41,10 @@ class RecurringTransactionsActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         recurringTransactionAdapter = RecurringTransactionAdapter(
             onEditClicked = { transaction ->
-                // Düzenleme için TransactionDialogFragment'ı aç
                 TransactionDialogFragment.newInstance(transaction.id)
                     .show(supportFragmentManager, TransactionDialogFragment.TAG)
             },
             onDeleteClicked = { transaction ->
-                // Silme onayı iletişim kutusunu göster
                 MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.delete_recurring_transaction_title)
                     .setMessage(getString(R.string.delete_recurring_transaction_message, transaction.name))
@@ -60,7 +63,6 @@ class RecurringTransactionsActivity : AppCompatActivity() {
 
     private fun observeRecurringTransactions() {
         lifecycleScope.launch {
-            // Repository'den tekrarlayan harcama şablonlarını gözlemle
             val repository = PaydayRepository(this@RecurringTransactionsActivity)
             repository.getRecurringTransactionTemplates().collectLatest { templates ->
                 if (templates.isEmpty()) {

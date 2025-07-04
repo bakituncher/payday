@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Payday</string>
+    <string name="save">Kaydet</string>
+    <string name="cancel">İptal</string>
+    <string name="delete">Sil</string>
+    <string name="edit">Düzenle</string>
+    <string name="ok">Tamam</string>
+    <string name="currency_symbol">₺</string>
+    <string name="initial_amount">0,00</string>
+    <string name="category">Kategori</string>
+    <string name="achievements_title">Başarımlar</string>
+
+    <string name="next_payday_countdown">BİR SONRAKİ MAAŞA KADAR</string>
+    <string name="days_left_suffix">GÜN KALDI</string>
+    <string name="day_not_set_placeholder">--</string>
+    <string name="payday_is_today">BUGÜN MAAŞ GÜNÜ!</string>
+    <string name="welcome_message">Başlamak için ayarları yapın.</string>
+    <string name="financial_summary">Finansal Özet</string>
+    <string name="income">Gelir</string>
+    <string name="expenses">Gider</string>
+    <string name="savings">Birikimler</string>
+    <string name="remaining">Kalan</string>
+    <string name="title_savings_goals">Tasarruf Hedefleri</string>
+    <string name="recent_transactions">Son Harcamalar</string>
+    <string name="no_transactions_yet">Henüz hiç harcama eklemediniz.</string>
+    <string name="carry_over">Devreden</string>
+    <string name="carry_over_debt">Devreden Borç</string>
+    <string name="total_savings_label">Toplam: %s</string>
+    <string name="greeting_morning">Günaydın</string>
+    <string name="greeting_afternoon">Tünaydın</string>
+    <string name="greeting_evening">İyi akşamlar</string>
+    <string name="goal_completed_dialog_title">🎉 Hedef Tamamlandı! 🎉</string>
+    <string name="goal_completed_dialog_message">Tebrikler! \'%1$s\' hedefinizi başarıyla tamamladınız. Şimdi ne yapmak istersiniz?</string>
+    <string name="goal_completed_dialog_positive">Harika! Hedefi Bitir</string>
+    <string name="goal_completed_dialog_negative">Parayı Geri Yükle</string>
+    <string name="goal_completed_snackbar_message">\'%1$s\' hedefi tamamlandı olarak işaretlendi.</string>
+    <string name="funds_restored_snackbar_message">\'%1$s\' hedefinden biriktirilen para hesaba geri aktarıldı.</string>
+
+    <string name="onboarding_next">İleri</string>
+    <string name="onboarding_back">Geri</string>
+    <string name="onboarding_finish">Bitir ve Başla</string>
+    <string name="onboarding_pay_period_title">Nasıl Maaş Alıyorsunuz?</string>
+    <string name="onboarding_pay_period_subtitle">Ödeme periyodunuzu seçerek başlayın.</string>
+    <string name="pay_period_monthly">Aylık</string>
+    <string name="pay_period_bi_weekly">2 Haftada Bir</string>
+    <string name="pay_period_weekly">Haftalık</string>
+    <string name="onboarding_payday_title">Maaş Gününüz Ne Zaman?</string>
+    <string name="onboarding_payday_subtitle_monthly">Her ay maaş aldığınız günü seçin.</string>
+    <string name="onboarding_payday_subtitle_bi_weekly">Yaklaşan herhangi bir maaş gününüzün tarihini seçin.</string>
+    <string name="onboarding_payday_subtitle_weekly">Haftanın hangi günü maaş aldığınızı seçin.</string>
+    <string name="onboarding_salary_title">Aylık Net Maaşınız</string>
+    <string name="onboarding_salary_subtitle">Birikimlerinizi hesaplamak için bu bilgiye ihtiyacımız var.</string>
+    <string name="onboarding_salary_hint">Net Maaş (örn: 35000)</string>
+    <string name="onboarding_savings_title">Aylık Tasarruf Hedefiniz</string>
+    <string name="onboarding_savings_subtitle">Her ay ne kadar biriktirmeyi hedefliyorsunuz?</string>
+    <string name="onboarding_savings_hint">Aylık Tasarruf (örn: 5000)</string>
+
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_payment_title">Ödeme Bilgileri</string>
+    <string name="settings_general_title">Genel</string>
+    <string name="set_pay_period_button">Ödeme Periyodu</string>
+    <string name="set_payday_button">Maaş Günü</string>
+    <string name="set_salary_button_text">Aylık Maaş</string>
+    <string name="set_monthly_savings_button">Aylık Tasarruf</string>
+    <string name="weekend_adjustment_label">Hafta sonunu Cumaya ayarla</string>
+    <string name="weekend_adjustment_summary">Maaş günü hafta sonuna denk gelirse, Cuma günü sayılır.</string>
+    <string name="dialog_set_salary_title">Aylık Maaşı Düzenle</string>
+    <string name="dialog_set_monthly_savings_title">Aylık Tasarrufu Düzenle</string>
+    <string name="payday_not_set">Henüz ayarlanmadı</string>
+    <string name="select_payday_dialog_title">Maaş Günü Seçin</string>
+    <string name="theme_title">Uygulama Teması</string>
+    <string name="auto_saving_title">Otomatik Hedef Birikimi</string>
+    <string name="auto_saving_summary">Her maaş döneminde, aylık tasarruf hedefini hedeflerine otomatik dağıt.</string>
+    <string name="payday_summary_monthly">Her ayın %1$d. günü</string>
+    <string name="last_backup_label">"Son yedekleme: "</string>
+    <string name="today_label">"Bugün, "</string>
+    <string name="welcome_back_toast">"Hoş geldin, %1$s"</string>
+    <string name="sign_in_failed_toast">"Giriş yapılamadı."</string>
+    <string name="no_backup_found_toast">"Google Drive\'da bir yedeğiniz bulunamadı."</string>
+
+    <string name="account_category_title">Hesap</string>
+    <string name="profile_title">Profil</string>
+    <string name="google_sign_in_title">Google ile Giriş Yap</string>
+    <string name="google_sign_in_summary">Yedekleme ve senkronizasyon için giriş yapın.</string>
+    <string name="google_sign_out_title">Google Hesabı (Çıkış Yap)</string>
+    <string name="google_sign_out_confirmation_message">Google hesabınızdan çıkış yapmak istediğinize emin misiniz? Yedekleme ve senkronizasyon özellikleri devre dışı kalacaktır.</string>
+    <string name="action_sign_out">Evet, Çıkış Yap</string>
+    <string name="delete_account_title">Hesabı ve Verileri Sil</string>
+    <string name="delete_account_summary">Tüm uygulama ve Google Drive verilerinizi kalıcı olarak silin.</string>
+    <string name="delete_account_confirmation_message">Bu işlem geri alınamaz. Tüm yerel verileriniz, ayarlarınız ve Google Drive\'daki uygulama yedeğiniz kalıcı olarak silinecektir. Devam etmek istediğinize emin misiniz?</string>
+    <string name="delete_button_text">Sil</string>
+    <string name="action_backup">Yedekle</string>
+    <string name="action_restore">Geri Yükle</string>
+    <string name="backup_success">Veriler başarıyla Google Drive\'a yedeklendi.</string>
+    <string name="backup_failed">Yedekleme başarısız oldu.</string>
+    <string name="restore_success">Veriler başarıyla geri yüklendi.</string>
+    <string name="restore_failed">Geri yükleme başarısız oldu veya yedek bulunamadı.</string>
+    <string name="google_sign_in_failed">Google ile giriş yapılamadı.</string>
+    <string name="auto_backup_prompt_message">Verilerinizin düzenli olarak Google Drive\'a otomatik yedeklenmesini ister misiniz? Bu ayarı daha sonra Ayarlar menüsünden değiştirebilirsiniz.</string>
+    <string name="yes_turn_on">Evet, Aç</string>
+    <string name="no_thanks">Hayır, Teşekkürler</string>
+    <string name="backup_found_title">Yedek Bulundu</string>
+    <string name="restore_confirmation_message_main">Google Drive\'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi? (Mevcut verileriniz silinecektir)</string>
+    <string name="restore_confirmation_message_login">Google Drive\'da bir yedeğiniz bulundu. Verileriniz geri yüklensin mi?</string>
+    <string name="yes_restore">Evet, Geri Yükle</string>
+    <string name="no_dont_touch">Hayır, Dokunma</string>
+    <string name="no_start_new">Hayır, Yeni Başla</string>
+    <string name="restore_success_login">Verileriniz başarıyla geri yüklendi.</string>
+    <string name="backup_download_failed_creating_new_profile">Yedek indirilemedi, yeni profil oluşturuluyor.</string>
+    <string name="restore_failed_login">Geri yükleme başarısız oldu.</string>
+    <string name="sign_in_required_for_feature">Bu özelliği kullanmak için Google ile giriş yapmalısınız.</string>
+    <string name="all_data_deleted_and_signed_out">Tüm verileriniz silindi ve çıkış yapıldı.</string>
+    <string name="sign_out_success_local_data_cleared">Başarıyla çıkış yapıldı ve yerel veriler temizlendi.</string>
+    <string name="dont_show_again">Bir daha sorma</string>
+    <string name="restore_warning_title">Veri Kontrolü Gerekli</string>
+    <string name="restore_warning_message">Verileriniz geri yüklendi ancak maaş veya ödeme periyodu gibi bazı temel ayarlar eksik görünüyor. Uygulamanın doğru çalışması için lütfen Ayarlar ekranından bu bilgileri kontrol edip güncelleyin.</string>
+    <string name="go_to_settings">Ayarlara Git</string>
+    <string name="backup_started">Yedekleme başlatıldı...</string>
+    <string name="restore_started">Geri yükleme başlatıldı...</string>
+    <string name="sign_in_success_and_initial_backup">Giriş başarılı. İlk verileriniz şimdi yedekleniyor...</string>
+    <string name="existing_data_preserved">Mevcut verileriniz korundu.</string>
+    <string name="welcome_message_user">Hoş geldin, %1$s</string>
+    <string name="network_error_please_check_connection">Ağ hatası. Lütfen internet bağlantınızı kontrol edin.</string>
+    <string name="login_error_occurred">Giriş sırasında bir hata oluştu.</string>
+    <string name="account_delete_error">"Veri silinirken bir hata oluştu. Lütfen tekrar deneyin."</string>
+
+    <string name="dialog_add_goal_title">Yeni Tasarruf Hedefi</string>
+    <string name="dialog_edit_goal_title">Hedefi Düzenle</string>
+    <string name="dialog_goal_name_hint">Hedef Adı (örn: Tatil)</string>
+    <string name="dialog_goal_amount_hint">Hedef Tutar (örn: 50000)</string>
+    <string name="toast_invalid_goal_input">Lütfen geçerli bir ad ve tutar girin.</string>
+    <string name="delete_goal_confirmation_title">"%s" Silinsin mi?</string>
+    <string name="delete_goal_confirmation_message">Bu hedef kalıcı olarak silinecek. Bu işlem geri alınamaz.</string>
+    <string name="dialog_goal_date_hint">Hedef Tarihi (İsteğe Bağlı)</string>
+    <string name="select_date_button">Tarih Seç</string>
+    <string name="goal_date_info">Hedef: %1$s (%2$d gün kaldı)</string>
+    <string name="auto_savings_transaction_name">\'%1$s\' hedefine otomatik aktarıldı</string>
+    <string name="auto_savings_general">Genel Otomatik Birikim</string>
+    <string name="release_funds_title">Birikim Bulundu</string>
+    <string name="release_funds_message">\'%1$s\' hedefinde %2$s birikmiş. Hedefi silmek için önce bu paranın harcanabilir bakiyenize geri eklenmesi gerekir.</string>
+    <string name="release_funds_button">Parayı Serbest Bırak ve Sil</string>
+    <string name="goal_refund_transaction_name">\'%1$s\' hedefinden iade</string>
+    <string name="add_funds">Para Ekle</string>
+    <string name="edit_goal">Hedefi Düzenle</string>
+    <string name="delete_goal">Hedefi Sil</string>
+    <string name="insufficient_funds_error">Yetersiz bakiye!</string>
+    <string name="please_enter_valid_amount">Lütfen geçerli bir tutar girin.</string>
+    <string name="please_enter_valid_name_and_amount">Lütfen geçerli bir ad ve tutar girin.</string>
+    <string name="add_funds_to_goal_title">\'%1$s\' hedefine para ekle</string>
+    <string name="available_funds_label">Kullanılabilir Bakiye: %1$s</string>
+    <string name="goal_date_passed">Hedef tarihi geçti!</string>
+    <string name="funds_released_and_goal_deleted">Para serbest bırakıldı ve hedef silindi.</string>
+    <string name="add_funds_to_goal_transaction_name">\'%1$s\' hedefine aktarıldı</string>
+    <string name="auto_savings_portion_label">Otomatik Tasarruf Dağıtım Oranı</string>
+    <string name="portion_percentage">%d%%</string>
+    <string name="toast_total_portion_exceeded">Hedeflerin toplam dağıtım oranı 100\'ü geçemez!</string>
+
+    <string name="add_transaction">Harcama Ekle</string>
+    <string name="edit_transaction_title">Harcamayı Düzenle</string>
+    <string name="delete_transaction_confirmation_title">Harcama Silinsin mi?</string>
+    <string name="delete_transaction_confirmation_message">Bu harcama kalıcı olarak silinecek. Bu işlem geri alınamaz.</string>
+    <string name="transaction_name_hint">Harcama Adı (örn: Kahve)</string>
+    <string name="transaction_amount_hint">Tutar (örn: 95.50)</string>
+    <string name="recurring_transaction_label">Bu harcamayı her ay tekrarla</string>
+    <string name="recurring_transactions_title">Tekrarlayan Harcamalar</string>
+    <string name="recurring_transactions_summary">Aylık sabit harcamalarınızı yönetin.</string>
+    <string name="no_recurring_transactions_yet">Henüz tekrarlayan harcama yok.</string>
+    <string name="delete_recurring_transaction_title">Şablon Silinsin mi?</string>
+    <string name="delete_recurring_transaction_message">\'%s\' adlı tekrarlayan harcama şablonu silinecek. Bu işlem geri alınamaz.</string>
+
+    <string name="reports_title">Raporlar</string>
+    <string name="no_spending_data">Grafiği oluşturmak için henüz harcama verisi yok.</string>
+    <string name="spending_by_category">Kategoriye Göre Harcamalar</string>
+    <string name="daily_spending_summary_30_days">Günlük Harcama Özeti (Son 30 Gün)</string>
+    <string name="monthly_category_comparison">Aylık Kategori Karşılaştırması</string>
+    <string name="daily_spending_chart_label">"Günlük Harcamalar"</string>
+    <string name="monthly_spending_chart_label">"Aylık Harcama"</string>
+
+    <string name="suggestion_title">Akıllı Öneri</string>
+    <string name="suggestion_high_spending">Bu dönemde en çok harcamayı <b>%1$s</b> kategorisinde yapmışsın. Gözden geçirmek isteyebilirsin.</string>
+    <string name="suggestion_good_progress">Harika gidiyorsun! Bütçenin oldukça altındasın. Bu parayı hedeflerine aktarmaya ne dersin?</string>
+
+    <string name="widget_configure">Ayarla</string>
+    <string name="widget_payday_today">Maaş Günü!</string>
+    <string name="widget_days_left">Gün Kaldı</string>
+
+    <string name="notification_channel_name">Maaş Günü Hatırlatıcısı</string>
+    <string name="notification_channel_description">Maaş gününüz geldiğinde bildirim gönderir.</string>
+    <string name="payday_notification_title">Maaş Günü Geldi!</string>
+    <string name="payday_notification_text">Tebrikler! Bugün maaş gününüz. 🎉</string>
+
+    <string name="add_goal_fab">Tasarruf Hedefi Ekle</string>
+    <string name="add_expense_fab">Harcama Ekle</string>
+    <string name="toggle_fab_menu_description">Ekleme menüsünü aç veya kapat</string>
+
+    <string name="lets_get_started">Hadi Başlayalım!</string>
+    <string name="welcome_to_payday">Payday\'e Hoş Geldiniz!</string>
+    <string name="we_need_some_info_to_get_started">Uygulamanın sizin için çalışabilmesi için birkaç temel bilgiye ihtiyacımız var.</string>
+    <string name="your_reports_are_empty">Raporlarınız Henüz Boş</string>
+    <string name="start_adding_expenses_for_charts">Harcamalarınızı eklemeye başlayın, sizin için grafikler ve özetler oluşturalım.</string>
+    <string name="add_your_first_expense">İlk Harcamanı Ekle</string>
+    <string name="welcome_to_login_title">Payday\'e Hoş Geldiniz</string>
+    <string name="welcome_to_login_subtitle">Verilerinizi güvenle yedeklemek ve cihazlarınız arasında senkronize etmek için Google hesabınızla giriş yapın.</string>
+    <string name="skip_for_now_button">Şimdilik Atla</string>
+    <string name="auto_backup_summary">Uygulama verilerinizi düzenli olarak Google Drive\'a yedekler.</string>
+    <string-array name="theme_entries">
+        <item>Açık</item>
+        <item>Koyu</item>
+        <item>Sistem Varsayılanı</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>Light</item>
+        <item>Dark</item>
+        <item>System</item>
+    </string-array>
+    <string-array name="pay_periods">
+        <item>@string/pay_period_monthly</item>
+        <item>@string/pay_period_bi_weekly</item>
+        <item>@string/pay_period_weekly</item>
+    </string-array>
+    <string-array name="pay_period_values">
+        <item>MONTHLY</item>
+        <item>BI_WEEKLY</item>
+        <item>WEEKLY</item>
+    </string-array>
+    <string-array name="days_of_week">
+        <item>Pazartesi</item>
+        <item>Salı</item>
+        <item>Çarşamba</item>
+        <item>Perşembe</item>
+        <item>Cuma</item>
+        <item>Cumartesi</item>
+        <item>Pazar</item>
+    </string-array>
+
+    <string name="category_food">Yemek</string>
+    <string name="category_transport">Ulaşım</string>
+    <string name="category_bills">Faturalar</string>
+    <string name="category_shopping">Alışveriş</string>
+    <string name="category_entertainment">Eğlence</string>
+    <string name="category_savings">Tasarruf</string>
+    <string name="category_other">Diğer</string>
+    <string name="category_goal_car">Araba</string>
+    <string name="category_goal_house">Ev</string>
+    <string name="category_goal_tech">Teknoloji</string>
+    <string name="category_goal_travel">Tatil</string>
+    <string name="category_goal_other">Diğer</string>
+
+    <string name="achievement_title_setup_complete">Her Şey Hazır!</string>
+    <string name="achievement_desc_setup_complete">Kurulum sihirbazını başarıyla tamamladın.</string>
+    <string name="achievement_title_first_goal">İlk Adım</string>
+    <string name="achievement_desc_first_goal">İlk tasarruf hedefini oluşturdun.</string>
+    <string name="achievement_title_first_transaction">Harcama Günlüğü</string>
+    <string name="achievement_desc_first_transaction">İlk harcamanı kaydettin.</string>
+    <string name="achievement_title_reports_viewed">Analist</string>
+    <string name="achievement_desc_reports_viewed">Raporlar ekranını ilk kez ziyaret ettin.</string>
+    <string name="achievement_title_backup_hero">Veri Koruyucu</string>
+    <string name="achievement_desc_backup_hero">Verilerini ilk kez Google Drive\'a yedekledin.</string>
+    <string name="achievement_title_streak_7_days">Azimli</string>
+    <string name="achievement_desc_streak_7_days">Uygulamayı 7 gün boyunca kullandın.</string>
+    <string name="achievement_title_saver_lv1">Kumbaracı</string>
+    <string name="achievement_desc_saver_lv1">Tasarruf hedeflerin için toplam 1.000 TL biriktirdin.</string>
+    <string name="achievement_title_category_expert">Kategori Uzmanı</string>
+    <string name="achievement_desc_category_expert">5 farklı harcama kategorisini de kullandın.</string>
+    <string name="achievement_title_auto_pilot">Otomatik Pilot</string>
+    <string name="achievement_desc_auto_pilot">Tekrarlayan bir harcama şablonu oluşturdun.</string>
+    <string name="achievement_title_payday_hype">Maaş Günü!</string>
+    <string name="achievement_desc_payday_hype">İlk maaş gününü başarıyla tamamladın.</string>
+    <string name="achievement_title_streak_30_days">Maratoncu</string>
+    <string name="achievement_desc_streak_30_days">Uygulamayı 30 gün boyunca kullandın.</string>
+    <string name="achievement_title_goal_completed">Hedef Avcısı</string>
+    <string name="achievement_desc_goal_completed">İlk tasarruf hedefini başarıyla tamamladın.</string>
+    <string name="achievement_title_budget_wizard">Bütçe Sihirbazı</string>
+    <string name="achievement_desc_budget_wizard">Bir maaş döngüsünü, bütçen pozitifteyken bitirdin.</string>
+    <string name="achievement_title_saver_lv2">Yatırımcı</string>
+    <string name="achievement_desc_saver_lv2">Tasarruf hedeflerin için toplam 10.000 TL biriktirdin.</string>
+    <string name="achievement_title_collector">Koleksiyoncu</string>
+    <string name="achievement_desc_collector">Aynı anda 3 veya daha fazla aktif tasarruf hedefin var.</string>
+    <string name="achievement_title_streak_180_days">Demirbaş</string>
+    <string name="achievement_desc_streak_180_days">Uygulamayı 6 ay (180 gün) boyunca kullandın.</string>
+    <string name="achievement_title_saver_lv3">Tasarruf Gurusu</string>
+    <string name="achievement_desc_saver_lv3">Tasarruf hedeflerin için toplam 50.000 TL biriktirdin.</string>
+    <string name="achievement_title_cycle_champion">Döngü Şampiyonu</string>
+    <string name="achievement_desc_cycle_champion">Arka arkaya 3 maaş döngüsünü pozitif bakiye ile bitirdin.</string>
+    <string name="achievement_title_dark_side">Kara Kutu</string>
+    <string name="achievement_desc_dark_side">Uygulamanın Koyu Tema\'sını keşfettin.</string>
+    <string name="achievement_title_legend_one_year">Payday Efsanesi</string>
+    <string name="achievement_desc_legend_one_year">1. yılını bizimle tamamladın. Tebrikler!</string>
+    <string name="add_funds_amount_hint">Eklenecek Tutar</string>
+    <string name="achievement_unlocked_toast_title">Başarım Kilidi Açıldı!</string>
+    <string name="menu_action_edit">Düzenle</string>
+    <string name="menu_action_delete">Sil</string>
+    <string name="add_funds_dialog_title">Hedefe Para Ekle</string>
+    <string name="goal_options_edit">Düzenle</string>
+    <string name="goal_options_delete">Sil</string>
+    <string name="toast_achievement_title">Başarım Adı</string>
+    <string name="no_recurring_transactions_message">Henüz tekrarlayan harcama yok.</string>
+    <string name="portion_value_text">100%</string>
+    <string name="toast_achievement_name">Başarım Adı</string>
+    <string name="signin_prompt_dialog_message">Bu özelliği kullanabilmek ve verilerinizi güvenle saklayabilmek için Google hesabınızla giriş yapmanız gerekmektedir.</string>
+    <string name="signin_prompt_checkbox_text">Bir daha sorma</string>
+    <string name="auto_backup_title">Otomatik Yedekleme</string>
+    <string name="intro_hypnotic_subtitle">Finansal Geleceğin Başlıyor</string>
+    <string name="intro_welcome_title">Payday\'e Hoş Geldiniz!</string>
+    <string name="intro_subtitle">Finansal durumunuzu kontrol altına almanın en kolay yolu.</string>
+    <string name="intro_feature_1">Maaş gününüze geri sayım yapın</string>
+    <string name="intro_feature_2">Harcamalarınızı kolayca takip edin</string>
+    <string name="intro_feature_3">Tasarruf hedefleri oluşturun ve ulaşın</string>
+    <string name="intro_feature_4">Raporlarla harcamalarınızı analiz edin</string>
+    <string name="intro_start_button">Hadi Başlayalım!</string>
+</resources>

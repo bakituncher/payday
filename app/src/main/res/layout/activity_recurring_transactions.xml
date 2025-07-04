@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_light"
+    android:fitsSystemWindows="true"
     tools:context=".RecurringTransactionsActivity">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -52,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/no_recurring_transactions_message"
+            android:text="@string/no_recurring_transactions_yet"
             android:textAppearance="?attr/textAppearanceHeadline6"
             android:textColor="?android:attr/textColorSecondary"/>
     </LinearLayout>
