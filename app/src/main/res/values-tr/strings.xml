@@ -309,4 +309,7 @@
     <string name="intro_feature_3">Tasarruf hedefleri oluşturun ve ulaşın</string>
     <string name="intro_feature_4">Raporlarla harcamalarınızı analiz edin</string>
     <string name="intro_start_button">Hadi Başlayalım!</string>
+    <string name="suggestion_budget_exceeded">Bütçenizi aşmış görünüyorsunuz. Harcamalarınızı gözden geçirin.</string>
+    <string name="suggestion_approaching_budget_limit">Bütçenizin sonuna yaklaşıyorsunuz, dikkatli harcama yapın.</string>
+    <string name="suggestion_good_progress_transfer">İyi gidiyorsun! Kalan paranı tasarruf hedeflerine aktarmaya ne dersin?</string>
 </resources>

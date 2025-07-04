@@ -1,5 +1,3 @@
-// Konum: app/src/main/java/com/codenzi/payday/SavingsGoalAdapter.kt
-
 package com.codenzi.payday
 
 import android.view.LayoutInflater
@@ -110,7 +108,7 @@ class SavingsGoalAdapter(
 
                 dateInfoTextView.visibility = View.VISIBLE
                 if (daysLeft < 0) {
-                    dateInfoTextView.text = "Hedef tarihi geçti!"
+                    dateInfoTextView.text = itemView.context.getString(R.string.goal_date_passed)
                 } else {
                     dateInfoTextView.text = itemView.context.getString(
                         R.string.goal_date_info,

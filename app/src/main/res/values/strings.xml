@@ -310,4 +310,7 @@
     <string name="intro_feature_3">Create and achieve savings goals</string>
     <string name="intro_feature_4">Analyze your spending with reports</string>
     <string name="intro_start_button">Let\'s Get Started!</string>
+    <string name="suggestion_budget_exceeded">You seem to have exceeded your budget. Review your expenses.</string>
+    <string name="suggestion_approaching_budget_limit">You are approaching the end of your budget, spend carefully.</string>
+    <string name="suggestion_good_progress_transfer">You\'re doing great! How about transferring the rest of your money to your savings goals?</string>
 </resources>

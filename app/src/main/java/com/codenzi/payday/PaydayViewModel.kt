@@ -271,7 +271,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         // 1. Bütçe Aşımı Uyarısı (En Yüksek Öncelik)
         if (remainingAmount < 0) {
-            _financialInsight.postValue(Event("Bütçenizi aşmış görünüyorsunuz. Harcamalarınızı gözden geçirin."))
+            _financialInsight.postValue(Event(context.getString(R.string.suggestion_budget_exceeded)))
             return
         }
 
@@ -289,7 +289,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
         // 3. Bütçe Sınırına Yaklaşma Uyarısı
         if (totalIncome > 0 && (remainingAmount / totalIncome) < 0.15) {
-            _financialInsight.postValue(Event("Bütçenizin sonuna yaklaşıyorsunuz, dikkatli harcama yapın."))
+            _financialInsight.postValue(Event(context.getString(R.string.suggestion_approaching_budget_limit)))
             return
         }
 
@@ -307,7 +307,7 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
 
             // Döngünün sonuna gelinmişse ve hala para varsa
             if (cycleProgress > 0.8 && remainingAmount > totalIncome * 0.2) {
-                _financialInsight.postValue(Event("İyi gidiyorsun! Kalan paranı tasarruf hedeflerine aktarmaya ne dersin?"))
+                _financialInsight.postValue(Event(context.getString(R.string.suggestion_good_progress_transfer)))
                 return
             }
         }
