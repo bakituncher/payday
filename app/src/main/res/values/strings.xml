@@ -321,4 +321,40 @@
     <string name="feedback_email">info@codenzi.com</string>
     <string name="feedback_subject">Payday App Feedback</string>
     <string name="privacy_policy_url">https://www.codenzi.com/payday.html</string>
+    <string-array name="expense_reminder_titles">
+        <item>Psst! 🤫 Got a Minute?</item>
+        <item>Hey, Finance Commander! 🫡</item>
+        <item>Budget Shields Up! 🛡️</item>
+        <item>Money Wizard, Over Here! ✨</item>
+        <item>A Message from Payday! 📬</item>
+        <item>Time for a Quick Check-in? ☕</item>
+        <item>Your Daily Report! 📈</item>
+        <item>Hey! You Didn\'t Forget, Did You? 😉</item>
+    </string-array>
+
+    <string-array name="expense_reminder_messages">
+        <item>Knowing where your money goes is a superpower. Come on, unleash your power! 💪</item>
+        <item>You\'re summoned for duty! Track today\'s expenses and lead your budget to victory. 🚀</item>
+        <item>Log your expenses and let your financial future shine bright! Can you see the glow? 🤩</item>
+        <item>Was it just a coffee? Or a fortune? 🤔 Come, log your expenses and draw your financial map!</item>
+        <item>If your wallet could talk, what would it say? Let\'s hear its voice in Payday!</item>
+        <item>Be the boss of your money today! Add your expenses, take control. 👑</item>
+        <item>How about getting one step closer to your goals? It all starts with logging your expenses!</item>
+        <item>Financial peace begins with small steps. Time to take today\'s step!</item>
+        <item>You can keep your budget updated in just 30 seconds. Come on, it\'s that easy!</item>
+        <item>Add that last expense before you forget! Don\'t ask \"Where did all the money go?\" later. 😉</item>
+        <item>Payday is your budget\'s best friend. Don\'t neglect your friend!</item>
+        <item>Money management is an art. Come, practice your art today!</item>
+        <item>Small expenses add up and create big holes. Let\'s patch that hole early! 🛠️</item>
+        <item>Ever wonder how much you could save today? Start by logging your expenses!</item>
+        <item>Financial awareness is the first step to wealth. Take the step!</item>
+        <item>Your budget is calling for you! Come, answer the call.</item>
+        <item>Summary of the day: Log expenses, take a deep breath. It\'s that simple!</item>
+        <item>No more forgetting! It\'s time to log those receipts into Payday before they vanish.</item>
+        <item>Strengthen your relationship with your money. Log your expenses, understand it better.</item>
+        <item>The future you will thank the present you. Don\'t forget to log your expenses! 🙏</item>
+    </string-array>
+
+    <string name="payday_reminder_title">🎉 The Countdown is Almost Over! 🎉</string>
+    <string name="payday_reminder_message">ONLY 1 DAY until Payday! 🤑 That sweet cash will be in your account tomorrow, and auto-saving for your goals will begin. Get ready!</string>
 </resources>

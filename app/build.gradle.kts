@@ -114,4 +114,5 @@ dependencies {
 
     // --- CORE LIBRARY DESUGARING ---
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

@@ -320,4 +320,41 @@
     <string name="feedback_email">info@codenzi.com</string>
     <string name="feedback_subject">Payday Uygulaması Geri Bildirimi</string>
     <string name="privacy_policy_url">https://www.codenzi.com/payday.html</string>
+
+    <string-array name="expense_reminder_titles">
+        <item>Psst! 🤫 Bir Fikrim Var...</item>
+        <item>Hey, Finans Komutanı! 🫡</item>
+        <item>Bütçe Kalkanları Aktif! 🛡️</item>
+        <item>Para Sihirbazı, Buraya Bak! ✨</item>
+        <item>Payday\'den Mesajın Var! 📬</item>
+        <item>Küçük Bir Mola? ☕</item>
+        <item>Günün Raporu! 📈</item>
+        <item>Hey! Unutmadın, Değil mi? 😉</item>
+    </string-array>
+
+    <string-array name="expense_reminder_messages">
+        <item>Paranın nereye gittiğini bilmek en büyük süper güçtür. Gel, gücünü kullan! 💪</item>
+        <item>Günün harcamaları için göreve çağrılıyorsun! Birkaç dokunuşla bütçeni zafere taşı. 🚀</item>
+        <item>Harcamalarını gir, finansal geleceğin parlasın! O parlaklığı görüyor musun? 🤩</item>
+        <item>Bir kahve parası mı? Yoksa bir servet mi? 🤔 Gel, masraflarını kaydet, finansal haritanı çiz!</item>
+        <item>Cüzdanın konuşabilseydi ne derdi? Gel, onun sesini Payday\'de duyur!</item>
+        <item>Bugün paranın patronu sen ol! Harcamalarını ekle, kontrolü ele al. 👑</item>
+        <item>Hedeflerine bir adım daha yaklaşmaya ne dersin? Harcamalarını girmekle başla!</item>
+        <item>Finansal huzur, küçük adımlarla başlar. Bugünün adımını atma zamanı!</item>
+        <item>Sadece 30 saniyeni ayırarak bütçeni güncel tutabilirsin. Hadi ama, bu çok kolay!</item>
+        <item>O son harcamayı unutmadan hemen ekle! Sonra \"Bu para nereye gitti?\" deme. 😉</item>
+        <item>Payday, bütçenin en iyi dostudur. Hadi, dostunu ihmal etme!</item>
+        <item>Para yönetimi bir sanattır. Gel, bugün sanatını icra et!</item>
+        <item>Küçük harcamalar birikir, büyük delikler açar. O deliği erkenden kapatalım! 🛠️</item>
+        <item>Bugün ne kadar tasarruf edebileceğini hiç düşündün mü? Harcamalarını girerek başla!</item>
+        <item>Finansal farkındalık, zenginliğe giden ilk adımdır. Adımını at!</item>
+        <item>Bütçen seni çağırıyor! Gel, bu çağrıya kulak ver.</item>
+        <item>Günün özeti: Harcamaları gir, rahat bir nefes al. İşte bu kadar basit!</item>
+        <item>Unutkanlığa son! O fişler kaybolmadan Payday\'e girmenin tam zamanı.</item>
+        <item>Paranla arandaki ilişkiyi güçlendir. Harcamalarını kaydet, onu daha iyi anla.</item>
+        <item>Gelecekteki sen, bugünkü sana teşekkür edecek. Harcamalarını girmeyi unutma! 🙏</item>
+    </string-array>
+
+    <string name="payday_reminder_title">🎉 Geri Sayım Bitiyor! 🎉</string>
+    <string name="payday_reminder_message">Maaş Gününe SON 1 GÜN! 🤑 Yarın o tatlı para hesabında olacak ve hedeflerin için otomatik birikim başlayacak. Hazır ol!</string>
 </resources>

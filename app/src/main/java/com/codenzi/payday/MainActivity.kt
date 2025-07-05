@@ -1,13 +1,20 @@
 package com.codenzi.payday
 
+import android.Manifest
 import android.app.Activity
+import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
@@ -29,6 +36,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
+import com.codenzi.payday.notifications.NotificationScheduler
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
@@ -53,24 +61,41 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PaydayViewModel by viewModels()
+    // Diğer değişkenleriniz...
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
     private lateinit var transactionAdapter: TransactionAdapter
     private lateinit var repository: PaydayRepository
     private val gson = Gson()
     private val TAG = "PaydayBackup"
-
     private lateinit var googleDriveManager: GoogleDriveManager
     private lateinit var firebaseAnalytics: FirebaseAnalytics
-
     private val titleHandler = Handler(Looper.getMainLooper())
     private lateinit var titleRunnable: Runnable
     private var isShowingGreeting = true
     private var greetingMessage = ""
     private val originalAppName by lazy { getString(R.string.app_name) }
     private val montserratBold: Typeface? by lazy { ResourcesCompat.getFont(this, R.font.montserrat_bold) }
-
     private val suggestionHandler = Handler(Looper.getMainLooper())
     private var suggestionRunnable: Runnable? = null
+    private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
+    private val rotateClose: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_backward) }
+    private val fromBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_open) }
+    private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
+    private var isFabMenuOpen = false
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Adım 1 tamamlandı. Şimdi Adım 2'ye geç: Alarm iznini kontrol et.
+            checkExactAlarmPermission()
+        } else {
+            showPermissionRationaleDialog(
+                "Bildirim İzni Gerekli",
+                "Hatırlatıcıları alabilmek için bildirimlere izin vermeniz önemlidir. Ayarlardan izni daha sonra açabilirsiniz."
+            )
+        }
+    }
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -79,21 +104,13 @@ class MainActivity : AppCompatActivity() {
                 val account = task.getResult(ApiException::class.java)
                 updateGreetingMessage()
                 showSnackbar(getString(R.string.welcome_message_user, account.displayName))
-                showAutoBackupPrompt {
-                    checkForBackupAndProceed()
-                }
+                showAutoBackupPrompt { checkForBackupAndProceed() }
             } catch (e: ApiException) {
                 Log.w(TAG, "Sign-in failed, code: " + e.statusCode)
                 showSnackbar(getString(R.string.google_sign_in_failed), isError = true)
             }
         }
     }
-
-    private val rotateOpen: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_forward) }
-    private val rotateClose: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.rotate_backward) }
-    private val fromBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_open) }
-    private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
-    private var isFabMenuOpen = false
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -112,29 +129,101 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         firebaseAnalytics = Firebase.analytics
-
         updateGreetingMessage()
         setupTitleRunnable()
         setupCustomFontForToolbar()
-
         onBackPressedDispatcher.addCallback(this, backPressedCallback)
-
         repository = PaydayRepository(this)
         googleDriveManager = GoogleDriveManager(this)
         setSupportActionBar(binding.toolbar)
         setupRecyclerViews()
         setupListeners()
         setupObservers()
-
         binding.emptyStateView.emptyStateButton.setOnClickListener {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
+
+        // Bütün izinleri ve bildirimleri buradan başlat
+        checkAndRequestPermissions()
     }
+
+    override fun onResume() {
+        super.onResume()
+        titleHandler.post(titleRunnable)
+        // Kullanıcı ayarlardan döndüğünde izinleri tekrar kontrol et
+        checkExactAlarmPermission()
+    }
+
+    private fun checkAndRequestPermissions() {
+        // Adım 1: Standart Bildirim İznini İste (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                // Bildirim izni zaten var, şimdi alarm iznini kontrol et.
+                checkExactAlarmPermission()
+            } else {
+                // İzin yok, iste. Sonuç launcher tarafından ele alınacak.
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            // Eski sürümler için doğrudan alarm iznini kontrol et.
+            checkExactAlarmPermission()
+        }
+    }
+
+    private fun checkExactAlarmPermission() {
+        // Adım 2: Kritik Alarm İznini Kontrol Et (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (alarmManager.canScheduleExactAlarms()) {
+                // Bütün izinler tamam. Bildirimleri kur.
+                initializeNotifications()
+            } else {
+                // KRİTİK İZİN EKSİK. Kullanıcıyı doğru ayar ekranına yönlendir.
+                showPermissionRationaleDialog(
+                    "Önemli Bir İzin Eksik",
+                    "Uygulamanın kapalıyken bile tam zamanında bildirim gönderebilmesi için 'Alarmlar ve Hatırlatıcılar' izni gerekiyor. Lütfen bir sonraki ekranda Payday uygulaması için bu izni etkinleştirin.",
+                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+                )
+            }
+        } else {
+            // Eski sürümler için bu izin gerekmez. Bildirimleri kur.
+            initializeNotifications()
+        }
+    }
+
+    private fun initializeNotifications() {
+        NotificationScheduler.createNotificationChannel(this)
+        NotificationScheduler.scheduleRepeatingExpenseReminders(this)
+    }
+
+    private fun showPermissionRationaleDialog(title: String, message: String, settingsAction: String? = null) {
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setCancelable(false)
+            .setNegativeButton("Daha Sonra") { dialog, _ -> dialog.dismiss() }
+
+        if (settingsAction != null) {
+            builder.setPositiveButton("Ayarlara Git") { _, _ ->
+                val intent = Intent(settingsAction)
+                if (settingsAction == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) {
+                    val uri = Uri.fromParts("package", packageName, null)
+                    intent.data = uri
+                }
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
+            }
+        }
+        builder.show()
+    }
+
+    // --- BURADAN SONRASINDAKİ FONKSİYONLAR DEĞİŞMEDİ ---
 
     private fun setupCustomFontForToolbar() {
         binding.toolbar.post {
@@ -150,12 +239,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Bu fonksiyonu bul ve aşağıdaki güncel haliyle değiştir
     private fun updateGreetingMessage() {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
-        // Günün saatine göre selamlamayı belirle
         val greetingPrefix = when (hour) {
             in 5..11 -> getString(R.string.greeting_morning)
             in 12..17 -> getString(R.string.greeting_afternoon)
@@ -163,15 +250,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         val account = GoogleSignIn.getLastSignedInAccount(this)
-        // Eğer kullanıcı giriş yapmışsa, isminin sadece ilk kısmını al
         val displayName = account?.displayName?.let { name ->
-            // İsmi boşluklara göre böl ve ilk kelimeyi al
             val firstName = name.split(" ").firstOrNull() ?: ""
-            // Selamlamaya boşluk ve ismi ekle
-            " $firstName"
-        } ?: "" // Kullanıcı giriş yapmamışsa boş bırak
+            if (firstName.length > 15) {
+                " ${firstName.substring(0, 12)}..."
+            } else {
+                " $firstName"
+            }
+        } ?: ""
 
-        // Son selam metnini oluştur
         greetingMessage = "$greetingPrefix$displayName"
     }
 
@@ -186,11 +273,6 @@ class MainActivity : AppCompatActivity() {
             isShowingGreeting = !isShowingGreeting
             titleHandler.postDelayed(titleRunnable, 10000)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        titleHandler.post(titleRunnable)
     }
 
     override fun onPause() {
@@ -317,8 +399,14 @@ class MainActivity : AppCompatActivity() {
             binding.mainContentScrollView.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
             binding.addTransactionFab.visibility = if (isSetupComplete) View.VISIBLE else View.GONE
             binding.emptyStateView.root.visibility = if (isSetupComplete) View.GONE else View.VISIBLE
+
             if (isSetupComplete) {
                 updateUi(state)
+
+                val result = viewModel.getPaydayResult()
+                if (result != null) {
+                    NotificationScheduler.schedulePaydayReminder(this, result.daysLeft)
+                }
             }
         }
 
@@ -581,16 +669,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // Bu fonksiyonu bul ve aşağıdaki güncel haliyle değiştir
     private fun showAchievementSnackbar(achievement: Achievement) {
         val snackbar = Snackbar.make(binding.coordinatorLayout, "", Snackbar.LENGTH_LONG)
-
-        // --- DÜZELTME BAŞLANGICI ---
-        // Snackbar'ı ana FAB (Floating Action Button) butonuna bağlayarak
-        // üst üste binme sorununu ve tıklama engelini çözüyoruz.
         snackbar.anchorView = binding.addTransactionFab
-        // --- DÜZELTME SONU ---
-
         val snackbarLayout = snackbar.view as ViewGroup
         snackbarLayout.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
         snackbarLayout.setPadding(0, 0, 0, 0)

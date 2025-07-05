@@ -72,8 +72,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
     val transactionToEdit: LiveData<Transaction?> = _transactionToEdit
     private var transactionObserverJob: Job? = null
 
-
     private val currentPayCycle = MutableStateFlow<Pair<Date, Date>?>(null)
+    private var lastPaydayResult: PaydayResult? = null // BİLDİRİM SİSTEMİ İÇİN EKLENDİ
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val transactionsForCurrentCycle: LiveData<List<Transaction>> = currentPayCycle.flatMapLatest { cycle ->
@@ -89,6 +89,11 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
         checkUsageStreakAchievements()
         loadData()
         checkForRestoreValidation()
+    }
+
+    // BİLDİRİM SİSTEMİ İÇİN YENİ FONKSİYON
+    fun getPaydayResult(): PaydayResult? {
+        return lastPaydayResult
     }
 
     private fun checkForRestoreValidation() {
@@ -158,6 +163,8 @@ class PaydayViewModel(application: Application) : AndroidViewModel(application) 
                 biWeeklyRefDateString = null,
                 weekendAdjustmentEnabled = weekendAdjustment
             )
+
+            lastPaydayResult = result // BİLDİRİM SİSTEMİ İÇİN GÜNCELLENDİ
 
             if (result != null) {
                 val cycleStartDate = result.cycleStartDate.toStartOfDayDate()
