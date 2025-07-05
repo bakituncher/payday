@@ -150,10 +150,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Bu fonksiyonu bul ve aşağıdaki güncel haliyle değiştir
     private fun updateGreetingMessage() {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
+        // Günün saatine göre selamlamayı belirle
         val greetingPrefix = when (hour) {
             in 5..11 -> getString(R.string.greeting_morning)
             in 12..17 -> getString(R.string.greeting_afternoon)
@@ -161,15 +163,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         val account = GoogleSignIn.getLastSignedInAccount(this)
+        // Eğer kullanıcı giriş yapmışsa, isminin sadece ilk kısmını al
         val displayName = account?.displayName?.let { name ->
+            // İsmi boşluklara göre böl ve ilk kelimeyi al
             val firstName = name.split(" ").firstOrNull() ?: ""
-            if (firstName.length > 15) {
-                " ${firstName.substring(0, 12)}..."
-            } else {
-                " $firstName"
-            }
-        } ?: ""
+            // Selamlamaya boşluk ve ismi ekle
+            " $firstName"
+        } ?: "" // Kullanıcı giriş yapmamışsa boş bırak
 
+        // Son selam metnini oluştur
         greetingMessage = "$greetingPrefix$displayName"
     }
 
@@ -579,8 +581,16 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // Bu fonksiyonu bul ve aşağıdaki güncel haliyle değiştir
     private fun showAchievementSnackbar(achievement: Achievement) {
         val snackbar = Snackbar.make(binding.coordinatorLayout, "", Snackbar.LENGTH_LONG)
+
+        // --- DÜZELTME BAŞLANGICI ---
+        // Snackbar'ı ana FAB (Floating Action Button) butonuna bağlayarak
+        // üst üste binme sorununu ve tıklama engelini çözüyoruz.
+        snackbar.anchorView = binding.addTransactionFab
+        // --- DÜZELTME SONU ---
+
         val snackbarLayout = snackbar.view as ViewGroup
         snackbarLayout.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
         snackbarLayout.setPadding(0, 0, 0, 0)
