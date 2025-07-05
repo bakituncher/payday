@@ -2,7 +2,6 @@ package com.codenzi.payday
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri // <-- YENİ IMPORT
 import android.os.Bundle
 import android.text.InputType
 import android.text.format.DateUtils
@@ -81,7 +80,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupCurrencyPreference("monthly_savings")
         setupAutoBackupPreference()
         setupAutoSavingPreference()
-        setupCommunicationPreferences() // <-- YENİ EKLENEN FONKSİYON ÇAĞRISI
 
         findPreference<Preference>("recurring_transactions")?.setOnPreferenceClickListener {
             startActivity(Intent(requireContext(), RecurringTransactionsActivity::class.java))
@@ -137,6 +135,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     Toast.makeText(requireContext(), getString(R.string.restore_success), Toast.LENGTH_SHORT).show()
                     requireActivity().recreate()
                 } else {
+                    // DÜZELTME: Güvenli context kontrolü
                     val safeContext = context
                     if (safeContext != null) {
                         Toast.makeText(safeContext, getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
@@ -144,6 +143,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 }
             } catch (e: Exception) {
                 Log.e("SettingsRestore", "Error during restore", e)
+                // DÜZELTME: Güvenli context kontrolü
                 val safeContext = context
                 if (safeContext != null) {
                     Toast.makeText(safeContext, getString(R.string.restore_failed), Toast.LENGTH_SHORT).show()
@@ -157,36 +157,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
         super.onResume()
         updateSummaries()
         updateAccountSection(GoogleSignIn.getLastSignedInAccount(requireContext()))
-    }
-
-    // YENİ EKLENEN FONKSİYON
-    private fun setupCommunicationPreferences() {
-        findPreference<Preference>("privacy_policy")?.setOnPreferenceClickListener {
-            val url = getString(R.string.privacy_policy_url)
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            try {
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Could not open the link.", Toast.LENGTH_SHORT).show()
-            }
-            true
-        }
-
-        findPreference<Preference>("send_feedback")?.setOnPreferenceClickListener {
-            val email = getString(R.string.feedback_email)
-            val subject = getString(R.string.feedback_subject)
-            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:") // Sadece e-posta uygulamaları bu intent'i açmalı
-                putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
-                putExtra(Intent.EXTRA_SUBJECT, subject)
-            }
-            try {
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "No email app found.", Toast.LENGTH_SHORT).show()
-            }
-            true
-        }
     }
 
     private fun setupAutoSavingPreference() {
