@@ -313,4 +313,12 @@
     <string name="suggestion_budget_exceeded">You seem to have exceeded your budget. Review your expenses.</string>
     <string name="suggestion_approaching_budget_limit">You are approaching the end of your budget, spend carefully.</string>
     <string name="suggestion_good_progress_transfer">You\'re doing great! How about transferring the rest of your money to your savings goals?</string>
+    <string name="settings_communication_title">Communication &amp; Feedback</string>
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_policy_summary">Read our privacy policy.</string>
+    <string name="send_feedback_title">Send Feedback</string>
+    <string name="send_feedback_summary">Report bugs or suggest new features.</string>
+    <string name="feedback_email">feedback@paydayapp.com</string>
+    <string name="feedback_subject">Payday App Feedback</string>
+    <string name="privacy_policy_url">https://www.example.com/privacy</string>
 </resources>
