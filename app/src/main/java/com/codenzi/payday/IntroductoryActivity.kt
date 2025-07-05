@@ -23,6 +23,7 @@ class IntroductoryActivity : AppCompatActivity() {
         val slideInBottom = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom)
 
         binding.introContainer.startAnimation(slideInTop)
+        binding.privacyCard.startAnimation(slideInBottom)
         binding.startButton.startAnimation(slideInBottom)
 
         binding.startButton.setOnClickListener {
