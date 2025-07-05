@@ -9,14 +9,13 @@
 
     <ImageView
         android:id="@+id/loginIcon"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
         android:layout_marginBottom="16dp"
-        android:src="@drawable/ic_launcher_foreground"
+        android:src="@mipmap/ic_launcher_foreground"
         app:layout_constraintBottom_toTopOf="@+id/welcomeTitle"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:tint="?attr/colorPrimary" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/welcomeTitle"
@@ -59,8 +58,6 @@
         android:text="@string/google_sign_in_title"
         android:textSize="16sp"
         app:cornerRadius="16dp"
-        app:icon="@drawable/ic_google_logo"
-        app:iconGravity="textStart"
         app:layout_constraintBottom_toTopOf="@+id/skipButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
