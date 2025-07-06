@@ -61,7 +61,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PaydayViewModel by viewModels()
-    // Diğer değişkenleriniz...
     private lateinit var savingsGoalAdapter: SavingsGoalAdapter
     private lateinit var transactionAdapter: TransactionAdapter
     private lateinit var repository: PaydayRepository
@@ -87,7 +86,6 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Adım 1 tamamlandı. Şimdi Adım 2'ye geç: Alarm iznini kontrol et.
             checkExactAlarmPermission()
         } else {
             showPermissionRationaleDialog(
@@ -146,42 +144,80 @@ class MainActivity : AppCompatActivity() {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
 
-        // Bütün izinleri ve bildirimleri buradan başlat
         checkAndRequestPermissions()
     }
 
     override fun onResume() {
         super.onResume()
         titleHandler.post(titleRunnable)
-        // Kullanıcı ayarlardan döndüğünde izinleri tekrar kontrol et
         checkExactAlarmPermission()
     }
 
+    override fun onPause() {
+        super.onPause()
+        titleHandler.removeCallbacks(titleRunnable)
+        binding.toolbar.title = originalAppName
+    }
+
+    private fun setupCustomFontForToolbar() {
+        binding.toolbar.post {
+            for (i in 0 until binding.toolbar.childCount) {
+                val view = binding.toolbar.getChildAt(i)
+                if (view is TextView) {
+                    if (view.text.toString() == binding.toolbar.title) {
+                        view.typeface = montserratBold
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Selamlama metnini günceller. İSİM KALDIRILDI.
+     */
+    private fun updateGreetingMessage() {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+
+        greetingMessage = when (hour) {
+            in 5..11 -> getString(R.string.greeting_morning)   // 05:00 - 11:59 -> Günaydın
+            in 12..17 -> getString(R.string.greeting_afternoon)  // 12:00 - 17:59 -> Tünaydın
+            in 18..21 -> getString(R.string.greeting_evening)   // 18:00 - 21:59 -> İyi akşamlar
+            else -> getString(R.string.greeting_night)          // 22:00 - 04:59 -> İyi geceler
+        }
+    }
+    private fun setupTitleRunnable() {
+        titleRunnable = Runnable {
+            val nextTitle = if (isShowingGreeting) {
+                originalAppName
+            } else {
+                greetingMessage.ifBlank { originalAppName }
+            }
+            binding.toolbar.title = nextTitle
+            isShowingGreeting = !isShowingGreeting
+            titleHandler.postDelayed(titleRunnable, 10000)
+        }
+    }
+
     private fun checkAndRequestPermissions() {
-        // Adım 1: Standart Bildirim İznini İste (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                // Bildirim izni zaten var, şimdi alarm iznini kontrol et.
                 checkExactAlarmPermission()
             } else {
-                // İzin yok, iste. Sonuç launcher tarafından ele alınacak.
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
-            // Eski sürümler için doğrudan alarm iznini kontrol et.
             checkExactAlarmPermission()
         }
     }
 
     private fun checkExactAlarmPermission() {
-        // Adım 2: Kritik Alarm İznini Kontrol Et (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
             if (alarmManager.canScheduleExactAlarms()) {
-                // Bütün izinler tamam. Bildirimleri kur.
                 initializeNotifications()
             } else {
-                // KRİTİK İZİN EKSİK. Kullanıcıyı doğru ayar ekranına yönlendir.
                 showPermissionRationaleDialog(
                     "Önemli Bir İzin Eksik",
                     "Uygulamanın kapalıyken bile tam zamanında bildirim gönderebilmesi için 'Alarmlar ve Hatırlatıcılar' izni gerekiyor. Lütfen bir sonraki ekranda Payday uygulaması için bu izni etkinleştirin.",
@@ -189,7 +225,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         } else {
-            // Eski sürümler için bu izin gerekmez. Bildirimleri kur.
             initializeNotifications()
         }
     }
@@ -221,64 +256,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         builder.show()
-    }
-
-    // --- BURADAN SONRASINDAKİ FONKSİYONLAR DEĞİŞMEDİ ---
-
-    private fun setupCustomFontForToolbar() {
-        binding.toolbar.post {
-            for (i in 0 until binding.toolbar.childCount) {
-                val view = binding.toolbar.getChildAt(i)
-                if (view is TextView) {
-                    if (view.text.toString() == binding.toolbar.title) {
-                        view.typeface = montserratBold
-                        break
-                    }
-                }
-            }
-        }
-    }
-
-    private fun updateGreetingMessage() {
-        val calendar = Calendar.getInstance()
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
-
-        val greetingPrefix = when (hour) {
-            in 5..11 -> getString(R.string.greeting_morning)
-            in 12..17 -> getString(R.string.greeting_afternoon)
-            else -> getString(R.string.greeting_evening)
-        }
-
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        val displayName = account?.displayName?.let { name ->
-            val firstName = name.split(" ").firstOrNull() ?: ""
-            if (firstName.length > 15) {
-                " ${firstName.substring(0, 12)}..."
-            } else {
-                " $firstName"
-            }
-        } ?: ""
-
-        greetingMessage = "$greetingPrefix$displayName"
-    }
-
-    private fun setupTitleRunnable() {
-        titleRunnable = Runnable {
-            val nextTitle = if (isShowingGreeting) {
-                originalAppName
-            } else {
-                greetingMessage.ifBlank { originalAppName }
-            }
-            binding.toolbar.title = nextTitle
-            isShowingGreeting = !isShowingGreeting
-            titleHandler.postDelayed(titleRunnable, 10000)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        titleHandler.removeCallbacks(titleRunnable)
-        binding.toolbar.title = originalAppName
     }
 
     private fun performActionWithSignIn(action: () -> Unit) {

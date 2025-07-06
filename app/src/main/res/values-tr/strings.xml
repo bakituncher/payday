@@ -358,5 +358,6 @@
     <string name="payday_reminder_title">🎉 Geri Sayım Bitiyor! 🎉</string>
     <string name="payday_reminder_message">Maaş Gününe SON 1 GÜN! 🤑 Yarın o tatlı para hesabında olacak ve hedeflerin için otomatik birikim başlayacak. Hazır ol!</string>
     <string name="intro_privacy_description">Girdiğiniz maaş ve harcama bilgileri <b>sadece sizin cihazınızda</b> saklanır. Google Drive\'a yedekleme yapsanız bile, bu veriler sizin özel alanınıza kaydedilir ve biz dahil <b>hiç kimse tarafından okunamaz</b>. Finansal verilerinizin kontrolü tamamen sizdedir.</string>
+    <string name="greeting_night">İyi geceler</string>
 
 </resources>

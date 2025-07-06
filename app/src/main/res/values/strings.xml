@@ -360,4 +360,5 @@
 
 
     <string name="intro_privacy_description">The salary and expense information you enter is stored <b>only on your device</b>. Even when backed up to Google Drive, this data is saved to your private space and <b>cannot be read by anyone</b>, including us. You are in full control of your financial data.</string>
+    <string name="greeting_night">Good night</string>
 </resources>
