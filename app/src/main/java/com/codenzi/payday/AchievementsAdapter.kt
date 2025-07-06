@@ -47,7 +47,8 @@ class AchievementsAdapter(private val achievements: List<Achievement>) : Recycle
                 // Kilitli başarım
                 container.alpha = 0.5f
                 val lockedColor = ContextCompat.getColor(itemView.context, R.color.text_tertiary)
-                iconBackground.setColor(lockedColor)
+                // DÜZELTİLMİŞ KISIM: Arka planı tek ve düz bir renkten oluşan bir gradyan olarak ayarla
+                iconBackground.colors = intArrayOf(lockedColor, lockedColor)
             }
         }
     }
