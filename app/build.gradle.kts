@@ -86,6 +86,10 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
     implementation("androidx.lifecycle:lifecycle-process:2.8.3")
+    implementation(libs.firebase.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     // --- VERİ SAKLAMA (DATA) ---
     // Room (Veritabanı)
