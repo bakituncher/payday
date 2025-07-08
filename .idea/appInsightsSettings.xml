@@ -24,9 +24,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.codenzi.payday" />
-                  <option name="mobileSdkAppId" value="1:681800092363:android:9ddea4e7205f4c4c18294e" />
-                  <option name="projectId" value="payday-2ba84" />
-                  <option name="projectNumber" value="681800092363" />
+                  <option name="mobileSdkAppId" value="1:766465796018:android:afab5b2f6b13077d21e6ab" />
+                  <option name="projectId" value="payday-9d1d7" />
+                  <option name="projectNumber" value="766465796018" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
