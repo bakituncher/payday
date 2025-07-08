@@ -14,8 +14,8 @@ android {
         applicationId = "com.codenzi.payday"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -38,6 +38,12 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+
+    // --- DEĞİŞİKLİK: Sarı uyarıyı gidermek için bu blok eklendi ---
+    // Bu blok, yerel kod (native) çökmeleri için sembollerin yüklenmesini etkinleştirir.
+    firebaseCrashlytics {
+        nativeSymbolUploadEnabled = true
     }
 
     compileOptions {

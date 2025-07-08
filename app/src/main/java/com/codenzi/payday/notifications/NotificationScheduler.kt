@@ -71,21 +71,16 @@ object NotificationScheduler {
                 set(Calendar.SECOND, 0)
             }.timeInMillis
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            }
+            // --- DEĞİŞİKLİK BURADA YAPILDI ---
+            // Google'ın katı politikası gereği, "setExactAndAllowWhileIdle" yerine
+            // "setAndAllowWhileIdle" kullanıyoruz. Bu, tehlikeli izni gerektirmez
+            // ve alarmı yine istenen saate çok yakın bir zamanda tetikler.
+            // Bu sayede eski if/else bloğuna ve izin kontrolüne gerek kalmadı.
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
         }
     }
 }

@@ -2,7 +2,6 @@ package com.codenzi.payday
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
@@ -38,7 +37,6 @@ import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityMainBinding
 import com.codenzi.payday.notifications.NotificationScheduler
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -82,12 +80,15 @@ class MainActivity : AppCompatActivity() {
     private val toBottom: Animation by lazy { AnimationUtils.loadAnimation(this, R.anim.fab_close) }
     private var isFabMenuOpen = false
 
+    // --- DEĞİŞİKLİK: İzin isteme mekanizması güncellendi ---
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            checkExactAlarmPermission()
+            // İzin verildiğinde artık sadece bildirimleri kuruyoruz.
+            initializeNotifications()
         } else {
+            // İzin reddedildiğinde kullanıcıyı bilgilendiriyoruz.
             showPermissionRationaleDialog(
                 "Bildirim İzni Gerekli",
                 "Hatırlatıcıları alabilmek için bildirimlere izin vermeniz önemlidir. Ayarlardan izni daha sonra açabilirsiniz."
@@ -144,13 +145,14 @@ class MainActivity : AppCompatActivity() {
             settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
 
+        // --- DEĞİŞİKLİK: İzin kontrolü yeni fonksiyona göre güncellendi ---
         checkAndRequestPermissions()
     }
 
     override fun onResume() {
         super.onResume()
         titleHandler.post(titleRunnable)
-        checkExactAlarmPermission()
+        // onResume içinde tekrar izin kontrolü yapmaya gerek yok, onCreate'de yapılıyor.
     }
 
     override fun onPause() {
@@ -173,18 +175,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Selamlama metnini günceller. İSİM KALDIRILDI.
-     */
     private fun updateGreetingMessage() {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
         greetingMessage = when (hour) {
-            in 5..11 -> getString(R.string.greeting_morning)   // 05:00 - 11:59 -> Günaydın
-            in 12..17 -> getString(R.string.greeting_afternoon)  // 12:00 - 17:59 -> Tünaydın
-            in 18..21 -> getString(R.string.greeting_evening)   // 18:00 - 21:59 -> İyi akşamlar
-            else -> getString(R.string.greeting_night)          // 22:00 - 04:59 -> İyi geceler
+            in 5..11 -> getString(R.string.greeting_morning)
+            in 12..17 -> getString(R.string.greeting_afternoon)
+            in 18..21 -> getString(R.string.greeting_evening)
+            else -> getString(R.string.greeting_night)
         }
     }
     private fun setupTitleRunnable() {
@@ -200,34 +199,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- DEĞİŞİKLİK: Fonksiyon güncellendi, artık sadece bildirim iznini kontrol ediyor ---
     private fun checkAndRequestPermissions() {
+        // Sadece Android 13 (TIRAMISU) ve üstü için bildirim izni istenir.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                checkExactAlarmPermission()
-            } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                // İzin verilmemişse, kullanıcıdan iste.
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else {
-            checkExactAlarmPermission()
-        }
-    }
-
-    private fun checkExactAlarmPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (alarmManager.canScheduleExactAlarms()) {
-                initializeNotifications()
             } else {
-                showPermissionRationaleDialog(
-                    "Önemli Bir İzin Eksik",
-                    "Uygulamanın kapalıyken bile tam zamanında bildirim gönderebilmesi için 'Alarmlar ve Hatırlatıcılar' izni gerekiyor. Lütfen bir sonraki ekranda Payday uygulaması için bu izni etkinleştirin.",
-                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
-                )
+                // İzin zaten verilmişse, bildirimleri kur.
+                initializeNotifications()
             }
         } else {
+            // Eski sürümlerde bu izne gerek yok, direkt bildirimleri kur.
             initializeNotifications()
         }
     }
+
+    // --- DEĞİŞİKLİK: Artık ihtiyaç kalmadığı için `checkExactAlarmPermission` fonksiyonu silindi. ---
 
     private fun initializeNotifications() {
         NotificationScheduler.createNotificationChannel(this)
@@ -257,6 +246,8 @@ class MainActivity : AppCompatActivity() {
         }
         builder.show()
     }
+
+    // ... (GERİ KALAN TÜM FONKSİYONLAR DEĞİŞİKLİK OLMADAN AYNI KALIYOR) ...
 
     private fun performActionWithSignIn(action: () -> Unit) {
         val account = GoogleSignIn.getLastSignedInAccount(this)
