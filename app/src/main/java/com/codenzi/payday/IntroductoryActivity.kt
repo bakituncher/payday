@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat // EKLENDİ
 import androidx.lifecycle.lifecycleScope
 import com.codenzi.payday.databinding.ActivityIntroductoryBinding
 import kotlinx.coroutines.launch
@@ -14,7 +15,10 @@ class IntroductoryActivity : AppCompatActivity() {
     private lateinit var repository: PaydayRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Kenardan kenara görünüm için DÜZELTME
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
+
         binding = ActivityIntroductoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
         repository = PaydayRepository(this)
@@ -28,9 +32,7 @@ class IntroductoryActivity : AppCompatActivity() {
 
         binding.startButton.setOnClickListener {
             lifecycleScope.launch {
-                // Bu ekranın gösterildiğini kaydet
                 repository.setIntroShown(true)
-                // Google Giriş Ekranına git
                 startActivity(Intent(this@IntroductoryActivity, LoginActivity::class.java))
                 finish()
             }
